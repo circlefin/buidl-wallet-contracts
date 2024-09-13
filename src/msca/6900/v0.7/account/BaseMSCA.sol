@@ -18,45 +18,47 @@
  */
 pragma solidity 0.8.24;
 
+import {
+    EMPTY_FUNCTION_REFERENCE,
+    SENTINEL_BYTES21,
+    WALLET_AUTHOR,
+    WALLET_VERSION_1
+} from "../../../../common/Constants.sol";
+import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
+import {
+    InvalidAuthorizer,
+    InvalidExecutionFunction,
+    InvalidValidationFunctionId,
+    NotFoundSelector,
+    UnauthorizedCaller
+} from "../../shared/common/Errors.sol";
+import {AddressDLL, ValidationData} from "../../shared/common/Structs.sol";
+import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
+import {ValidationDataLib} from "../../shared/libs/ValidationDataLib.sol";
+import {
+    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
+    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
+} from "../common/Constants.sol";
+import "../common/Structs.sol";
+import {IAccountLoupe} from "../interfaces/IAccountLoupe.sol";
+import {IPlugin} from "../interfaces/IPlugin.sol";
+import {IPluginExecutor} from "../interfaces/IPluginExecutor.sol";
+import {IPluginManager} from "../interfaces/IPluginManager.sol";
+import {IStandardExecutor} from "../interfaces/IStandardExecutor.sol";
+import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";
+import {FunctionReferenceLib} from "../libs/FunctionReferenceLib.sol";
+import {RepeatableFunctionReferenceDLLLib} from "../libs/RepeatableFunctionReferenceDLLLib.sol";
+
+import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
+import {WalletStorageV1Lib} from "../libs/WalletStorageV1Lib.sol";
+import {PluginExecutor} from "../managers/PluginExecutor.sol";
+import {PluginManager} from "../managers/PluginManager.sol";
+import {StandardExecutor} from "../managers/StandardExecutor.sol";
+
+import {WalletStorageInitializable} from "./WalletStorageInitializable.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
-import {IPluginExecutor} from "../interfaces/IPluginExecutor.sol";
-import {IAccountLoupe} from "../interfaces/IAccountLoupe.sol";
-import {IPluginManager} from "../interfaces/IPluginManager.sol";
-import {IStandardExecutor} from "../interfaces/IStandardExecutor.sol";
-import {PluginManager} from "../managers/PluginManager.sol";
-import {StandardExecutor} from "../managers/StandardExecutor.sol";
-import {PluginExecutor} from "../managers/PluginExecutor.sol";
-import {WalletStorageV1Lib} from "../libs/WalletStorageV1Lib.sol";
-import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";
-import {WalletStorageInitializable} from "./WalletStorageInitializable.sol";
-import {RepeatableFunctionReferenceDLLLib} from "../libs/RepeatableFunctionReferenceDLLLib.sol";
-import {FunctionReferenceLib} from "../libs/FunctionReferenceLib.sol";
-import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
-import {ValidationDataLib} from "../../shared/libs/ValidationDataLib.sol";
-import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
-import {
-    UnauthorizedCaller,
-    NotFoundSelector,
-    InvalidValidationFunctionId,
-    InvalidAuthorizer,
-    InvalidExecutionFunction
-} from "../../shared/common/Errors.sol";
-import "../common/Structs.sol";
-import {
-    WALLET_AUTHOR,
-    WALLET_VERSION_1,
-    SENTINEL_BYTES21,
-    EMPTY_FUNCTION_REFERENCE
-} from "../../../../common/Constants.sol";
-import {ValidationData, AddressDLL} from "../../shared/common/Structs.sol";
-import {
-    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE,
-    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE
-} from "../common/Constants.sol";
 
 /**
  * @dev Base MSCA implementation with **authentication**.

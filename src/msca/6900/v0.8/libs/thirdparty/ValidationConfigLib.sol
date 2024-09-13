@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {ValidationConfig, ModuleEntity} from "../../common/Types.sol";
+import {ModuleEntity, ValidationConfig} from "../../common/Types.sol";
 
 // Validation config is a packed representation of a validation function and flags for its configuration.
 // Layout:

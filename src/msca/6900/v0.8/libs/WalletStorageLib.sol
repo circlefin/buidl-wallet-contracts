@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {ExecutionDetail, ValidationDetail} from "../common/Structs.sol";
 import {AddressDLL} from "../../shared/common/Structs.sol";
+import {ExecutionDetail, ValidationDetail} from "../common/Structs.sol";
 import {ModuleEntity} from "../common/Types.sol";
 
 /// @dev The same storage will be used for ERC6900 v0.8 MSCAs.

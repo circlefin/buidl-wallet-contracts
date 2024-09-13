@@ -18,17 +18,19 @@
  */
 pragma solidity 0.8.24;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {BaseMSCA} from "./BaseMSCA.sol";
-import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
-import {PluginManager} from "../managers/PluginManager.sol";
-import {InvalidInitializationInput} from "../../shared/common/Errors.sol";
 import {DefaultCallbackHandler} from "../../../../callback/DefaultCallbackHandler.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
+import {InvalidInitializationInput} from "../../shared/common/Errors.sol";
+
 import {ValidationConfig} from "../common/Types.sol";
+import {PluginManager} from "../managers/PluginManager.sol";
+import {BaseMSCA} from "./BaseMSCA.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 /**
  * @dev Leverage {ERC1967Proxy} brought by UUPS proxies, when this contract is set as the implementation behind such a

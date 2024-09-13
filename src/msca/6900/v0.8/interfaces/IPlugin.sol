@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {PluginManifest, PluginMetadata} from "../common/PluginManifest.sol";
+import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 /**
  * @dev Implements https://eips.ethereum.org/EIPS/eip-6900. Plugins must implement this interface to support plugin

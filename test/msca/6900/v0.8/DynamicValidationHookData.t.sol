@@ -20,22 +20,26 @@ pragma solidity 0.8.24;
 
 /* solhint-disable max-states-count */
 
-import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+
 import {ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+
+import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+
 import {TestAddressBookPlugin} from "./helpers/TestAddressBookPlugin.sol";
+import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
 
 // We use TestCircleMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
 contract DynamicValidationHookDataTest is AccountTestUtils {

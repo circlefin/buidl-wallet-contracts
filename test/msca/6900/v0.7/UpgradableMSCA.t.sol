@@ -18,39 +18,44 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../../../util/TestUtils.sol";
-import {TestERC721} from "../../../util/TestERC721.sol";
-import {TestERC1155} from "../../../util/TestERC1155.sol";
-import {UpgradableMSCA} from "../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
-import {FunctionReference, ExecutionFunctionConfig} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import {TestUserOpValidator} from "./TestUserOpValidator.sol";
-import {TestValidatorHook} from "./TestUserOpValidatorHook.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
-import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
 import {EMPTY_FUNCTION_REFERENCE} from "../../../../src/common/Constants.sol";
-import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+
 import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {TestValidatorHook} from "../v0.7/TestUserOpValidatorHook.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {UpgradableMSCA} from "../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
+
 import {
-    PluginManifest,
-    ManifestFunction,
+    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
+    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
+} from "../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {
     ManifestAssociatedFunction,
     ManifestAssociatedFunctionType,
     ManifestExecutionHook,
-    ManifestExternalCallPermission
+    ManifestExternalCallPermission,
+    ManifestFunction,
+    PluginManifest
 } from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
+import {ExecutionFunctionConfig, FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
 import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
-import {
-    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE,
-    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE
-} from "../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {TestERC1155} from "../../../util/TestERC1155.sol";
+import {TestERC721} from "../../../util/TestERC721.sol";
+
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+
+import {TestValidatorHook} from "../v0.7/TestUserOpValidatorHook.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {TestUserOpValidator} from "./TestUserOpValidator.sol";
+import {TestValidatorHook} from "./TestUserOpValidatorHook.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 contract UpgradableMSCATest is TestUtils {
     using FunctionReferenceLib for bytes21;

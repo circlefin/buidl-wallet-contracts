@@ -18,13 +18,14 @@
  */
 pragma solidity 0.8.24;
 
-import {FCL_ecdsa} from "@fcl/FCL_ecdsa.sol";
 import {TestUtils} from "../.../../../util/TestUtils.sol";
+
+import {WebAuthnData} from "../../../src/common/CommonStructs.sol";
 import {WebAuthnLib} from "../../../src/libs/WebAuthnLib.sol";
 import {Utils} from "./Utils.sol";
+import {FCL_ecdsa} from "@fcl/FCL_ecdsa.sol";
 import {stdJson} from "forge-std/src/StdJson.sol";
 import {console} from "forge-std/src/console.sol";
-import {WebAuthnData} from "../../../src/common/CommonStructs.sol";
 
 contract WebAuthnFuzzTest is TestUtils {
     using stdJson for string;

@@ -18,10 +18,10 @@
  */
 pragma solidity 0.8.24;
 
+import {NotImplemented} from "../../src/msca/6900/shared/common/Errors.sol";
+import {IERC1820Registry} from "@openzeppelin/contracts/interfaces/IERC1820Registry.sol";
 import {IERC777} from "@openzeppelin/contracts/interfaces/IERC777.sol";
 import {IERC777Recipient} from "@openzeppelin/contracts/interfaces/IERC777Recipient.sol";
-import {IERC1820Registry} from "@openzeppelin/contracts/interfaces/IERC1820Registry.sol";
-import {NotImplemented} from "../../src/msca/6900/shared/common/Errors.sol";
 
 contract TestERC777 is IERC777 {
     bytes32 private constant _TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");

@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {console, Script} from "forge-std/src/Script.sol";
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployUpgradableMSCAFactoryScript is Script {
     address constant PLUGIN_MANAGER = 0x5c2099d54979B1F4c84eB5d3fc50041a78aE4E15;

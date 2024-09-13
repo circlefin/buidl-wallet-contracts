@@ -18,13 +18,14 @@
  */
 pragma solidity 0.8.24;
 
+import {EMPTY_MODULE_ENTITY, SENTINEL_BYTES32} from "../../../../common/Constants.sol";
+import {Bytes32DLL} from "../../shared/common/Structs.sol";
+
+import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
+import {ExecutionHook, PostExecHookToRun} from "../common/Structs.sol";
+import {ModuleEntity} from "../common/Types.sol";
 import {IExecutionHook} from "../interfaces/IExecutionHook.sol";
 import {ModuleEntityLib} from "./thirdparty/ModuleEntityLib.sol";
-import {PostExecHookToRun, ExecutionHook} from "../common/Structs.sol";
-import {SENTINEL_BYTES32, EMPTY_MODULE_ENTITY} from "../../../../common/Constants.sol";
-import {Bytes32DLL} from "../../shared/common/Structs.sol";
-import {ModuleEntity} from "../common/Types.sol";
-import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
 
 /**
  * @dev Process pre or post execution hooks.

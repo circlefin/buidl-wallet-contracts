@@ -20,28 +20,35 @@ pragma solidity 0.8.24;
 
 /* solhint-disable max-states-count */
 
-import {TestUtils} from "../../../util/TestUtils.sol";
-import {console} from "forge-std/src/console.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+import {EMPTY_FUNCTION_REFERENCE, PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../src/common/Constants.sol";
+
+import {NotImplemented} from "../../../../src/msca/6900/shared/common/Errors.sol";
+
+import {RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE} from "../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {PluginMetadata} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 import {FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
-import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+
+import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
 import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
 import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
-import {PluginMetadata} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
-import {PLUGIN_VERSION_1, PLUGIN_AUTHOR, EMPTY_FUNCTION_REFERENCE} from "../../../../src/common/Constants.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
-import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {NotImplemented} from "../../../../src/msca/6900/shared/common/Errors.sol";
+
 import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
+import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE} from "../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {console} from "forge-std/src/console.sol";
 
 /// Tests for SingleOwnerPlugin
 contract SingleOwnerPluginTest is TestUtils {

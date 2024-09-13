@@ -18,16 +18,16 @@
  */
 pragma solidity 0.8.24;
 
-import {IPlugin} from "../interfaces/IPlugin.sol";
-import {RepeatableFunctionReferenceDLLLib} from "./RepeatableFunctionReferenceDLLLib.sol";
-import {FunctionReferenceLib} from "./FunctionReferenceLib.sol";
-import {InvalidValidationFunctionId} from "../../shared/common/Errors.sol";
-import "../common/Structs.sol";
 import {EMPTY_FUNCTION_REFERENCE, SENTINEL_BYTES21} from "../../../../common/Constants.sol";
+import {InvalidValidationFunctionId} from "../../shared/common/Errors.sol";
 import {
-    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE,
-    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE
+    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
+    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
 } from "../common/Constants.sol";
+import "../common/Structs.sol";
+import {IPlugin} from "../interfaces/IPlugin.sol";
+import {FunctionReferenceLib} from "./FunctionReferenceLib.sol";
+import {RepeatableFunctionReferenceDLLLib} from "./RepeatableFunctionReferenceDLLLib.sol";
 
 /**
  * @dev Process pre or post execution hooks.

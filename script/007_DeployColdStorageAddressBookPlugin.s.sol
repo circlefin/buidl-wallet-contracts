@@ -18,10 +18,10 @@
  */
 pragma solidity 0.8.24;
 
-import {Script} from "forge-std/src/Script.sol";
-import {console} from "forge-std/src/console.sol";
 import {ColdStorageAddressBookPlugin} from
     "../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
+import {Script} from "forge-std/src/Script.sol";
+import {console} from "forge-std/src/console.sol";
 
 contract DeployColdStorageAddressBookPluginScript is Script {
     address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x7E7e5B99F9C3dF2E2f38418e0F7C08C3911a4413));

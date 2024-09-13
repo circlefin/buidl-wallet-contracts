@@ -21,8 +21,8 @@ pragma solidity 0.8.24;
 /* solhint-disable reason-string */
 /* solhint-disable no-inline-assembly */
 
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UserOperationLib} from "@account-abstraction/contracts/core/UserOperationLib.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 enum ChargeMode {
     GAS_ONLY, // paymaster will charge a network fee

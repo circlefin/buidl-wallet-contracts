@@ -18,18 +18,18 @@
  */
 pragma solidity 0.8.24;
 
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {IERC777Recipient} from "@openzeppelin/contracts/interfaces/IERC777Recipient.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/interfaces/IERC1155Receiver.sol";
-import {BasePlugin} from "../../BasePlugin.sol";
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../../../common/Constants.sol";
 import {
-    PluginManifest,
-    PluginMetadata,
-    ManifestFunction,
     ManifestAssociatedFunction,
-    ManifestAssociatedFunctionType
+    ManifestAssociatedFunctionType,
+    ManifestFunction,
+    PluginManifest,
+    PluginMetadata
 } from "../../../common/PluginManifest.sol";
-import {PLUGIN_VERSION_1, PLUGIN_AUTHOR} from "../../../../../../common/Constants.sol";
+import {BasePlugin} from "../../BasePlugin.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/interfaces/IERC1155Receiver.sol";
+import {IERC777Recipient} from "@openzeppelin/contracts/interfaces/IERC777Recipient.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 /**
  * @dev Default token callback handler plugin. Similar to DefaultCallbackHandler.

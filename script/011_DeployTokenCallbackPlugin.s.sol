@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {Script, console} from "forge-std/src/Script.sol";
 import {DefaultTokenCallbackPlugin} from "../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
+import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployTokenCallbackPluginScript is Script {
     // Safety check to avoid accidental deploy. Change address to 0x0 if you want to deploy a new version.

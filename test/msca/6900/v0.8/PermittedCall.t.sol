@@ -18,14 +18,15 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../../../util/TestUtils.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
-import {TestPermittedCallPlugin} from "./TestPermittedCallPlugin.sol";
-import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
+import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
+import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+
 import {FooBarPlugin} from "./FooBarPlugin.sol";
+import {TestPermittedCallPlugin} from "./TestPermittedCallPlugin.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract PermittedCallTest is TestUtils {
     IEntryPoint private entryPoint = new EntryPoint();

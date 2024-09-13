@@ -18,35 +18,38 @@
  */
 pragma solidity 0.8.24;
 
+import {EMPTY_FUNCTION_REFERENCE} from "../../../../../src/common/Constants.sol";
+import {UnauthorizedCaller} from "../../../../../src/msca/6900/shared/common/Errors.sol";
+import {BaseMSCA} from "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
+import {UpgradableMSCA} from "../../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
+
+import {RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE} from
+    "../../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {
+    Call,
+    ExecutionFunctionConfig,
+    ExecutionHooks,
+    FunctionReference
+} from "../../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {UpgradableMSCAFactory} from "../../../../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+import {IPluginManager} from "../../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+import {IStandardExecutor} from "../../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {FunctionReferenceLib} from "../../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+
+import {PluginManager} from "../../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+
+import {ISingleOwnerPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {SingleOwnerPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {ColdStorageAddressBookPlugin} from
+    "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
+import {IAddressBookPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/IAddressBookPlugin.sol";
+import {ExecutionUtils} from "../../../../../src/utils/ExecutionUtils.sol";
+import {TestLiquidityPool} from "../../../../util/TestLiquidityPool.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
-import {console} from "forge-std/src/console.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {
-    FunctionReference,
-    ExecutionFunctionConfig,
-    ExecutionHooks,
-    Call
-} from "../../../../../src/msca/6900/v0.7/common/Structs.sol";
-import {TestLiquidityPool} from "../../../../util/TestLiquidityPool.sol";
-import {FunctionReferenceLib} from "../../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
-import {ExecutionUtils} from "../../../../../src/utils/ExecutionUtils.sol";
-import {IAddressBookPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/IAddressBookPlugin.sol";
-import {IStandardExecutor} from "../../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
-import {IPluginManager} from "../../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
-import {PluginManager} from "../../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
-import {ColdStorageAddressBookPlugin} from
-    "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
-import {BaseMSCA} from "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
-import {UpgradableMSCA} from "../../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
-import {EMPTY_FUNCTION_REFERENCE} from "../../../../../src/common/Constants.sol";
-import {UnauthorizedCaller} from "../../../../../src/msca/6900/shared/common/Errors.sol";
-import {UpgradableMSCAFactory} from "../../../../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
-import {SingleOwnerPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import {ISingleOwnerPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
-import {RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE} from
-    "../../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {console} from "forge-std/src/console.sol";
 
 // some common test cases related to plugin itself is covered in ColdStorageAddressBookPluginWithSemiMSCATest
 contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {

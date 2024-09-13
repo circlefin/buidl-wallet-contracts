@@ -20,14 +20,15 @@ pragma solidity 0.8.24;
 
 /* solhint-disable reason-string */
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
-import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "../../../utils/PaymasterUtils.sol";
-import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
+
 import "../../BasePaymaster.sol";
+import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
+import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * For sponsor mode, a signature is required from Circle. The purpose of signature is mostly used to allow Circle

@@ -18,22 +18,26 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../util/TestUtils.sol";
-import "forge-std/src/console.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "./TestCircleMSCA.sol";
 import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "./TestUserOpValidator.sol";
-import "./TestUserOpValidatorHook.sol";
-import "../../../util/TestLiquidityPool.sol";
+
 import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import "./TestTokenPlugin.sol";
+import "../../../util/TestLiquidityPool.sol";
+import "../../../util/TestUtils.sol";
+import "./TestCircleMSCA.sol";
+
 import "./TestCircleMSCAFactory.sol";
 import "./TestPermitAnyExternalAddressPlugin.sol";
-import "./TestTokenWithPostHookOnlyPlugin.sol";
+
 import "./TestPermitAnyExternalAddressWithPostHookOnlyPlugin.sol";
-import "./TestTokenWithPreHookOnlyPlugin.sol";
+
 import "./TestPermitAnyExternalAddressWithPreHookOnlyPlugin.sol";
+import "./TestTokenPlugin.sol";
+import "./TestTokenWithPostHookOnlyPlugin.sol";
+import "./TestTokenWithPreHookOnlyPlugin.sol";
+import "./TestUserOpValidator.sol";
+import "./TestUserOpValidatorHook.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import "forge-std/src/console.sol";
 
 contract PluginExecutorTest is TestUtils {
     using FunctionReferenceLib for bytes21;

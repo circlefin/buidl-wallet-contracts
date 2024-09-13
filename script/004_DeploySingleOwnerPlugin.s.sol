@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import "forge-std/src/Script.sol";
 import "../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerPluginScript is Script {
     address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0xFfC2440999EF1F84089Ca1418b673D4B9c089bBe));

@@ -19,11 +19,13 @@
 pragma solidity 0.8.24;
 
 import "../src/paymaster/v1/permissioned/SponsorPaymaster.sol";
-import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
+
 import "./util/TestUtils.sol";
+
+import "@account-abstraction/contracts/core/EntryPoint.sol";
+import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "@account-abstraction/contracts/core/EntryPoint.sol";
 
 contract SponsorPaymasterTest is TestUtils {
     using UserOperationLib for PackedUserOperation;

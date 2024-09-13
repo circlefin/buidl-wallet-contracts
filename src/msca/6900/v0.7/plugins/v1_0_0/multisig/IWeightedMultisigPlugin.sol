@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
+import {OwnerData, PublicKey} from "../../../../../../common/CommonStructs.sol";
 import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
-import {PublicKey, OwnerData} from "../../../../../../common/CommonStructs.sol";
 
 /// @title Weighted Multisig Plugin Interface
 /// @author Circle

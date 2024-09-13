@@ -18,10 +18,10 @@
  */
 pragma solidity 0.8.24;
 
-import {Script} from "forge-std/src/Script.sol";
-import {console} from "forge-std/src/console.sol";
 import {WeightedWebauthnMultisigPlugin} from
     "../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
+import {Script} from "forge-std/src/Script.sol";
+import {console} from "forge-std/src/console.sol";
 
 contract DeployWeightedWebauthnMultisigPlugin is Script {
     address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x5FC0e9da759812cd862625bF6d3EA02EB0666160));

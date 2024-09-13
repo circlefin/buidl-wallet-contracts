@@ -18,10 +18,10 @@
  */
 pragma solidity 0.8.24;
 
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
 import "../common/Structs.sol";
+import {IPlugin} from "../interfaces/IPlugin.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 /**
  * @dev Default implementation of https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to

@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {PublicKeyLib} from "../../src/libs/PublicKeyLib.sol";
 import {PublicKey} from "../../src/common/CommonStructs.sol";
+import {PublicKeyLib} from "../../src/libs/PublicKeyLib.sol";
 
 /**
  * @dev Used in tests, for coverage.

@@ -19,39 +19,40 @@
 
 pragma solidity 0.8.24;
 
-import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
-import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
-import {BaseWeightedMultisigPlugin} from "./BaseWeightedMultisigPlugin.sol";
 import {
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
+    PLUGIN_AUTHOR,
+    PLUGIN_VERSION_1
+} from "../../../../../../common/Constants.sol";
+import {BaseMSCA} from "../../../account/BaseMSCA.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestFunction,
     PluginManifest,
     PluginMetadata,
-    SelectorPermission,
-    ManifestFunction,
-    ManifestAssociatedFunction,
-    ManifestAssociatedFunctionType
+    SelectorPermission
 } from "../../../common/PluginManifest.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {BaseWeightedMultisigPlugin} from "./BaseWeightedMultisigPlugin.sol";
+import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
+import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
+
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
 import {SetValue} from "@modular-account-libs/libraries/Constants.sol";
-import {BaseMSCA} from "../../../account/BaseMSCA.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {
-    EIP1271_VALID_SIGNATURE,
-    EIP1271_INVALID_SIGNATURE,
-    PLUGIN_AUTHOR,
-    PLUGIN_VERSION_1
-} from "../../../../../../common/Constants.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
+import {OwnerData, PublicKey, WebAuthnSigDynamicPart} from "../../../../../../common/CommonStructs.sol";
+import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
 import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
 import {WebAuthnLib} from "../../../../../../libs/WebAuthnLib.sol";
-import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
-import {PublicKey, WebAuthnSigDynamicPart, OwnerData} from "../../../../../../common/CommonStructs.sol";
+import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /// @title Weighted Multisig Plugin That Supports Additional Webauthn Authentication
 /// @author Circle

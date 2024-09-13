@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
+import {PublicKey} from "../../src/common/CommonStructs.sol";
 import {TestUtils} from "../util/TestUtils.sol";
 import {PublicKeyLibCaller} from "./PublicKeyLibCaller.sol";
-import {PublicKey} from "../../src/common/CommonStructs.sol";
 
 contract PublicKeyLibTest is TestUtils {
     PublicKeyLibCaller private publicKeyLibCaller = new PublicKeyLibCaller();

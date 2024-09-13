@@ -18,26 +18,29 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../util/TestUtils.sol";
-import "forge-std/src/console.sol";
-import "../../../util/TestERC721.sol";
-import "../../../util/TestERC1155.sol";
-import "../../../util/TestERC777.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {InvalidExecutionFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
 import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "./TestUserOpValidator.sol";
-import "./TestUserOpValidatorHook.sol";
-import "../../../util/TestLiquidityPool.sol";
 import "../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
-import "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
 import "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
 import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import {TestTokenPlugin} from "./TestTokenPlugin.sol";
 import "../../../../src/utils/ExecutionUtils.sol";
 import "../../../util/Mock1820Registry.sol";
-import {InvalidExecutionFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "../../../util/TestERC1155.sol";
+import "../../../util/TestERC721.sol";
+import "../../../util/TestERC777.sol";
+import "../../../util/TestLiquidityPool.sol";
+import "../../../util/TestUtils.sol";
+
+import {TestTokenPlugin} from "./TestTokenPlugin.sol";
+
 import {TestUserOpAllPassValidator} from "./TestUserOpAllPassValidator.sol";
+import "./TestUserOpValidator.sol";
+import "./TestUserOpValidatorHook.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "forge-std/src/console.sol";
 
 contract SingleOwnerMSCATest is TestUtils {
     using FunctionReferenceLib for bytes21;

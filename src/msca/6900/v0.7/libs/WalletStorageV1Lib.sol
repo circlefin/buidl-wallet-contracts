@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import "../common/Structs.sol";
 import {AddressDLL} from "../../shared/common/Structs.sol";
+import "../common/Structs.sol";
 
 /// @dev The same storage will be used for v1.x.y of MSCAs.
 library WalletStorageV1Lib {

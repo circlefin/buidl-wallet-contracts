@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
-import {AccountTestUtils} from "../../utils/AccountTestUtils.sol";
 import {SparseCalldataSegmentLib} from
     "../../../../../../src/msca/6900/v0.8/libs/thirdparty/SparseCalldataSegmentLib.sol";
+import {AccountTestUtils} from "../../utils/AccountTestUtils.sol";
 
 // TODO: remove this till SparseCalldataSegmentLib is moved to modular account lib
 // https://github.com/erc6900/modular-account-libs/issues/2

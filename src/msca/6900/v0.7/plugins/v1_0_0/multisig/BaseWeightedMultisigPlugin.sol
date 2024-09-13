@@ -19,21 +19,23 @@
 
 pragma solidity 0.8.24;
 
-import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
-import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
-import {BaseMultisigPlugin} from "./BaseMultisigPlugin.sol";
+import {CredentialType, OwnerData, PublicKey} from "../../../../../../common/CommonStructs.sol";
+
+import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
+import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
+import {SetValueLib} from "../../../../../../libs/SetValueLib.sol";
+import {NotImplemented} from "../../../../shared/common/Errors.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {BaseMultisigPlugin} from "./BaseMultisigPlugin.sol";
+import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
+import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
+
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
 import {SetValue} from "@modular-account-libs/libraries/Constants.sol";
-import {NotImplemented} from "../../../../shared/common/Errors.sol";
-import {PublicKey, OwnerData, CredentialType} from "../../../../../../common/CommonStructs.sol";
-import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
-import {SetValueLib} from "../../../../../../libs/SetValueLib.sol";
-import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /// @title Base Weighted Multisig Plugin
 /// @author Circle

@@ -19,10 +19,11 @@
 pragma solidity 0.8.24;
 
 import {FunctionReference} from "../../../../../../src/msca/6900/v0.7/common/Structs.sol";
-import {PluginGasProfileBaseTest} from "../../../../PluginGasProfileBase.t.sol";
-import "../../../../../../src/utils/ExecutionUtils.sol";
+
 import "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
 import "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/AddressBookPlugin.sol";
+import "../../../../../../src/utils/ExecutionUtils.sol";
+import {PluginGasProfileBaseTest} from "../../../../PluginGasProfileBase.t.sol";
 
 contract SingleOwnerMSCAWithAddressBookPluginTest is PluginGasProfileBaseTest {
     event PluginInstalled(address indexed plugin, bytes32 manifestHash, FunctionReference[] dependencies);

@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
+import {AddressBookPlugin} from "../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/AddressBookPlugin.sol";
 import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
-import {AddressBookPlugin} from "../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/AddressBookPlugin.sol";
 
 contract DeployAddressBookPluginScript is Script {
     // TODO: replace this with officially deployed address

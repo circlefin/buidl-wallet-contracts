@@ -18,23 +18,23 @@
  */
 pragma solidity 0.8.24;
 
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
-import {WalletStorageV1Lib} from "../libs/WalletStorageV1Lib.sol";
+import {EMPTY_FUNCTION_REFERENCE} from "../../../../common/Constants.sol";
+import {InvalidFunctionReference} from "../../shared/common/Errors.sol";
+import {AddressDLL} from "../../shared/common/Structs.sol";
 import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
-import {RepeatableFunctionReferenceDLLLib} from "../libs/RepeatableFunctionReferenceDLLLib.sol";
+import {
+    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
+    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
+} from "../common/Constants.sol";
+import "../common/PluginManifest.sol";
+import "../common/Structs.sol";
+import {IPlugin} from "../interfaces/IPlugin.sol";
 import {FunctionReferenceDLLLib} from "../libs/FunctionReferenceDLLLib.sol";
 import {FunctionReferenceLib} from "../libs/FunctionReferenceLib.sol";
+import {RepeatableFunctionReferenceDLLLib} from "../libs/RepeatableFunctionReferenceDLLLib.sol";
 import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
-import {InvalidFunctionReference} from "../../shared/common/Errors.sol";
-import "../common/Structs.sol";
-import "../common/PluginManifest.sol";
-import {EMPTY_FUNCTION_REFERENCE} from "../../../../common/Constants.sol";
-import {AddressDLL} from "../../shared/common/Structs.sol";
-import {
-    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE,
-    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE
-} from "../common/Constants.sol";
+import {WalletStorageV1Lib} from "../libs/WalletStorageV1Lib.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 /**
  * @dev Default implementation of https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to

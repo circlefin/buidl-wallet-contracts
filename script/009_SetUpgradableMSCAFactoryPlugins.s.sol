@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {console, Script} from "forge-std/src/Script.sol";
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+import {Script, console} from "forge-std/src/Script.sol";
 
 contract SetUpgradableMSCAFactoryPlugins is Script {
     address payable constant EXPECTED_FACTORY_ADDRESS = payable(address(0x95abd14795D32A4e636e976Ff31dC634Ad33A09E));

@@ -18,17 +18,18 @@
  */
 pragma solidity 0.8.24;
 
-import {PLUGIN_VERSION_1, PLUGIN_AUTHOR} from "../../../../src/common/Constants.sol";
-import {BasePlugin} from "../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
-import {
-    PluginManifest,
-    PluginMetadata,
-    ManifestExecutionFunction
-} from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
-import {NotImplementedFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import {IValidation} from "../../../../src/msca/6900/v0.8/interfaces/IValidation.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../src/common/Constants.sol";
+
 import {SIG_VALIDATION_SUCCEEDED} from "../../../../src/common/Constants.sol";
+import {NotImplementedFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
+import {
+    ManifestExecutionFunction,
+    PluginManifest,
+    PluginMetadata
+} from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
+import {IValidation} from "../../../../src/msca/6900/v0.8/interfaces/IValidation.sol";
+import {BasePlugin} from "../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract FooBarPlugin is IValidation, BasePlugin {
     string public constant NAME = "Your Favourite Fruit Bar Plugin";

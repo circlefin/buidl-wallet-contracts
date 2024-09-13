@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../../../../../util/TestUtils.sol";
-import {ModuleEntityLib} from "../../../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
 import {ModuleEntity} from "../../../../../../src/msca/6900/v0.8/common/Types.sol";
+import {ModuleEntityLib} from "../../../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {TestUtils} from "../../../../../util/TestUtils.sol";
 
 contract ModuleEntityLibTest is TestUtils {
     using ModuleEntityLib for ModuleEntity;
