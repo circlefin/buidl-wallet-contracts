@@ -1,0 +1,21 @@
+[profile.default]
+fs_permissions = [{ access = "read-write", path = "./gas"},
+    { access = "read", path = "./test/fixtures"}]
+src = 'src'
+out = 'out'
+libs = ['lib']
+solc_version = "0.8.24"
+test = 'test'
+via_ir = true
+
+[fuzz]
+runs = 1024
+
+[invariant]
+runs = 512
+fail_on_revert = true
+depth = 15
+
+[fmt]
+line_length = 120
+wrap_comments = true

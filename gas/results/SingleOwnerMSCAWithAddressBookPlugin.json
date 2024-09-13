@@ -1,0 +1,8 @@
+{
+  "0001_install": 1057517,
+  "0002_uninstall": 218545,
+  "0003_addRecipient": 145425,
+  "0004_removeRecipient": 101205,
+  "0005_executeWithAddressBook_transferNativeToken": 160007,
+  "ffff_sum": 1682699
+}

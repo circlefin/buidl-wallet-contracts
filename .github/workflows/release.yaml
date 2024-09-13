@@ -1,0 +1,15 @@
+name: Tag Release
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  release:
+    uses: circlefin/circle-public-github-workflows/.github/workflows/conventional-commit-release.yaml@v1
+    with:
+      release_type: node
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
+      RELEASE_ACTOR_GPG_PRIVATE_KEY: ${{ secrets.PUBLIC_RELEASES_GPG_PRIVATE_KEY }}
+      RELEASE_ACTOR_GPG_PASSPHRASE: ${{ secrets.PUBLIC_RELEASES_GPG_PASSPHRASE }}

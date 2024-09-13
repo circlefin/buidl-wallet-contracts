@@ -1,0 +1,312 @@
+No files changed, compilation skipped
+
+Running 2 tests for test/UpgradableMSCAFactory.t.sol:UpgradableMSCAFactoryTest
+[32m[PASS][0m testDeployMSCAWith1stOutboundUserOp() (gas: 1322691)
+[32m[PASS][0m testGetAddressAndCreateMSCA() (gas: 1082578)
+Test result: [32mok[0m. [32m2[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 4.15ms
+
+Running 5 tests for test/SponsorPaymaster.t.sol:SponsorPaymasterTest
+[32m[PASS][0m testParsePaymasterAndData_validData() (gas: 20709)
+[32m[PASS][0m testPauseAndUnpauseContract() (gas: 71005)
+[32m[PASS][0m testUpgradeToNewEntryPoint() (gas: 1574093)
+[32m[PASS][0m testValidatePaymasterUserOp_invalidSig() (gas: 41438)
+[32m[PASS][0m testValidatePaymasterUserOp_validSig() (gas: 67329)
+Test result: [32mok[0m. [32m5[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 2.45ms
+
+Running 2 tests for test/PluginManager.t.sol:PluginManagerTest
+[32m[PASS][0m testInstallAndUninstallNewPluginAfterAccountDeploymentWithSingleOwnerPlugin() (gas: 6397753)
+[32m[PASS][0m testInstallSCButNotPlugin() (gas: 656038)
+Test result: [32mok[0m. [32m2[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 9.43ms
+
+Running 16 tests for test/UpgradableMSCA.t.sol:UpgradableMSCATest
+[32m[PASS][0m testEmptyUserOpValidationFunction() (gas: 4624713)
+[32m[PASS][0m testEncodeAndHashPluginManifest() (gas: 18787)
+[32m[PASS][0m testInterceptWhenAllValidationsPass() (gas: 7826737)
+[32m[PASS][0m testInvalidCalldataLength() (gas: 3271280)
+[32m[PASS][0m testNotFoundFunctionSelector() (gas: 3271346)
+[32m[PASS][0m testOneHookPassesButTheOtherHookFails() (gas: 6553077)
+[32m[PASS][0m testUpgradeMSCA() (gas: 9128714)
+[32m[PASS][0m testUserOpValidationFuncIsPreHookAlwaysDeny() (gas: 5320109)
+[32m[PASS][0m testUserOpValidationFuncIsRuntimeAlwaysAllow() (gas: 5320444)
+[32m[PASS][0m testValidationFailWithoutHooks() (gas: 5252369)
+[32m[PASS][0m testValidationPassButWithWrongTimeBounds() (gas: 5252352)
+[32m[PASS][0m testValidationPassWithoutHooks() (gas: 5252606)
+[32m[PASS][0m testValidationWhenHookDenies() (gas: 5325612)
+[32m[PASS][0m testValidationWhenHookFails() (gas: 5916196)
+[32m[PASS][0m testValidationWithInvalidTimeBounds() (gas: 5916400)
+[32m[PASS][0m testValidatorFailsButHookPasses() (gas: 5916452)
+Test result: [32mok[0m. [32m16[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 9.96ms
+
+Running 5 tests for test/PluginExecutor.t.sol:PluginExecutorTest
+[32m[PASS][0m testExecuteFromPluginIntoAnyExternalContractAllowed() (gas: 1162674)
+[32m[PASS][0m testExecuteFromPluginIntoExternalContractAllowed() (gas: 3131666)
+[32m[PASS][0m testExecuteFromPluginIntoExternalContractNotAllowed() (gas: 12436390)
+[32m[PASS][0m testExecuteFromPluginWithPermission() (gas: 7596341)
+[32m[PASS][0m testExecuteFromPluginWithoutPermission() (gas: 7608152)
+Test result: [32mok[0m. [32m5[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 10.40ms
+
+Running 5 tests for test/DefaultTokenCallbackPlugin.t.sol:DefaultTokenCallbackPluginTest
+[32m[PASS][0m testDefaultTokenCallbackPluginDetailsInstalledDuringAccountDeploymentThenUninstall() (gas: 5124085)
+[32m[PASS][0m testMSCAReceive1155Token() (gas: 95529)
+[32m[PASS][0m testMSCAReceive721Token() (gas: 97216)
+[32m[PASS][0m testMSCAReceive777Token() (gas: 90471)
+[32m[PASS][0m testSendERC1155FromMSCA() (gas: 4945190)
+Test result: [32mok[0m. [32m5[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 10.78ms
+
+Running 3 tests for test/SingleOwnerPlugin.t.sol:SingleOwnerPluginTest
+[32m[PASS][0m testSingleOwnerPluginDetailsInstalledDuringAccountDeployment() (gas: 483158)
+[32m[PASS][0m testTransferOwnership() (gas: 4737132)
+[32m[PASS][0m testTransferOwnershipViaExecuteFunction() (gas: 4758882)
+Test result: [32mok[0m. [32m3[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 2.52s
+
+Running 20 tests for test/ECDSAAccountAndFactory.t.sol:ECDSAAccountAndFactoryTest
+[32m[PASS][0m testAccountReceivedNativeToken_deployedAccount() (gas: 235262)
+[32m[PASS][0m testAccountReceivedNativeToken_unDeployedAccount() (gas: 99395)
+[32m[PASS][0m testDeposit() (gas: 313723)
+[32m[PASS][0m testGetAddressAndCreateAccount() (gas: 248886)
+[32m[PASS][0m testHandleOps() (gas: 447576)
+[32m[PASS][0m testHandleOps_accountDeployedTwice() (gas: 263224)
+[32m[PASS][0m testHandleOps_accountWasNotDeployedBefore() (gas: 461049)
+[32m[PASS][0m testHandleOps_executeBatch() (gas: 476843)
+[32m[PASS][0m testIsValidSignature() (gas: 246441)
+[32m[PASS][0m testIsValidSignature_sigFromOthers() (gas: 241425)
+[32m[PASS][0m testNativeTokenTransferBetweenSCAs() (gas: 409417)
+[32m[PASS][0m testOnlyEPAndOwnerCanCallExecuteOrExecuteBatch() (gas: 231392)
+[32m[PASS][0m testOnlyEPAndOwnerCanCallExecuteOrExecuteBatch_inconsistentArgs() (gas: 235755)
+[32m[PASS][0m testOnlyOwnerCanUpgrade() (gas: 1781386)
+[32m[PASS][0m testPauseAndUnpauseAccount() (gas: 444446)
+[32m[PASS][0m testReceive1155Token() (gas: 286286)
+[32m[PASS][0m testReceive721Token() (gas: 289452)
+[32m[PASS][0m testUpgradeToNewImplementationViaUserOp() (gas: 1929107)
+[32m[PASS][0m testValidateUserOp() (gas: 251589)
+[32m[PASS][0m testValidateUserOp_sigFromOthers() (gas: 246740)
+Test result: [32mok[0m. [32m20[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 2.52s
+
+Running 4 tests for test/WalletStorage.t.sol:WalletStorageTest
+[32m[PASS][0m testAddRemoveGetPlugins() (gas: 4885840)
+[32m[PASS][0m testAddRemoveGetPreUserOpValidationHooks() (gas: 4759861)
+[32m[PASS][0m testBulkGetPlugins() (gas: 2174128899)
+[32m[PASS][0m testBulkGetPreUserOpValidationHooks() (gas: 2304691119)
+Test result: [32mok[0m. [32m4[0m passed; [31m0[0m failed; [33m0[0m skipped; finished in 2.52s
+| lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy contract |                 |         |         |         |         |
+|-------------------------------------------------------------------------------------------|-----------------|---------|---------|---------|---------|
+| Deployment Cost                                                                           | Deployment Size |         |         |         |         |
+| 122337                                                                                    | 1206            |         |         |         |         |
+| Function Name                                                                             | min             | avg     | median  | max     | # calls |
+| addDeposit                                                                                | 35035           | 35035   | 35035   | 35035   | 1       |
+| airdropToken                                                                              | 47814           | 47814   | 47814   | 47814   | 1       |
+| airdropTokenBad                                                                           | 48696           | 48696   | 48696   | 48696   | 1       |
+| entryPoint                                                                                | 895             | 906     | 895     | 939     | 4       |
+| execute                                                                                   | 1423            | 23690   | 28950   | 37143   | 10      |
+| executeBatch((address,uint256,bytes)[])                                                   | 49202           | 69129   | 69129   | 89057   | 2       |
+| executeBatch(address[],uint256[],bytes[])                                                 | 1768            | 14440   | 1871    | 52251   | 4       |
+| executeFromPlugin                                                                         | 2002            | 7154    | 9730    | 9730    | 3       |
+| executeFromPluginExternal                                                                 | 3144            | 45219   | 55831   | 60811   | 6       |
+| getDeposit                                                                                | 2016            | 2016    | 2016    | 2016    | 2       |
+| getExecutionDetail                                                                        | 17276           | 25927   | 26933   | 29276   | 18      |
+| getExecutionFunctionConfig                                                                | 3347            | 6998    | 7004    | 9347    | 18      |
+| getExecutionHooks                                                                         | 2174            | 3840    | 4174    | 4174    | 18      |
+| getHash                                                                                   | 3591            | 5841    | 5841    | 8091    | 2       |
+| getInstalledPlugins                                                                       | 2751            | 5562    | 3785    | 16285   | 11      |
+| getPermittedCallHooks                                                                     | 1365            | 3198    | 3365    | 3365    | 12      |
+| getPermittedExternalCall                                                                  | 1630            | 2700    | 1976    | 4176    | 21      |
+| getPermittedPluginCallHooks                                                               | 3478            | 5311    | 5478    | 5478    | 12      |
+| getPermittedPluginCallSelectorPermitted                                                   | 1939            | 2605    | 1939    | 3939    | 3       |
+| getPluginDetail                                                                           | 6327            | 15371   | 13550   | 22559   | 16      |
+| getPreRuntimeValidationHooks                                                              | 2237            | 3903    | 4237    | 4237    | 18      |
+| getPreUserOpValidationHooks                                                               | 2633            | 4299    | 4633    | 4633    | 18      |
+| getSupportedInterface                                                                     | 1121            | 2263    | 3121    | 3121    | 7       |
+| initialize                                                                                | 827555          | 939226  | 830055  | 1268283 | 20      |
+| installPlugin                                                                             | 19352           | 1684365 | 2549428 | 2549428 | 8       |
+| isValidSignature                                                                          | 4978            | 5047    | 5047    | 5117    | 2       |
+| mintToken                                                                                 | 122243          | 128389  | 128389  | 134536  | 2       |
+| onERC1155Received                                                                         | 1378            | 11902   | 12911   | 20411   | 4       |
+| onERC721Received                                                                          | 910             | 10525   | 10525   | 20140   | 2       |
+| owner                                                                                     | 891             | 1882    | 979     | 7391    | 7       |
+| parsePaymasterAndData                                                                     | 5889            | 5889    | 5889    | 5889    | 1       |
+| pause                                                                                     | 1103            | 9604    | 4342    | 24301   | 6       |
+| paused                                                                                    | 791             | 846     | 846     | 901     | 4       |
+| receive                                                                                   | 1827            | 1827    | 1827    | 1827    | 1       |
+| sizeOfPlugins                                                                             | 1120            | 1120    | 1120    | 1120    | 8       |
+| supplyLiquidity                                                                           | 49515           | 49515   | 49515   | 49515   | 1       |
+| supplyLiquidityBad                                                                        | 14776           | 14776   | 14776   | 14776   | 1       |
+| supportsInterface                                                                         | 669             | 1192    | 692     | 2882    | 9       |
+| tokensReceived                                                                            | 20274           | 20274   | 20274   | 20274   | 1       |
+| transferOwnership                                                                         | 12980           | 16502   | 16502   | 20025   | 2       |
+| uninstallPlugin                                                                           | 104280          | 184671  | 184671  | 265063  | 2       |
+| unpause                                                                                   | 1816            | 1851    | 1851    | 1887    | 2       |
+| upgradeTo                                                                                 | 1230            | 7477    | 6050    | 15152   | 3       |
+| validatePaymasterUserOp                                                                   | 1501            | 10889   | 12512   | 17032   | 4       |
+| validateUserOp                                                                            | 5407            | 37938   | 34595   | 56800   | 27      |
+| withdrawDepositTo                                                                         | 1074            | 19850   | 19850   | 38626   | 2       |
+
+
+| src/account/v1/ECDSAAccount.sol:ECDSAAccount contract |                 |       |        |       |         |
+|-------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                       | Deployment Size |       |        |       |         |
+| 1517555                                               | 7891            |       |        |       |         |
+| Function Name                                         | min             | avg   | median | max   | # calls |
+| addDeposit                                            | 34704           | 34704 | 34704  | 34704 | 1       |
+| entryPoint                                            | 561             | 561   | 561    | 561   | 3       |
+| execute                                               | 1043            | 16486 | 17119  | 35838 | 6       |
+| executeBatch                                          | 1352            | 14022 | 1434   | 51870 | 4       |
+| getDeposit                                            | 1682            | 1682  | 1682   | 1682  | 2       |
+| initialize                                            | 53182           | 53182 | 53182  | 53182 | 19      |
+| isValidSignature                                      | 4614            | 4677  | 4677   | 4741  | 2       |
+| onERC1155Received                                     | 1014            | 1014  | 1014   | 1014  | 1       |
+| onERC721Received                                      | 552             | 552   | 552    | 552   | 1       |
+| owner                                                 | 645             | 645   | 645    | 645   | 5       |
+| pause                                                 | 758             | 7916  | 889    | 22103 | 3       |
+| paused                                                | 567             | 567   | 567    | 567   | 2       |
+| proxiableUUID                                         | 505             | 505   | 505    | 505   | 1       |
+| receive                                               | 1498            | 1498  | 1498   | 1498  | 1       |
+| unpause                                               | 1622            | 1622  | 1622   | 1622  | 1       |
+| upgradeTo                                             | 880             | 3298  | 3298   | 5716  | 2       |
+| validateUserOp                                        | 4885            | 26712 | 33969  | 33969 | 8       |
+| withdrawDepositTo                                     | 721             | 19505 | 19505  | 38289 | 2       |
+
+
+| src/account/v1/factory/ECDSAAccountFactory.sol:ECDSAAccountFactory contract |                 |        |        |        |         |
+|-----------------------------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                                             | Deployment Size |        |        |        |         |
+| 2202095                                                                     | 11352           |        |        |        |         |
+| Function Name                                                               | min             | avg    | median | max    | # calls |
+| createAccount                                                               | 5064            | 156248 | 164469 | 164469 | 20      |
+| getAddress(address)                                                         | 4905            | 4905   | 4905   | 4905   | 5       |
+| getAddress(address,bytes32)                                                 | 4667            | 4667   | 4667   | 4667   | 1       |
+
+
+| src/msca/v1/account/UpgradableMSCA.sol:UpgradableMSCA contract |                 |        |        |        |         |
+|----------------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                                | Deployment Size |        |        |        |         |
+| 3163835                                                        | 16087           |        |        |        |         |
+| Function Name                                                  | min             | avg    | median | max    | # calls |
+| entryPoint                                                     | 605             | 605    | 605    | 605    | 1       |
+| execute                                                        | 30613           | 30613  | 30613  | 30613  | 1       |
+| getInstalledPlugins                                            | 2411            | 2411   | 2411   | 2411   | 1       |
+| initialize                                                     | 829554          | 829554 | 829554 | 829554 | 2       |
+| validateUserOp                                                 | 647             | 15506  | 647    | 45224  | 3       |
+
+
+| src/msca/v1/factories/UpgradableMSCAFactory.sol:UpgradableMSCAFactory contract |                 |        |        |        |         |
+|--------------------------------------------------------------------------------|-----------------|--------|--------|--------|---------|
+| Deployment Cost                                                                | Deployment Size |        |        |        |         |
+| 3789939                                                                        | 20466           |        |        |        |         |
+| Function Name                                                                  | min             | avg    | median | max    | # calls |
+| createAccount                                                                  | 2689            | 626212 | 936724 | 939224 | 3       |
+| getAddress                                                                     | 699             | 699    | 699    | 699    | 2       |
+
+
+| src/msca/v1/plugins/v1_0_0/acl/SingleOwnerPlugin.sol:SingleOwnerPlugin contract |                 |       |        |       |         |
+|---------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                                 | Deployment Size |       |        |       |         |
+| 1240097                                                                         | 6222            |       |        |       |         |
+| Function Name                                                                   | min             | avg   | median | max   | # calls |
+| getOwnerOf                                                                      | 701             | 1272  | 701    | 2701  | 7       |
+| onInstall                                                                       | 24710           | 24710 | 24710  | 24710 | 20      |
+| pluginManifest                                                                  | 24986           | 24986 | 24986  | 24986 | 38      |
+| runtimeValidationFunction                                                       | 1093            | 2426  | 3069   | 3116  | 3       |
+| supportsInterface                                                               | 239             | 313   | 328    | 328   | 75      |
+| transferOwnership                                                               | 5613            | 5613  | 5613   | 5613  | 2       |
+| userOpValidationFunction                                                        | 5191            | 8091  | 9691   | 9691  | 15      |
+
+
+| src/msca/v1/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol:DefaultTokenCallbackPlugin contract |                 |       |        |       |         |
+|-------------------------------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                                                       | Deployment Size |       |        |       |         |
+| 836678                                                                                                | 4207            |       |        |       |         |
+| Function Name                                                                                         | min             | avg   | median | max   | # calls |
+| onERC1155Received                                                                                     | 868             | 868   | 868    | 868   | 3       |
+| onERC721Received                                                                                      | 609             | 609   | 609    | 609   | 1       |
+| onInstall                                                                                             | 507             | 507   | 507    | 507   | 5       |
+| onUninstall                                                                                           | 573             | 573   | 573    | 573   | 1       |
+| pluginManifest                                                                                        | 12277           | 12277 | 12277  | 12277 | 12      |
+| supportsInterface                                                                                     | 267             | 288   | 299    | 299   | 15      |
+| tokensReceived                                                                                        | 716             | 716   | 716    | 716   | 1       |
+
+
+| src/paymaster/v1/permissioned/SponsorPaymaster.sol:SponsorPaymaster contract |                 |       |        |       |         |
+|------------------------------------------------------------------------------|-----------------|-------|--------|-------|---------|
+| Deployment Cost                                                              | Deployment Size |       |        |       |         |
+| 1513778                                                                      | 7886            |       |        |       |         |
+| Function Name                                                                | min             | avg   | median | max   | # calls |
+| getHash                                                                      | 3088            | 3088  | 3088   | 3088  | 2       |
+| initialize                                                                   | 74925           | 74925 | 74925  | 74925 | 5       |
+| owner                                                                        | 557             | 1557  | 1557   | 2557  | 2       |
+| parsePaymasterAndData                                                        | 1019            | 1019  | 1019   | 1019  | 1       |
+| pause                                                                        | 756             | 9109  | 2601   | 23970 | 3       |
+| paused                                                                       | 457             | 457   | 457    | 457   | 2       |
+| proxiableUUID                                                                | 395             | 395   | 395    | 395   | 1       |
+| unpause                                                                      | 1551            | 1551  | 1551   | 1551  | 1       |
+| upgradeTo                                                                    | 10318           | 10318 | 10318  | 10318 | 1       |
+| validatePaymasterUserOp                                                      | 975             | 9244  | 11850  | 12302 | 4       |
+
+
+| test/msca/TestCircleMSCA.sol:TestCircleMSCA contract |                 |         |         |         |         |
+|------------------------------------------------------|-----------------|---------|---------|---------|---------|
+| Deployment Cost                                      | Deployment Size |         |         |         |         |
+| 4501172                                              | 22765           |         |         |         |         |
+| Function Name                                        | min             | avg     | median  | max     | # calls |
+| addPlugin                                            | 1487            | 49159   | 48886   | 74786   | 21315   |
+| addPreUserOpValidationHook                           | 1412            | 47841   | 47568   | 73468   | 21315   |
+| airdropToken                                         | 47477           | 47477   | 47477   | 47477   | 1       |
+| airdropTokenBad                                      | 48352           | 48352   | 48352   | 48352   | 1       |
+| containsPlugin                                       | 651             | 1859    | 1068    | 5068    | 6       |
+| containsPreUserOpValidationHook                      | 1898            | 3143    | 2389    | 6389    | 6       |
+| entryPoint                                           | 957             | 957     | 957     | 957     | 1       |
+| execute                                              | 30716           | 34539   | 36156   | 36746   | 3       |
+| executeBatch                                         | 48759           | 68681   | 68681   | 88603   | 2       |
+| executeFromPlugin                                    | 1643            | 6795    | 9372    | 9372    | 3       |
+| executeFromPluginExternal                            | 2761            | 44842   | 55458   | 60438   | 6       |
+| getExecutionDetail                                   | 16879           | 25530   | 26536   | 28879   | 18      |
+| getExecutionFunctionConfig                           | 2992            | 6643    | 6649    | 8992    | 18      |
+| getExecutionHooks                                    | 1834            | 3500    | 3834    | 3834    | 18      |
+| getFirstPlugin                                       | 1115            | 1115    | 1115    | 1115    | 6       |
+| getFirstPreUserOpValidationHook                      | 1950            | 1950    | 1950    | 1950    | 11      |
+| getInstalledPlugins                                  | 2641            | 4599    | 3439    | 11439   | 10      |
+| getLastPlugin                                        | 983             | 1316    | 983     | 2983    | 6       |
+| getLastPreUserOpValidationHook                       | 1268            | 1449    | 1268    | 3268    | 11      |
+| getPermittedCallHooks                                | 1022            | 2855    | 3022    | 3022    | 12      |
+| getPermittedExternalCall                             | 1284            | 2354    | 1630    | 3830    | 21      |
+| getPermittedPluginCallHooks                          | 3135            | 4968    | 5135    | 5135    | 12      |
+| getPermittedPluginCallSelectorPermitted              | 1599            | 2265    | 1599    | 3599    | 3       |
+| getPluginDetail                                      | 5918            | 14942   | 13111   | 22132   | 16      |
+| getPluginsPaginated                                  | 343             | 12200   | 5796    | 61455   | 1158    |
+| getPreRuntimeValidationHooks                         | 1897            | 3563    | 3897    | 3897    | 18      |
+| getPreUserOpValidationHooks                          | 2293            | 3959    | 4293    | 4293    | 18      |
+| getPreUserOpValidationHooksPaginated                 | 1988            | 26440   | 13857   | 125661  | 1158    |
+| getSupportedInterface                                | 784             | 1926    | 2784    | 2784    | 7       |
+| initExecutionDetail                                  | 8861            | 42537   | 48661   | 48661   | 13      |
+| initialize                                           | 827164          | 950970  | 829664  | 1267868 | 18      |
+| installPlugin                                        | 14460           | 1682853 | 2549037 | 2549037 | 8       |
+| mintToken                                            | 121909          | 128055  | 128055  | 134202  | 2       |
+| onERC1155Received                                    | 3466            | 9901    | 10297   | 15547   | 4       |
+| onERC721Received                                     | 15282           | 15282   | 15282   | 15282   | 1       |
+| proxiableUUID                                        | 615             | 615     | 615     | 615     | 1       |
+| removePlugin                                         | 949             | 3471    | 4376    | 5662    | 5       |
+| removePreUserOpValidationHook                        | 1297            | 3187    | 3457    | 3850    | 8       |
+| setImplementation                                    | 23291           | 23291   | 23291   | 23291   | 1       |
+| setPreUserOpValidationHook                           | 47786           | 65052   | 73686   | 73686   | 12      |
+| sizeOfPlugins                                        | 786             | 952     | 786     | 2786    | 12      |
+| sizeOfPreUserOpValidationHooks                       | 527             | 927     | 527     | 2527    | 5       |
+| supplyLiquidity                                      | 49178           | 49178   | 49178   | 49178   | 1       |
+| supplyLiquidityBad                                   | 14429           | 14429   | 14429   | 14429   | 1       |
+| supportsInterface                                    | 332             | 855     | 355     | 2545    | 9       |
+| tokensReceived                                       | 15401           | 15401   | 15401   | 15401   | 1       |
+| transferOwnership                                    | 12646           | 16168   | 16168   | 19691   | 2       |
+| uninstallPlugin                                      | 103977          | 184368  | 184368  | 264760  | 2       |
+| upgradeTo                                            | 533             | 4601    | 4601    | 8670    | 2       |
+| validateUserOp                                       | 1811            | 29197   | 25265   | 51772   | 30      |
+
+
+| test/msca/TestCircleMSCAFactory.sol:TestCircleMSCAFactory contract |                 |         |        |         |         |
+|--------------------------------------------------------------------|-----------------|---------|--------|---------|---------|
+| Deployment Cost                                                    | Deployment Size |         |        |         |         |
+| 5129031                                                            | 27144           |         |        |         |         |
+| Function Name                                                      | min             | avg     | median | max     | # calls |
+| createAccount                                                      | 934334          | 1058432 | 936834 | 1376090 | 18      |
+
+
+
+ 
+Ran 9 test suites: [32m62[0m tests passed, [31m0[0m failed, [33m0[0m skipped (62 total tests)

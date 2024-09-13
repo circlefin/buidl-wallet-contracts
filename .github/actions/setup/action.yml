@@ -1,0 +1,33 @@
+name: Setup Continuous Integration
+description: Setup Continuous Integration
+runs:
+  using: composite
+  steps:
+    - name: Install node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+
+    - name: Install foundry
+      uses: foundry-rs/foundry-toolchain@v1
+
+    - name: Install yarn
+      run: npm install -g yarn
+      shell: bash
+
+    - name: Get yarn cache directory
+      id: yarn-cache
+      run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Retrieve yarn cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.yarn-cache.outputs.dir }}
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-yarn-
+
+    - name: Install packages
+      run: yarn install --frozen-lockfile
+      shell: bash

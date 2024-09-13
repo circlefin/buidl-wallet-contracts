@@ -1,0 +1,36 @@
+node_modules
+
+#Hardhat files
+cache
+artifacts
+/.idea/
+/typechain/
+/dist/interfaces
+/yarn-error.log
+/deployments/dev/
+/deployments/localhost/
+/deployments/proxy/
+/typechain-types/
+/reports/gas-used-output.color
+/coverage
+/coverage.json
+/.DS_Store
+.DS_Store
+build
+# TODO: remove this
+.openzeppelin/
+
+# Foundry files
+/cache_forge
+/out
+.gas-snapshot
+
+# Python environment file
+/venv
+*.pyc
+
+# coverage
+report/
+lcov.info
+
+.env

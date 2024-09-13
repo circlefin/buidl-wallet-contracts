@@ -1,0 +1,13 @@
+@account-abstraction/=lib/account-abstraction/
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
+ds-test/=lib/forge-std/lib/ds-test/src/
+eth-gas-reporter/=node_modules/eth-gas-reporter/
+forge-std/=lib/forge-std/
+hardhat/=node_modules/hardhat/
+@modular-account/=lib/modular-account/src
+@solady/=lib/solady/src/
+@fcl/=lib/FreshCryptoLib/solidity/src
+@p256-verifier/=lib/p256-verifier/src
+@webauthn-sol/=lib/webauthn-sol/src/
+@modular-account-libs/=lib/modular-account-libs/src/

@@ -1,0 +1,3 @@
+- This chain used cast send to deploy so there's no corresponding run json
+- Ran command in `/scripts/cmd/80002_run-1725650624_DeployTokenCallbackPlugin`
+- tx hash: 0x37ddd1a7f9f8e06a20d2e523a7cacc27506466359c983c7a7f7f1362423bf5c9
