@@ -18,23 +18,26 @@
  */
 pragma solidity 0.8.24;
 
-import {SIG_VALIDATION_SUCCEEDED, PLUGIN_VERSION_1, PLUGIN_AUTHOR} from "../../../../src/common/Constants.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {BasePlugin} from "../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
-import {console} from "forge-std/src/console.sol";
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1, SIG_VALIDATION_SUCCEEDED} from "../../../../src/common/Constants.sol";
+
+import {NotImplementedFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
 import {
+    ManifestExecutionFunction,
+    ManifestExecutionHook,
+    ManifestValidation,
     PluginManifest,
     PluginMetadata,
-    ManifestExecutionHook,
-    SelectorPermission,
-    ManifestExecutionFunction,
-    ManifestValidation
+    SelectorPermission
 } from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
-import {NotImplementedFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import {IValidation} from "../../../../src/msca/6900/v0.8/interfaces/IValidation.sol";
+
 import {IExecutionHook} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionHook.sol";
-import {IValidationHook} from "../../../../src/msca/6900/v0.8/interfaces/IValidationHook.sol";
+
 import {IPlugin} from "../../../../src/msca/6900/v0.8/interfaces/IPlugin.sol";
+import {IValidation} from "../../../../src/msca/6900/v0.8/interfaces/IValidation.sol";
+import {IValidationHook} from "../../../../src/msca/6900/v0.8/interfaces/IValidationHook.sol";
+import {BasePlugin} from "../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {console} from "forge-std/src/console.sol";
 
 /**
  * @dev Plugin for tests only. This plugin implements everything in manifest.

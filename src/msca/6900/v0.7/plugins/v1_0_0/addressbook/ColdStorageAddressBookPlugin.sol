@@ -18,33 +18,34 @@
  */
 pragma solidity 0.8.24;
 
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {
+    PLUGIN_AUTHOR,
+    PLUGIN_VERSION_1,
+    SIG_VALIDATION_FAILED,
+    SIG_VALIDATION_SUCCEEDED
+} from "../../../../../../common/Constants.sol";
+import {CastLib} from "../../../../../../libs/CastLib.sol";
+import {RecipientAddressLib} from "../../../../../../libs/RecipientAddressLib.sol";
+import {Unsupported} from "../../../../shared/common/Errors.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestFunction,
+    PluginManifest,
+    PluginMetadata,
+    SelectorPermission
+} from "../../../common/PluginManifest.sol";
+import {Call} from "../../../common/Structs.sol";
+import {IPlugin} from "../../../interfaces/IPlugin.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
 import {IAddressBookPlugin} from "./IAddressBookPlugin.sol";
-import {IPlugin} from "../../../interfaces/IPlugin.sol";
-import {RecipientAddressLib} from "../../../../../../libs/RecipientAddressLib.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
-import {CastLib} from "../../../../../../libs/CastLib.sol";
-import {Unsupported} from "../../../../shared/common/Errors.sol";
-import {Call} from "../../../common/Structs.sol";
-import {
-    PluginManifest,
-    PluginMetadata,
-    ManifestAssociatedFunction,
-    ManifestAssociatedFunctionType,
-    ManifestFunction,
-    SelectorPermission
-} from "../../../common/PluginManifest.sol";
-import {
-    SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED,
-    PLUGIN_VERSION_1,
-    PLUGIN_AUTHOR
-} from "../../../../../../common/Constants.sol";
 
 /**
  * @dev This plugin serves as an enhanced version of the AddressBookPlugin, incorporating additional limitations on

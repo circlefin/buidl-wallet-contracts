@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
+import {IPlugin} from "../interfaces/IPlugin.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
 
 /**
  * @dev Default implementation of https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to

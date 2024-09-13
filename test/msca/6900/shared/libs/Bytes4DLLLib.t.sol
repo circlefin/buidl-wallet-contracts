@@ -20,10 +20,10 @@ pragma solidity 0.8.24;
 
 /* solhint-disable one-contract-per-file */
 
-import {TestUtils} from "../../../../util/TestUtils.sol";
 import {SENTINEL_BYTES4} from "../../../../../src/common/Constants.sol";
 import {Bytes4DLL} from "../../../../../src/msca/6900/shared/common/Structs.sol";
 import {Bytes4DLLLib} from "../../../../../src/msca/6900/shared/libs/Bytes4DLLLib.sol";
+import {TestUtils} from "../../../../util/TestUtils.sol";
 
 contract TestDLL {
     using Bytes4DLLLib for Bytes4DLL;

@@ -18,10 +18,11 @@
  */
 pragma solidity 0.8.24;
 
-import {Base64Url} from "@fcl/utils/Base64Url.sol";
 import {TestUtils} from "../.../../../util/TestUtils.sol";
-import {WebAuthnLib} from "../../../src/libs/WebAuthnLib.sol";
+
 import {WebAuthnData} from "../../../src/common/CommonStructs.sol";
+import {WebAuthnLib} from "../../../src/libs/WebAuthnLib.sol";
+import {Base64Url} from "@fcl/utils/Base64Url.sol";
 
 contract WebAuthnTest is TestUtils {
     bytes private challenge = abi.encode(0xf631058a3ba1116acce12396fad0a125b5041c43f8e15723709f81aa8d5f4ccf);

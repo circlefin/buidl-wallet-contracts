@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {PublicKey, OwnerData} from "../../../../../../common/CommonStructs.sol";
+import {OwnerData, PublicKey} from "../../../../../../common/CommonStructs.sol";
 
 /// @title Weighted Multisig Plugin Interface
 /// @author Circle

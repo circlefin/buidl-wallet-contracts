@@ -21,45 +21,50 @@ pragma solidity 0.8.24;
 
 /* solhint-disable max-states-count */
 
-import {TestUtils} from "../../../../util/TestUtils.sol";
-import {WeightedWebauthnMultisigPlugin} from
-    "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
-import {BasePlugin} from "../../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
-import {BaseMultisigPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/BaseMultisigPlugin.sol";
-import {IPlugin} from "../../../../../src/msca/6900/v0.7/interfaces/IPlugin.sol";
-import {IWeightedMultisigPlugin} from
-    "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/IWeightedMultisigPlugin.sol";
-import {PluginManifest, PluginMetadata} from "../../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 import {
+    CredentialType,
+    OwnerData,
+    PublicKey,
+    WebAuthnData,
+    WebAuthnSigDynamicPart
+} from "../../../../../src/common/CommonStructs.sol";
+import {
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
     PLUGIN_AUTHOR,
     PLUGIN_VERSION_1,
-    EIP1271_VALID_SIGNATURE,
-    EIP1271_INVALID_SIGNATURE,
-    SIG_VALIDATION_SUCCEEDED,
     SIG_VALIDATION_FAILED,
+    SIG_VALIDATION_SUCCEEDED,
     ZERO_BYTES32
 } from "../../../../../src/common/Constants.sol";
+
+import {AddressBytesLib} from "../../../../../src/libs/AddressBytesLib.sol";
+import {PublicKeyLib} from "../../../../../src/libs/PublicKeyLib.sol";
+
+import {WebAuthnLib} from "../../../../../src/libs/WebAuthnLib.sol";
+import {NotImplemented} from "../../../../../src/msca/6900/shared/common/Errors.sol";
+import {PluginManifest, PluginMetadata} from "../../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
+import {IPlugin} from "../../../../../src/msca/6900/v0.7/interfaces/IPlugin.sol";
+import {BasePlugin} from "../../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
+import {BaseMultisigPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/BaseMultisigPlugin.sol";
+import {IWeightedMultisigPlugin} from
+    "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/IWeightedMultisigPlugin.sol";
+import {WeightedWebauthnMultisigPlugin} from
+    "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
+
+import {MockContractOwner} from "../../../../util/MockContractOwner.sol";
+import {TestUtils} from "../../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {
-    PublicKey,
-    WebAuthnData,
-    WebAuthnSigDynamicPart,
-    OwnerData,
-    CredentialType
-} from "../../../../../src/common/CommonStructs.sol";
-import {PublicKeyLib} from "../../../../../src/libs/PublicKeyLib.sol";
-import {AddressBytesLib} from "../../../../../src/libs/AddressBytesLib.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {NotImplemented} from "../../../../../src/msca/6900/shared/common/Errors.sol";
-import {MockContractOwner} from "../../../../util/MockContractOwner.sol";
-import {WebAuthnLib} from "../../../../../src/libs/WebAuthnLib.sol";
-import {VmSafe} from "forge-std/src/Vm.sol";
+
 import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
-import {stdJson} from "forge-std/src/StdJson.sol";
-import {console} from "forge-std/src/console.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {stdJson} from "forge-std/src/StdJson.sol";
+import {VmSafe} from "forge-std/src/Vm.sol";
+import {console} from "forge-std/src/console.sol";
 
 contract WeightedWebauthnMultisigPluginTest is TestUtils {
     using ECDSA for bytes32;

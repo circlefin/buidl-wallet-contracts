@@ -20,42 +20,48 @@ pragma solidity 0.8.24;
 
 /* solhint-disable max-states-count */
 
-import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
-import {TestERC721} from "../../../util/TestERC721.sol";
-import {TestERC1155} from "../../../util/TestERC1155.sol";
+import {
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
+    EMPTY_MODULE_ENTITY
+} from "../../../../src/common/Constants.sol";
+
+import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
+
+import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
-import {TestUserOpValidator} from "./TestUserOpValidator.sol";
-import {TestUserOpValidatorHook} from "./TestUserOpValidatorHook.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {
+    ManifestExecutionHook,
+    ManifestValidation,
+    PluginManifest
+} from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
+import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
+import {IAccountExecute} from "../../../../src/msca/6900/v0.8/interfaces/IAccountExecute.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+
+import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
+import {TestERC1155} from "../../../util/TestERC1155.sol";
+import {TestERC721} from "../../../util/TestERC721.sol";
+
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
-import {
-    EMPTY_MODULE_ENTITY,
-    EIP1271_VALID_SIGNATURE,
-    EIP1271_INVALID_SIGNATURE
-} from "../../../../src/common/Constants.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
-import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+
 import {TestUserOpValidatorHook} from "../v0.8/TestUserOpValidatorHook.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {TestUserOpValidator} from "./TestUserOpValidator.sol";
+import {TestUserOpValidatorHook} from "./TestUserOpValidatorHook.sol";
+import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {
-    PluginManifest,
-    ManifestValidation,
-    ManifestExecutionHook
-} from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
-import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {IAccountExecute} from "../../../../src/msca/6900/v0.8/interfaces/IAccountExecute.sol";
-import {ValidationConfig, ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
-import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 
 // We use TestCircleMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
 contract UpgradableMSCATest is AccountTestUtils {

@@ -18,25 +18,26 @@
  */
 pragma solidity 0.8.24;
 
-import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {BasePlugin} from "../../BasePlugin.sol";
-import {ISingleSignerValidationModule} from "./ISingleSignerValidationModule.sol";
-import {IPlugin} from "../../../interfaces/IPlugin.sol";
-import {IValidation} from "../../../interfaces/IValidation.sol";
-import {UnauthorizedCaller} from "../../../../shared/common/Errors.sol";
-import {PluginManifest, PluginMetadata, SelectorPermission} from "../../../common/PluginManifest.sol";
 import {
     EIP1271_INVALID_SIGNATURE,
     EIP1271_VALID_SIGNATURE,
-    SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED,
+    PLUGIN_AUTHOR,
     PLUGIN_VERSION_1,
-    PLUGIN_AUTHOR
+    SIG_VALIDATION_FAILED,
+    SIG_VALIDATION_SUCCEEDED
 } from "../../../../../../common/Constants.sol";
+import {UnauthorizedCaller} from "../../../../shared/common/Errors.sol";
+import {PluginManifest, PluginMetadata, SelectorPermission} from "../../../common/PluginManifest.sol";
+import {IPlugin} from "../../../interfaces/IPlugin.sol";
+import {IValidation} from "../../../interfaces/IValidation.sol";
+import {BasePlugin} from "../../BasePlugin.sol";
+
 import {BaseERC712CompliantModule} from "../../thirdparty/erc712/BaseERC712CompliantModule.sol";
+import {ISingleSignerValidationModule} from "./ISingleSignerValidationModule.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @notice This validation module allows the MSCA to be validated by a ECDSA secp256k1 curve signature or a 1271

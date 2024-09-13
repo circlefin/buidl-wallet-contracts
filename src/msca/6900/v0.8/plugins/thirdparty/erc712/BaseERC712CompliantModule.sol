@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {IERC712Compliant} from "../../../../shared/erc712/IERC712Compliant.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 // @notice Forked from 6900 reference implementation with some modifications.
 // A base contract for modules that use EIP-712 structured data signing.

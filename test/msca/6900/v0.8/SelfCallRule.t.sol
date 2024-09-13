@@ -18,23 +18,24 @@
  */
 pragma solidity 0.8.24;
 
-import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
+import {Call} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
+import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+import {IAccountExecute} from "../../../../src/msca/6900/v0.8/interfaces/IAccountExecute.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
 import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
 import {FooBarPlugin} from "./FooBarPlugin.sol";
-import {Call} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {IAccountExecute} from "../../../../src/msca/6900/v0.8/interfaces/IAccountExecute.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
-import {ValidationConfig, ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+
 import {TestCircleMSCA} from "./TestCircleMSCA.sol";
-import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract SelfCallRuleTest is AccountTestUtils {
     using ModuleEntityLib for ModuleEntity;

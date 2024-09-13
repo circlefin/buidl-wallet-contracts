@@ -19,11 +19,12 @@
 pragma solidity 0.8.24;
 
 import "../../../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import "../../../../PluginGasProfileBase.t.sol";
+
 import "../../../../../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+import "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
 import "../../../../../../src/utils/ExecutionUtils.sol";
 import {TestUserOpAllPassValidator} from "../../../../../msca/6900/v0.7/TestUserOpAllPassValidator.sol";
+import "../../../../PluginGasProfileBase.t.sol";
 
 contract UpgradableMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
     event PluginInstalled(address indexed plugin, bytes32 manifestHash, FunctionReference[] dependencies);

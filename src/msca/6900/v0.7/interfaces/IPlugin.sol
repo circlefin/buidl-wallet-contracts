@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "../common/Structs.sol";
 import "../common/PluginManifest.sol";
+import "../common/Structs.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 /**
  * @dev Implements https://eips.ethereum.org/EIPS/eip-6900. Plugins must implement this interface to support plugin

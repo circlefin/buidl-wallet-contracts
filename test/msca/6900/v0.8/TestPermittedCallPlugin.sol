@@ -18,14 +18,15 @@
  */
 pragma solidity 0.8.24;
 
-import {PLUGIN_VERSION_1, PLUGIN_AUTHOR} from "../../../../src/common/Constants.sol";
-import {BasePlugin} from "../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../src/common/Constants.sol";
+
 import {
+    ManifestExecutionFunction,
     PluginManifest,
-    PluginMetadata,
-    ManifestExecutionFunction
+    PluginMetadata
 } from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
 import {IPlugin} from "../../../../src/msca/6900/v0.8/interfaces/IPlugin.sol";
+import {BasePlugin} from "../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
 import {FooBarPlugin} from "./FooBarPlugin.sol";
 
 /**

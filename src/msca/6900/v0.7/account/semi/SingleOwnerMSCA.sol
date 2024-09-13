@@ -18,45 +18,48 @@
  */
 pragma solidity 0.8.24;
 
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {IPlugin} from "../../interfaces/IPlugin.sol";
-import {BaseMSCA} from "../BaseMSCA.sol";
-import {PluginManager} from "../../managers/PluginManager.sol";
 import {DefaultCallbackHandler} from "../../../../../callback/DefaultCallbackHandler.sol";
-import {ExecutionUtils} from "../../../../../utils/ExecutionUtils.sol";
-import {RepeatableFunctionReferenceDLLLib} from "../../libs/RepeatableFunctionReferenceDLLLib.sol";
-import {FunctionReferenceLib} from "../../libs/FunctionReferenceLib.sol";
-import {WalletStorageV1Lib} from "../../libs/WalletStorageV1Lib.sol";
-import {ValidationDataLib} from "../../../shared/libs/ValidationDataLib.sol";
+
 import {
-    NotFoundSelector,
-    InvalidValidationFunctionId,
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
+    EMPTY_FUNCTION_REFERENCE,
+    EMPTY_FUNCTION_REFERENCE,
+    SENTINEL_BYTES21,
+    SIG_VALIDATION_FAILED,
+    SIG_VALIDATION_SUCCEEDED
+} from "../../../../../common/Constants.sol";
+import {ExecutionUtils} from "../../../../../utils/ExecutionUtils.sol";
+import {
     InvalidAuthorizer,
+    InvalidValidationFunctionId,
+    NotFoundSelector,
     UnauthorizedCaller
 } from "../../../shared/common/Errors.sol";
-import {FunctionReference, RepeatableBytes21DLL, ExecutionDetail} from "../../common/Structs.sol";
-import {
-    EIP1271_VALID_SIGNATURE,
-    EIP1271_INVALID_SIGNATURE,
-    EMPTY_FUNCTION_REFERENCE,
-    SIG_VALIDATION_SUCCEEDED,
-    SIG_VALIDATION_FAILED,
-    EMPTY_FUNCTION_REFERENCE,
-    SENTINEL_BYTES21
-} from "../../../../../common/Constants.sol";
 import {ValidationData} from "../../../shared/common/Structs.sol";
+import {ValidationDataLib} from "../../../shared/libs/ValidationDataLib.sol";
 import {
-    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE,
-    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE
+    PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
+    RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
 } from "../../common/Constants.sol";
+import {ExecutionDetail, FunctionReference, RepeatableBytes21DLL} from "../../common/Structs.sol";
+import {IPlugin} from "../../interfaces/IPlugin.sol";
+import {FunctionReferenceLib} from "../../libs/FunctionReferenceLib.sol";
+import {RepeatableFunctionReferenceDLLLib} from "../../libs/RepeatableFunctionReferenceDLLLib.sol";
+import {WalletStorageV1Lib} from "../../libs/WalletStorageV1Lib.sol";
+import {PluginManager} from "../../managers/PluginManager.sol";
+import {BaseMSCA} from "../BaseMSCA.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @dev Semi-MSCA that enshrines single owner into the account storage.

@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../../../../util/TestUtils.sol";
-import {ValidationDataLib} from "../../../../../src/msca/6900/shared/libs/ValidationDataLib.sol";
 import {ValidationData} from "../../../../../src/msca/6900/shared/common/Structs.sol";
+import {ValidationDataLib} from "../../../../../src/msca/6900/shared/libs/ValidationDataLib.sol";
+import {TestUtils} from "../../../../util/TestUtils.sol";
 
 contract ValidationDataLibTest is TestUtils {
     using ValidationDataLib for ValidationData;

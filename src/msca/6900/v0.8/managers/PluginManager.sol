@@ -18,24 +18,29 @@
  */
 pragma solidity 0.8.24;
 
-import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
-import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
-import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
-import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
-import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
-import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
-import {PluginManifest, ManifestValidation, ManifestExecutionFunction} from "../common/PluginManifest.sol";
 import {SENTINEL_BYTES32, SENTINEL_BYTES4} from "../../../../common/Constants.sol";
 import {AddressDLL} from "../../shared/common/Structs.sol";
-import {ExecutionHook, ValidationDetail} from "../common/Structs.sol";
+
 import {Bytes32DLL, Bytes4DLL} from "../../shared/common/Structs.sol";
-import {RESERVED_VALIDATION_DATA_INDEX} from "../common/Constants.sol";
+import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
+import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
+
 import {Bytes4DLLLib} from "../../shared/libs/Bytes4DLLLib.sol";
-import {ValidationConfigLib} from "../libs/thirdparty/ValidationConfigLib.sol";
-import {ValidationConfig, ModuleEntity} from "../common/Types.sol";
-import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
+import {RESERVED_VALIDATION_DATA_INDEX} from "../common/Constants.sol";
+import {ManifestExecutionFunction, ManifestValidation, PluginManifest} from "../common/PluginManifest.sol";
+import {ExecutionHook, ValidationDetail} from "../common/Structs.sol";
+
+import {ModuleEntity, ValidationConfig} from "../common/Types.sol";
+import {IPlugin} from "../interfaces/IPlugin.sol";
+
 import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";
+import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
+import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
+import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
+
+import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
+import {ValidationConfigLib} from "../libs/thirdparty/ValidationConfigLib.sol";
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 
 /**
  * @dev Default implementation of https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to

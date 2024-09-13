@@ -18,12 +18,12 @@
  */
 pragma solidity 0.8.24;
 
-import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
-import "../common/Structs.sol";
-import "../common/PluginManifest.sol";
 import {NotImplemented} from "../../shared/common/Errors.sol";
+import "../common/PluginManifest.sol";
+import "../common/Structs.sol";
+import {IPlugin} from "../interfaces/IPlugin.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /**
  * @dev Default implementation of https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to

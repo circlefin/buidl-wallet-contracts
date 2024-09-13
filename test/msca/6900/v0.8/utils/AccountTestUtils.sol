@@ -18,14 +18,14 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../../../../util/TestUtils.sol";
-import {ModuleEntity} from "../../../../../src/msca/6900/v0.8/common/Types.sol";
 import {
-    RESERVED_VALIDATION_DATA_INDEX,
     GLOBAL_VALIDATION_FLAG,
-    PER_SELECTOR_VALIDATION_FLAG
+    PER_SELECTOR_VALIDATION_FLAG,
+    RESERVED_VALIDATION_DATA_INDEX
 } from "../../../../../src/msca/6900/v0.8/common/Constants.sol";
+import {ModuleEntity} from "../../../../../src/msca/6900/v0.8/common/Types.sol";
 import {ModuleEntityLib} from "../../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {TestUtils} from "../../../../util/TestUtils.sol";
 
 contract AccountTestUtils is TestUtils {
     using ModuleEntityLib for ModuleEntity;

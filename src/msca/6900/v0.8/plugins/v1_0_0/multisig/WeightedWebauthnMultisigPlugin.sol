@@ -19,30 +19,32 @@
 
 pragma solidity 0.8.24;
 
-import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
-import {BaseWeightedMultisigPlugin} from "./BaseWeightedMultisigPlugin.sol";
+import {
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
+    PLUGIN_AUTHOR,
+    PLUGIN_VERSION_1
+} from "../../../../../../common/Constants.sol";
 import {PluginManifest, PluginMetadata, SelectorPermission} from "../../../common/PluginManifest.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {BaseWeightedMultisigPlugin} from "./BaseWeightedMultisigPlugin.sol";
+import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
+
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
 import {SetValue} from "@modular-account-libs/libraries/Constants.sol";
-import {
-    EIP1271_VALID_SIGNATURE,
-    EIP1271_INVALID_SIGNATURE,
-    PLUGIN_AUTHOR,
-    PLUGIN_VERSION_1
-} from "../../../../../../common/Constants.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {OwnerData, PublicKey, WebAuthnSigDynamicPart} from "../../../../../../common/CommonStructs.sol";
+import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
 import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
 import {WebAuthnLib} from "../../../../../../libs/WebAuthnLib.sol";
-import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
-import {PublicKey, WebAuthnSigDynamicPart, OwnerData} from "../../../../../../common/CommonStructs.sol";
+
 import {NotImplementedFunction} from "../../../../shared/common/Errors.sol";
 import {IWeightedMultisigPlugin} from "../../../../v0.8/plugins/v1_0_0/multisig/IWeightedMultisigPlugin.sol";
 import {BaseERC712CompliantModule} from "../../thirdparty/erc712/BaseERC712CompliantModule.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /// @title Weighted Multisig Plugin That Supports Additional Webauthn Authentication
 /// @author Circle

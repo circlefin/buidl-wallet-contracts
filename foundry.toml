@@ -19,3 +19,4 @@ depth = 15
 [fmt]
 line_length = 120
 wrap_comments = true
+sort_imports = true

@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import "forge-std/src/Script.sol";
 import "../src/account/v1/factory/ECDSAAccountFactory.sol";
+import "forge-std/src/Script.sol";
 
 /// @dev We actually still used hardhat deployment for this legacy contract. This script is more for convenience
 /// purpose.

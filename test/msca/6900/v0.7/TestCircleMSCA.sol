@@ -18,28 +18,30 @@
  */
 pragma solidity 0.8.24;
 
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
-import {UpgradableMSCA} from "../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
-import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
-import {WalletStorageV1Lib} from "../../../../src/msca/6900/v0.7/libs/WalletStorageV1Lib.sol";
-import {AddressDLLLib} from "../../../../src/msca/6900/shared/libs/AddressDLLLib.sol";
-import {FunctionReferenceDLLLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceDLLLib.sol";
-import {RepeatableFunctionReferenceDLLLib} from
-    "../../../../src/msca/6900/v0.7/libs/RepeatableFunctionReferenceDLLLib.sol";
-import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
 import {AddressDLL} from "../../../../src/msca/6900/shared/common/Structs.sol";
+import {AddressDLLLib} from "../../../../src/msca/6900/shared/libs/AddressDLLLib.sol";
+import {UpgradableMSCA} from "../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
+
 import {
     Bytes21DLL,
-    RepeatableBytes21DLL,
-    FunctionReference,
-    ExecutionHooks,
-    ExecutionFunctionConfig,
     ExecutionDetail,
+    ExecutionFunctionConfig,
+    ExecutionHooks,
+    FunctionReference,
+    PermittedExternalCall,
     PluginDetail,
-    PermittedExternalCall
+    RepeatableBytes21DLL
 } from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {FunctionReferenceDLLLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceDLLLib.sol";
+import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {RepeatableFunctionReferenceDLLLib} from
+    "../../../../src/msca/6900/v0.7/libs/RepeatableFunctionReferenceDLLLib.sol";
+import {WalletStorageV1Lib} from "../../../../src/msca/6900/v0.7/libs/WalletStorageV1Lib.sol";
+
 import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
+import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
 
 // testing contract with some convenience methods
 contract TestCircleMSCA is UpgradableMSCA {

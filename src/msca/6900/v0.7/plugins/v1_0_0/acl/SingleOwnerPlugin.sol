@@ -18,27 +18,29 @@
  */
 pragma solidity 0.8.24;
 
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {BasePlugin} from "../../BasePlugin.sol";
-import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
-import {IPluginManager} from "../../../interfaces/IPluginManager.sol";
-import {ISingleOwnerPlugin} from "./ISingleOwnerPlugin.sol";
-import {UnauthorizedCaller, InvalidValidationFunctionId} from "../../../../shared/common/Errors.sol";
-import "../../../common/Structs.sol";
-import "../../../common/PluginManifest.sol";
 import {
     EIP1271_INVALID_SIGNATURE,
     EIP1271_VALID_SIGNATURE,
-    SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED,
+    PLUGIN_AUTHOR,
     PLUGIN_VERSION_1,
-    PLUGIN_AUTHOR
+    SIG_VALIDATION_FAILED,
+    SIG_VALIDATION_SUCCEEDED
 } from "../../../../../../common/Constants.sol";
+import {InvalidValidationFunctionId, UnauthorizedCaller} from "../../../../shared/common/Errors.sol";
+import "../../../common/PluginManifest.sol";
+import "../../../common/Structs.sol";
+import {IPluginManager} from "../../../interfaces/IPluginManager.sol";
+import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
+import {BasePlugin} from "../../BasePlugin.sol";
+
+import {ISingleOwnerPlugin} from "./ISingleOwnerPlugin.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @dev Single owner plugin which is forked from OZ's Ownable. This plugin allows MSCA to be owned by an EOA or another

@@ -18,55 +18,59 @@
  */
 pragma solidity 0.8.24;
 
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
+    EMPTY_MODULE_ENTITY,
+    WALLET_AUTHOR,
+    WALLET_VERSION_1
+} from "../../../../common/Constants.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
+import {
+    InvalidAuthorizer,
+    InvalidExecutionFunction,
+    NotFoundSelector,
+    UnauthorizedCaller
+} from "../../shared/common/Errors.sol";
+import {AddressDLL, Bytes32DLL, Bytes4DLL, ValidationData} from "../../shared/common/Structs.sol";
+import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
+import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
+
+import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
+
+import {Bytes4DLLLib} from "../../shared/libs/Bytes4DLLLib.sol";
+import {ValidationDataLib} from "../../shared/libs/ValidationDataLib.sol";
+import {GLOBAL_VALIDATION_FLAG, RESERVED_VALIDATION_DATA_INDEX} from "../common/Constants.sol";
+import {
+    Bytes32DLL,
+    Call,
+    ExecutionDetail,
+    ExecutionHook,
+    PostExecHookToRun,
+    ValidationDetail
+} from "../common/Structs.sol";
+
+import {ModuleEntity, ValidationConfig} from "../common/Types.sol";
+import {IAccountExecute} from "../interfaces/IAccountExecute.sol";
 import {IAccountLoupe} from "../interfaces/IAccountLoupe.sol";
 import {IPluginManager} from "../interfaces/IPluginManager.sol";
 import {IStandardExecutor} from "../interfaces/IStandardExecutor.sol";
-import {PluginManager} from "../managers/PluginManager.sol";
-import {StandardExecutor} from "../managers/StandardExecutor.sol";
-import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
-import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";
-import {WalletStorageInitializable} from "./WalletStorageInitializable.sol";
-import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
-import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
-import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
-import {ValidationDataLib} from "../../shared/libs/ValidationDataLib.sol";
-import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
-import {
-    InvalidExecutionFunction,
-    UnauthorizedCaller,
-    NotFoundSelector,
-    InvalidAuthorizer
-} from "../../shared/common/Errors.sol";
-import {
-    Bytes32DLL,
-    ExecutionDetail,
-    PostExecHookToRun,
-    Call,
-    ExecutionHook,
-    ValidationDetail
-} from "../common/Structs.sol";
-import {
-    WALLET_AUTHOR,
-    WALLET_VERSION_1,
-    EMPTY_MODULE_ENTITY,
-    EIP1271_INVALID_SIGNATURE,
-    EIP1271_VALID_SIGNATURE
-} from "../../../../common/Constants.sol";
-import {ValidationData, AddressDLL, Bytes32DLL, Bytes4DLL} from "../../shared/common/Structs.sol";
 import {IValidation} from "../interfaces/IValidation.sol";
 import {IValidationHook} from "../interfaces/IValidationHook.sol";
-import {GLOBAL_VALIDATION_FLAG, RESERVED_VALIDATION_DATA_INDEX} from "../common/Constants.sol";
-import {SparseCalldataSegmentLib} from "../libs/thirdparty/SparseCalldataSegmentLib.sol";
-import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
-import {IAccountExecute} from "../interfaces/IAccountExecute.sol";
-import {Bytes4DLLLib} from "../../shared/libs/Bytes4DLLLib.sol";
-import {ValidationConfig, ModuleEntity} from "../common/Types.sol";
+import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";
+import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
+import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
 import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
+
+import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
+import {SparseCalldataSegmentLib} from "../libs/thirdparty/SparseCalldataSegmentLib.sol";
+import {PluginManager} from "../managers/PluginManager.sol";
+import {StandardExecutor} from "../managers/StandardExecutor.sol";
+import {WalletStorageInitializable} from "./WalletStorageInitializable.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
  * @dev Base MSCA implementation with **authentication**.

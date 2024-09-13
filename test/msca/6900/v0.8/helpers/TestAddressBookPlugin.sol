@@ -18,26 +18,27 @@
  */
 pragma solidity 0.8.24;
 
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1, SIG_VALIDATION_SUCCEEDED} from "../../../../../src/common/Constants.sol";
+import {CastLib} from "../../../../../src/libs/CastLib.sol";
+
+import {RecipientAddressLib} from "../../../../../src/libs/RecipientAddressLib.sol";
+import {Unsupported} from "../../../../../src/msca/6900/shared/common/Errors.sol";
+import {
+    ManifestExecutionFunction,
+    PluginManifest,
+    PluginMetadata,
+    SelectorPermission
+} from "../../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
+import {IPlugin} from "../../../../../src/msca/6900/v0.8/interfaces/IPlugin.sol";
+import {IValidationHook} from "../../../../../src/msca/6900/v0.8/interfaces/IValidationHook.sol";
+import {BasePlugin} from "../../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
+import {IAddressBookPlugin} from "../../../../../src/msca/6900/v0.8/plugins/v1_0_0/addressbook/IAddressBookPlugin.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
-import {CastLib} from "../../../../../src/libs/CastLib.sol";
-import {Unsupported} from "../../../../../src/msca/6900/shared/common/Errors.sol";
-import {
-    PluginManifest,
-    PluginMetadata,
-    SelectorPermission,
-    ManifestExecutionFunction
-} from "../../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
-import {SIG_VALIDATION_SUCCEEDED, PLUGIN_VERSION_1, PLUGIN_AUTHOR} from "../../../../../src/common/Constants.sol";
-import {IAddressBookPlugin} from "../../../../../src/msca/6900/v0.8/plugins/v1_0_0/addressbook/IAddressBookPlugin.sol";
-import {IPlugin} from "../../../../../src/msca/6900/v0.8/interfaces/IPlugin.sol";
-import {IValidationHook} from "../../../../../src/msca/6900/v0.8/interfaces/IValidationHook.sol";
-import {BasePlugin} from "../../../../../src/msca/6900/v0.8/plugins/BasePlugin.sol";
-import {RecipientAddressLib} from "../../../../../src/libs/RecipientAddressLib.sol";
+import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 /**
  * @dev For testing only purpose.

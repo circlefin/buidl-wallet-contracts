@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
+import {WebAuthnData} from "../common/CommonStructs.sol";
 import {FCL_ecdsa} from "@fcl/FCL_ecdsa.sol";
 import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
-import {WebAuthnData} from "../common/CommonStructs.sol";
 
 /// @title WebAuthn
 ///
