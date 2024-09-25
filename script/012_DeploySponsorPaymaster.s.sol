@@ -26,7 +26,9 @@ import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract DeploySponsorPaymaster is Script {
+    // EXPECTED_PAYMASTER_ADDRESS is the expected address of the paymaster implementation contract.
     address payable constant EXPECTED_PAYMASTER_ADDRESS = payable(address(0x36058Cc257967db1912FC276F9CBEC072CD572cb));
+    // EXPECTED_PAYMASTER_PROXY_ADDRESS is the expected address of the proxy to the paymaster implementation contract.
     address payable constant EXPECTED_PAYMASTER_PROXY_ADDRESS =
         payable(address(0x03dF76C8c30A88f424CF3CBBC36A1Ca02763103b));
 
