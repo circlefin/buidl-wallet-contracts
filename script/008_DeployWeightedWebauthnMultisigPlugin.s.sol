@@ -24,7 +24,7 @@ import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract DeployWeightedWebauthnMultisigPlugin is Script {
-    address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x5FC0e9da759812cd862625bF6d3EA02EB0666160));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("WEIGHTED_MULTISIG_PLUGIN_ADDRESS"));
 
     function run() public {
         address entryPoint = vm.envAddress("ENTRY_POINT");

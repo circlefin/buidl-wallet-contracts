@@ -22,9 +22,9 @@ import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableM
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployUpgradableMSCAFactoryScript is Script {
-    address constant PLUGIN_MANAGER = 0x5c2099d54979B1F4c84eB5d3fc50041a78aE4E15;
-    address constant OWNER = 0x0166EA90E565476f13c6a0D25ED2C35599E58785;
-    address payable constant EXPECTED_FACTORY_ADDRESS = payable(address(0x95abd14795D32A4e636e976Ff31dC634Ad33A09E));
+    address PLUGIN_MANAGER = vm.envAddress("PLUGIN_MANAGER_ADDRESS");
+    address OWNER = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
+    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_OWNER_ADDRESS"));
 
     function run() public {
         address entryPoint = vm.envAddress("ENTRY_POINT");

@@ -22,7 +22,7 @@ import {PluginManager} from "../src/msca/6900/v0.7/managers/PluginManager.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
-    address constant EXPECTED_PLUGIN_MANAGER = address(0x5c2099d54979B1F4c84eB5d3fc50041a78aE4E15);
+    address EXPECTED_PLUGIN_MANAGER = vm.envAddress("PLUGIN_MANAGER_ADDRESS");
 
     function run() public {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");

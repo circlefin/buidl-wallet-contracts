@@ -23,7 +23,7 @@ import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployTokenCallbackPluginScript is Script {
     // Safety check to avoid accidental deploy. Change address to 0x0 if you want to deploy a new version.
-    address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x03431Fb00fB2e26b5bC502DFeF8dA30E1C8643b8));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS"));
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
