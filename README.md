@@ -85,12 +85,12 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
 #### MSCA
   1. Set up `DEPLOYER_PRIVATE_KEY`, `RPC_URL` and `ETHERSCAN_API_KEY` in .env
   2. Run `source .env`
-  3. Run the desired numbered scripts inside the `script/` folder using the below command format. 
+  3. Run the desired numbered scripts inside the `script/` folder using the below command format. Make sure any environment variable values from previous steps are updated if needed as you progress through the scripts.
        * `forge script script/<SCRIPT_NAME> --rpc-url $RPC_URL --broadcast --verify -vvvv`
        
           Example: `forge script script/001_DeployPluginManager.s.sol --rpc-url $RPC_URL --broadcast --verify -vvvv`
 
-      Tip: before executing the above command, verify the simulation works as expected by running the above command without the `--broadcast` and `--verify` flags. Make sure your address has enough tokens to cover the transaction fee.
+      Tip: before executing the above command, verify the simulation works as expected by running the above command without the `--broadcast` and `--verify` flags. This way, you can also make sure your address will have enough tokens to cover the transaction fee estimated in the simulation.
     
   4. Include the relevant logs from the `broadcast` folder in your commit.
 
@@ -100,13 +100,27 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
 
   5. Create or update the corresponding file in the `script/cmd` folder using the creation bytecode of the contract from the logs. See the below "Chain Expansion" section for details on how to format of the files in the `script/cmd` folder.
   6. Verify in block explorer like etherscan using standard input json
-       * forge verify-contract `contract_address` `relative_path_to_source:classname` --show-standard-json-input > `script/verify/<filename>`
-       * eg. `forge verify-contract 0x03431fb00fb2e26b5bc502dfef8da30e1c8643b8 src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol:DefaultTokenCallbackPlugin --show-standard-json-input > script/verify/DefaultTokenCallbackPlugin.json`
+       * Create the standard input json: run the beoow command
+       
+          ```shell
+          forge verify-contract <contract_address> <relative_path_to_source:classname> --show-standard-json-input > <script/verify/<filename>
+
+          # Example
+          forge verify-contract 0x03431fb00fb2e26b5bc502dfef8da30e1c8643b8 src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol:DefaultTokenCallbackPlugin --show-standard-json-input > script/verify/DefaultTokenCallbackPlugin.json
+          ```
        * Verify and publish in block explorer (etherscan example)
          * Compiler type: `Solidity (Standard-Json-Input)`
          * Compiler version: `v0.8.24`
          * License: Option 5 in https://etherscan.io/contract-license-types
          * Upload the JSON file
+         * If the contract you are verifying took constructor arguments, input the output of the below command with the `0x` prefix removed into the "Constructor Arguments ABI-encoded" section:
+
+            ```shell
+            cast abi-encode "constructor(<arg type 1>, <arg type 2>, ...)" "arg1Val" "arg2Val"
+
+            # Example
+            cast abi-encode "constructor(address,address,uint256)" "0x0166EA90E565476f13c6a0D25ED2C35599E58785" "0x0000000071727De22E5E9d8BAf0edAc6f37da032" 18
+            ```
          * Click verify and publish
 
 ### Deployment Metadata

@@ -21,19 +21,22 @@ pragma solidity 0.8.24;
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-// Skip this step if deploying MSCA 0.7 contracts (use 011.1_SetUpgradableMSCAFactoryPlugins.s.sol later instead)
+// Skip this step if deploying MSCA 0.7 contracts (instead use 011.1_SetUpgradableMSCAFactoryPlugins.s.sol later)
 contract SetUpgradableMSCAFactoryPlugins is Script {
-    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_OWNER_ADDRESS"));
+    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_ADDRESS"));
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         // Initialize setPlugins exec call data
-        uint256 numPlugins = 1;
+        uint256 numPlugins = 3;
         address[] memory plugins = new address[](numPlugins);
         bool[] memory pluginPermissions = new bool[](numPlugins);
 
-        plugins[0] = vm.envAddress("WEIGHTED_MULTISIG_PLUGIN_ADDRESS");
+        plugins[0] = vm.envAddress("SINGLE_OWNER_PLUGIN_ADDRESS");
+        plugins[1] = vm.envAddress("COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS");
+        plugins[2] = vm.envAddress("WEIGHTED_MULTISIG_PLUGIN_ADDRESS");
+
         for (uint256 i = 0; i < numPlugins; i++) {
             pluginPermissions[i] = true;
         }
@@ -48,8 +51,9 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
 
         // Set plugins for factory
         vm.startBroadcast(key);
-        factory.setPlugins(plugins, pluginPermissions);
-        console.log("Checking if first plugin is allowed: ", factory.isPluginAllowed(plugins[0]));
+        for (uint256 i = 0; i < numPlugins; i++) {
+            console.log("Checking if plugin number", i, "is allowed:", factory.isPluginAllowed(plugins[0]));
+        }
         vm.stopBroadcast();
     }
 }

@@ -24,7 +24,7 @@ import {Script, console} from "forge-std/src/Script.sol";
 contract DeployUpgradableMSCAFactoryScript is Script {
     address PLUGIN_MANAGER = vm.envAddress("PLUGIN_MANAGER_ADDRESS");
     address OWNER = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
-    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_OWNER_ADDRESS"));
+    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_ADDRESS"));
 
     function run() public {
         address entryPoint = vm.envAddress("ENTRY_POINT");

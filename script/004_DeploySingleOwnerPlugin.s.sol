@@ -22,20 +22,27 @@ import "../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
 import "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerPluginScript is Script {
-    address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0xFfC2440999EF1F84089Ca1418b673D4B9c089bBe));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("SINGLE_OWNER_PLUGIN_ADDRESS"));
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
+        
         SingleOwnerPlugin plugin;
+
+        // Deploy plugin contract if it doesn't exist at the expected address
         if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
             plugin = new SingleOwnerPlugin{salt: 0}();
+            console.log("New plugin contract deployed at address: %s", address(plugin));
         } else {
             plugin = SingleOwnerPlugin(EXPECTED_PLUGIN_ADDRESS);
+            console.log("Found existing plugin at expected address: %s", address(plugin));
         }
-        console.log("Plugin address: %s", address(plugin));
-        console.log("Single owner manifest hash: ");
+
+        // Log plugin manifest hash
+        console.log("Single owner plugin manifest hash: ");
         console.logBytes32(keccak256(abi.encode(plugin.pluginManifest())));
+        
         vm.stopBroadcast();
     }
 }

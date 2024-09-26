@@ -24,20 +24,27 @@ import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract DeployColdStorageAddressBookPluginScript is Script {
-    address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x7E7e5B99F9C3dF2E2f38418e0F7C08C3911a4413));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS"));
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
+        
         ColdStorageAddressBookPlugin plugin;
+
+        // Deploy plugin contract if it doesn't exist at the expected address
         if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
             plugin = new ColdStorageAddressBookPlugin{salt: 0}();
+            console.log("New plugin contract deployed at address: %s", address(plugin));
         } else {
             plugin = ColdStorageAddressBookPlugin(EXPECTED_PLUGIN_ADDRESS);
+            console.log("Found existing plugin at expected address: %s", address(plugin));
         }
-        console.log("Plugin address: %s", address(plugin));
+        
+        // Log plugin manifest hash
         console.log("Cold Storage Address book manifest hash: ");
         console.logBytes32(keccak256(abi.encode(plugin.pluginManifest())));
+        
         vm.stopBroadcast();
     }
 }

@@ -22,6 +22,7 @@ import {AddressBookPlugin} from "../src/msca/6900/v0.7/plugins/v1_0_0/addressboo
 import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
+// Deprecated
 contract DeployAddressBookPluginScript is Script {
     // TODO: replace this with officially deployed address
     address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x1E0689ae0171CcFbE9E7C7491B1eb09e0D5b7103));
