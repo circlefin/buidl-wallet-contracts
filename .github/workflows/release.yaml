@@ -1,15 +1,26 @@
-name: Tag Release
+name: PR Lint and Release
 
 on:
+  pull_request:
+    branches: [master]
   push:
     branches: [master]
 
 jobs:
-  release:
+  pr_lint_and_release:
     uses: circlefin/circle-public-github-workflows/.github/workflows/conventional-commit-release.yaml@v1
+    if: github.repository_owner == 'circlefin'
     with:
       release_type: node
+      lint_commits: false
     secrets:
       RELEASE_TOKEN: ${{ secrets.PUBLIC_RELEASES_TOKEN }}
       RELEASE_ACTOR_GPG_PRIVATE_KEY: ${{ secrets.PUBLIC_RELEASES_GPG_PRIVATE_KEY }}
       RELEASE_ACTOR_GPG_PASSPHRASE: ${{ secrets.PUBLIC_RELEASES_GPG_PASSPHRASE }}
+
+  release_sbom:
+    needs: pr_lint_and_release
+    if: github.event_name == 'push' && needs.pr_lint_and_release.outputs.release_created == 'true'
+    uses: circlefin/circle-public-github-workflows/.github/workflows/attach-release-assets.yaml@v1
+    with:
+      release_tag: ${{ needs.pr_lint_and_release.outputs.release_tag }}
