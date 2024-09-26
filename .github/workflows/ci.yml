@@ -24,13 +24,8 @@ jobs:
 
       - name: Run unit tests
         run: yarn test
-        
+
   scan:
     needs: lint_and_test
     if: github.event_name == 'pull_request'
     uses: circlefin/circle-public-github-workflows/.github/workflows/pr-scan.yaml@v1
-
-  release_sbom:
-    needs: lint_and_test
-    if: github.event_name == 'push'
-    uses: circlefin/circle-public-github-workflows/.github/workflows/attach-release-assets.yaml@v1
