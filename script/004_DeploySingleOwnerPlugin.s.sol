@@ -27,7 +27,7 @@ contract DeploySingleOwnerPluginScript is Script {
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
-        
+
         SingleOwnerPlugin plugin;
 
         // Deploy plugin contract if it doesn't exist at the expected address
@@ -42,7 +42,7 @@ contract DeploySingleOwnerPluginScript is Script {
         // Log plugin manifest hash
         console.log("Single owner plugin manifest hash: ");
         console.logBytes32(keccak256(abi.encode(plugin.pluginManifest())));
-        
+
         vm.stopBroadcast();
     }
 }

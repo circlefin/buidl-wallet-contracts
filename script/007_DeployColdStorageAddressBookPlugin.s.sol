@@ -29,7 +29,7 @@ contract DeployColdStorageAddressBookPluginScript is Script {
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
-        
+
         ColdStorageAddressBookPlugin plugin;
 
         // Deploy plugin contract if it doesn't exist at the expected address
@@ -40,11 +40,11 @@ contract DeployColdStorageAddressBookPluginScript is Script {
             plugin = ColdStorageAddressBookPlugin(EXPECTED_PLUGIN_ADDRESS);
             console.log("Found existing plugin at expected address: %s", address(plugin));
         }
-        
+
         // Log plugin manifest hash
         console.log("Cold Storage Address book manifest hash: ");
         console.logBytes32(keccak256(abi.encode(plugin.pluginManifest())));
-        
+
         vm.stopBroadcast();
     }
 }
