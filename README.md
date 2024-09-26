@@ -1,4 +1,4 @@
-# smart-wallet-contracts
+# buidl-wallet-contracts
 Official repository for all smart wallet contracts used by Circle web3 API/SDK. 
 
 This repository includes support for both the Hardhat and Foundry frameworks. Going forward, all new code / tests / scripts should be built on Foundry. Hardhat is currently only included for legacy contracts in the following folders:
