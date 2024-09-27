@@ -20,6 +20,7 @@ pragma solidity 0.8.24;
 
 import {SponsorPaymaster} from "../src/paymaster/v1/permissioned/SponsorPaymaster.sol";
 
+import {ENTRY_POINT, PAYMASTER_ADDRESS, PAYMASTER_PROXY_ADDRESS} from "./000_ContractAddress.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Script} from "forge-std/src/Script.sol";
@@ -27,13 +28,12 @@ import {console} from "forge-std/src/console.sol";
 
 contract DeploySponsorPaymaster is Script {
     // EXPECTED_PAYMASTER_ADDRESS is the expected address of the paymaster implementation contract.
-    address payable constant EXPECTED_PAYMASTER_ADDRESS = payable(address(0x36058Cc257967db1912FC276F9CBEC072CD572cb));
+    address payable constant EXPECTED_PAYMASTER_ADDRESS = payable(PAYMASTER_ADDRESS);
     // EXPECTED_PAYMASTER_PROXY_ADDRESS is the expected address of the proxy to the paymaster implementation contract.
-    address payable constant EXPECTED_PAYMASTER_PROXY_ADDRESS =
-        payable(address(0x03dF76C8c30A88f424CF3CBBC36A1Ca02763103b));
+    address payable constant EXPECTED_PAYMASTER_PROXY_ADDRESS = payable(PAYMASTER_PROXY_ADDRESS);
 
     function run() public {
-        address entryPoint = vm.envAddress("ENTRY_POINT");
+        address entryPoint = ENTRY_POINT;
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 

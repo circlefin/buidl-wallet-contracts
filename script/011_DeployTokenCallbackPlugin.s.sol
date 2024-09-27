@@ -19,11 +19,13 @@
 pragma solidity 0.8.24;
 
 import {DefaultTokenCallbackPlugin} from "../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
+
+import {DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployTokenCallbackPluginScript is Script {
     // Safety check to avoid accidental deploy. Change address to 0x0 if you want to deploy a new version.
-    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS"));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");

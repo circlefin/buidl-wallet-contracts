@@ -19,10 +19,12 @@
 pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+
+import {UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract StakeUpgradableMSCAFactory is Script {
-    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_ADDRESS"));
+    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");

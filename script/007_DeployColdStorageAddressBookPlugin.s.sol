@@ -20,11 +20,13 @@ pragma solidity 0.8.24;
 
 import {ColdStorageAddressBookPlugin} from
     "../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
+
+import {COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS} from "./000_ContractAddress.sol";
 import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract DeployColdStorageAddressBookPluginScript is Script {
-    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS"));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");

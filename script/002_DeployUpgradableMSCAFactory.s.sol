@@ -19,15 +19,17 @@
 pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+
+import {ENTRY_POINT, PLUGIN_MANAGER_ADDRESS, UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployUpgradableMSCAFactoryScript is Script {
-    address PLUGIN_MANAGER = vm.envAddress("PLUGIN_MANAGER_ADDRESS");
     address OWNER = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
-    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_ADDRESS"));
+    address PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
+    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
 
     function run() public {
-        address entryPoint = vm.envAddress("ENTRY_POINT");
+        address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
         vm.startBroadcast(key);

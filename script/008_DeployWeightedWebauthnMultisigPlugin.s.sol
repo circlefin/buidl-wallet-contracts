@@ -20,14 +20,16 @@ pragma solidity 0.8.24;
 
 import {WeightedWebauthnMultisigPlugin} from
     "../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
+
+import {ENTRY_POINT, WEIGHTED_MULTISIG_PLUGIN_ADDRESS} from "./000_ContractAddress.sol";
 import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract DeployWeightedWebauthnMultisigPlugin is Script {
-    address payable EXPECTED_PLUGIN_ADDRESS = payable(vm.envAddress("WEIGHTED_MULTISIG_PLUGIN_ADDRESS"));
+    address payable EXPECTED_PLUGIN_ADDRESS = payable(WEIGHTED_MULTISIG_PLUGIN_ADDRESS);
 
     function run() public {
-        address entryPoint = vm.envAddress("ENTRY_POINT");
+        address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
         vm.startBroadcast(key);

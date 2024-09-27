@@ -19,13 +19,21 @@
 pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+
+import {
+    COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS,
+    DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS,
+    SINGLE_OWNER_PLUGIN_ADDRESS,
+    UPGRADABLE_MSCA_FACTORY_ADDRESS,
+    WEIGHTED_MULTISIG_PLUGIN_ADDRESS
+} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 // Only needed for MSCA v0.7 factories. This script is the same as 009_SetUpgradableMSCAFactoryPlugins.s.sol, but with
 // the
 // default token callback plugin included).
 contract SetUpgradableMSCAFactoryPlugins is Script {
-    address payable EXPECTED_FACTORY_ADDRESS = payable(vm.envAddress("UPGRADABLE_MSCA_FACTORY_ADDRESS"));
+    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
@@ -35,10 +43,10 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
         address[] memory plugins = new address[](numPlugins);
         bool[] memory pluginPermissions = new bool[](numPlugins);
 
-        plugins[0] = vm.envAddress("SINGLE_OWNER_PLUGIN_ADDRESS");
-        plugins[1] = vm.envAddress("COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS");
-        plugins[2] = vm.envAddress("WEIGHTED_MULTISIG_PLUGIN_ADDRESS");
-        plugins[3] = vm.envAddress("DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS");
+        plugins[0] = SINGLE_OWNER_PLUGIN_ADDRESS;
+        plugins[1] = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
+        plugins[2] = WEIGHTED_MULTISIG_PLUGIN_ADDRESS;
+        plugins[3] = DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS;
 
         for (uint256 i = 0; i < numPlugins; i++) {
             pluginPermissions[i] = true;

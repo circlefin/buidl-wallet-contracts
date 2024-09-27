@@ -19,10 +19,12 @@
 pragma solidity 0.8.24;
 
 import {PluginManager} from "../src/msca/6900/v0.7/managers/PluginManager.sol";
+
+import {PLUGIN_MANAGER_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
-    address EXPECTED_PLUGIN_MANAGER = vm.envAddress("PLUGIN_MANAGER_ADDRESS");
+    address EXPECTED_PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
 
     function run() public {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
