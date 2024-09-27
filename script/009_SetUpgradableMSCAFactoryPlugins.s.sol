@@ -19,20 +19,31 @@
 pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+
+import {
+    COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS,
+    SINGLE_OWNER_PLUGIN_ADDRESS,
+    UPGRADABLE_MSCA_FACTORY_ADDRESS,
+    WEIGHTED_MULTISIG_PLUGIN_ADDRESS
+} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
+// Skip this step if deploying MSCA 0.7 contracts (instead use 011.1_SetUpgradableMSCAFactoryPlugins.s.sol later)
 contract SetUpgradableMSCAFactoryPlugins is Script {
-    address payable constant EXPECTED_FACTORY_ADDRESS = payable(address(0x95abd14795D32A4e636e976Ff31dC634Ad33A09E));
+    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         // Initialize setPlugins exec call data
-        uint256 numPlugins = 1;
+        uint256 numPlugins = 3;
         address[] memory plugins = new address[](numPlugins);
         bool[] memory pluginPermissions = new bool[](numPlugins);
 
-        plugins[0] = 0x5FC0e9da759812cd862625bF6d3EA02EB0666160; // WeightedWebauthnMultisigPlugin address
+        plugins[0] = SINGLE_OWNER_PLUGIN_ADDRESS;
+        plugins[1] = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
+        plugins[2] = WEIGHTED_MULTISIG_PLUGIN_ADDRESS;
+
         for (uint256 i = 0; i < numPlugins; i++) {
             pluginPermissions[i] = true;
         }
@@ -47,8 +58,9 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
 
         // Set plugins for factory
         vm.startBroadcast(key);
-        factory.setPlugins(plugins, pluginPermissions);
-        console.log("Checking if first plugin is allowed: ", factory.isPluginAllowed(plugins[0]));
+        for (uint256 i = 0; i < numPlugins; i++) {
+            console.log("Checking if plugin number", i, "is allowed:", factory.isPluginAllowed(plugins[0]));
+        }
         vm.stopBroadcast();
     }
 }
