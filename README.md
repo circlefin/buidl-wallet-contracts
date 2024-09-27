@@ -43,7 +43,7 @@ To export contract bytecode & ABI for programmable wallet:
 2. Execute `make abigen`
 3. Interface files will appear under `abigen` folder
 4. After changes are merged, release new repository tag
-5. update `smart-wallet-contracts` go mod version of programmable-wallet, and import bytecode from `abigen` folder
+5. update `buidl-wallet-contracts` go mod version of programmable-wallet, and import bytecode from `abigen` folder
 
 For running integration tests in Anvil node, run `make anvil-tests`. This runs the python tests in [test/anvil](test/anvil/)
 
@@ -91,6 +91,8 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
           Example: `forge script script/001_DeployPluginManager.s.sol --rpc-url $RPC_URL --broadcast --verify -vvvv`
 
       Tip: before executing the above command, verify the simulation works as expected by running the above command without the `--broadcast` and `--verify` flags. This way, you can also make sure your address will have enough tokens to cover the transaction fee estimated in the simulation.
+
+      Note: if you are deploying on a local network, don't use the `--verify` flag.
     
   4. Include the relevant logs from the `broadcast` folder in your commit.
 
