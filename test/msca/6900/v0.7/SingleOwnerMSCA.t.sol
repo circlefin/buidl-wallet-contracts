@@ -34,6 +34,8 @@ import "../../../util/TestUtils.sol";
 
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
 
+import {DefaultTokenCallbackPlugin} from
+    "../../../../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
 import {TestUserOpAllPassValidator} from "./TestUserOpAllPassValidator.sol";
 import "./TestUserOpValidator.sol";
 import "./TestUserOpValidatorHook.sol";
@@ -504,17 +506,22 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory initializingData = abi.encode(sendingOwnerAddr);
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         vm.deal(address(sender), 1 ether);
+        DefaultTokenCallbackPlugin defaultTokenCallbackPlugin = new DefaultTokenCallbackPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
+        bytes32 manifest = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
+        FunctionReference[] memory emptyFR = new FunctionReference[](0);
+        sender.installPlugin(address(defaultTokenCallbackPlugin), manifest, "", emptyFR);
+
         ExecutionFunctionConfig memory executionFunctionConfig =
             sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(sender));
+        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
         vm.stopPrank();
 
         // okay to use a random address to view
         vm.startPrank(vm.addr(123));
         executionFunctionConfig = sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(sender));
+        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
         vm.stopPrank();
     }
 
