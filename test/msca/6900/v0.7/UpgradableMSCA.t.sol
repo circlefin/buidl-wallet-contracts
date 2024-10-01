@@ -23,6 +23,7 @@ import {EMPTY_FUNCTION_REFERENCE} from "../../../../src/common/Constants.sol";
 import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
 
+import {InvalidValidationFunctionId} from "../../../../src/msca/6900/shared/common/Errors.sol";
 import {
     PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
     RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
@@ -46,6 +47,8 @@ import {TestERC721} from "../../../util/TestERC721.sol";
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
 import {TestUtils} from "../../../util/TestUtils.sol";
 
+import {DefaultTokenCallbackPlugin} from
+    "../../../../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
 import {TestValidatorHook} from "../v0.7/TestUserOpValidatorHook.sol";
 import {TestCircleMSCA} from "./TestCircleMSCA.sol";
 import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
@@ -93,6 +96,7 @@ contract UpgradableMSCATest is TestUtils {
     TestCircleMSCAFactory private factory;
     address private factoryOwner;
     SingleOwnerPlugin private singleOwnerPlugin;
+    DefaultTokenCallbackPlugin private defaultTokenCallbackPlugin;
 
     function setUp() public {
         factoryOwner = makeAddr("factoryOwner");
@@ -102,10 +106,13 @@ contract UpgradableMSCATest is TestUtils {
         testLiquidityPool = new TestLiquidityPool("getrich", "$$$");
         factory = new TestCircleMSCAFactory(factoryOwner, entryPoint, pluginManager);
         singleOwnerPlugin = new SingleOwnerPlugin();
-        address[] memory _plugins = new address[](1);
+        defaultTokenCallbackPlugin = new DefaultTokenCallbackPlugin();
+        address[] memory _plugins = new address[](2);
         _plugins[0] = address(singleOwnerPlugin);
-        bool[] memory _permissions = new bool[](1);
+        _plugins[1] = address(defaultTokenCallbackPlugin);
+        bool[] memory _permissions = new bool[](2);
         _permissions[0] = true;
+        _permissions[1] = true;
         vm.startPrank(factoryOwner);
         factory.setPlugins(_plugins, _permissions);
         vm.stopPrank();
@@ -883,10 +890,10 @@ contract UpgradableMSCATest is TestUtils {
         assertEq(testLiquidityPool.balanceOf(senderAddr), 1000000);
     }
 
-    // should be able to receive ERC1155 token with token callback enshrined
-    function testSendAndReceiveERC1155TokenNatively() public {
+    // should not be able to receive ERC1155 token w/o token callback plugin
+    function testSendAndReceiveERC1155TokenWithoutDefaultCallbackPlugin() public {
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC1155TokenNatively_sender");
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC1155TokenWithoutDefaultCallbackPlugin_sender");
         address[] memory plugins = new address[](1);
         bytes32[] memory manifestHashes = new bytes32[](1);
         bytes[] memory pluginInstallData = new bytes[](1);
@@ -897,14 +904,15 @@ contract UpgradableMSCATest is TestUtils {
         factory.createAccount(ownerAddr, salt, initializingData);
         (address senderAddr,) = factory.getAddress(ownerAddr, salt, initializingData);
         vm.deal(senderAddr, 1 ether);
+        // InvalidValidationFunctionId
+        vm.expectRevert(abi.encodeWithSelector(InvalidValidationFunctionId.selector, 0));
         testERC1155.mint(senderAddr, 0, 2, "");
-        assertEq(testERC1155.balanceOf(senderAddr, 0), 2);
     }
 
-    // should not be able to receive ERC721 token with token callback enshrined
-    function testSendAndReceiveERC721TokenNatively() public {
+    // should not be able to receive ERC721 token w/o token callback plugin
+    function testSendAndReceiveERC721TokenWithoutDefaultCallbackPlugin() public {
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC721TokenNatively_sender");
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC721TokenWithoutDefaultCallbackPlugin_sender");
         address[] memory plugins = new address[](1);
         bytes32[] memory manifestHashes = new bytes32[](1);
         bytes[] memory pluginInstallData = new bytes[](1);
@@ -915,20 +923,24 @@ contract UpgradableMSCATest is TestUtils {
         factory.createAccount(ownerAddr, salt, initializingData);
         (address senderAddr,) = factory.getAddress(ownerAddr, salt, initializingData);
         vm.deal(senderAddr, 1 ether);
+        // we do the runtime validation now first, so it would not even pass that due to missing of onERC721Received
+        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("InvalidValidationFunctionId(uint8)")), uint8(0)));
         testERC721.safeMint(senderAddr, 0);
-        assertEq(testERC721.balanceOf(senderAddr), 1);
     }
 
-    // should be able to send/receive ERC1155 token with token callback handler
-    function testSendAndReceiveERC1155TokenWithDefaultCallbackHandler() public {
+    // should be able to send/receive ERC1155 token with token callback plugin
+    function testSendAndReceiveERC1155TokenWithDefaultCallbackPlugin() public {
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC1155TokenWithDefaultCallbackHandler_sender");
-        address[] memory plugins = new address[](1);
-        bytes32[] memory manifestHashes = new bytes32[](1);
-        bytes[] memory pluginInstallData = new bytes[](1);
-        plugins[0] = address(singleOwnerPlugin);
-        manifestHashes[0] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
-        pluginInstallData[0] = abi.encode(ownerAddr);
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC1155TokenWithDefaultCallbackPlugin_sender");
+        address[] memory plugins = new address[](2);
+        bytes32[] memory manifestHashes = new bytes32[](2);
+        bytes[] memory pluginInstallData = new bytes[](2);
+        plugins[0] = address(defaultTokenCallbackPlugin);
+        manifestHashes[0] = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
+        pluginInstallData[0] = "";
+        plugins[1] = address(singleOwnerPlugin);
+        manifestHashes[1] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
+        pluginInstallData[1] = abi.encode(ownerAddr);
         bytes memory initializingData = abi.encode(plugins, manifestHashes, pluginInstallData);
         factory.createAccount(ownerAddr, salt, initializingData);
         (address senderAddr,) = factory.getAddress(ownerAddr, salt, initializingData);
@@ -976,16 +988,19 @@ contract UpgradableMSCATest is TestUtils {
         assertEq(testERC1155.balanceOf(senderAddr, 0), 1);
     }
 
-    // should be able to send/receive ERC721 token with token callback handler
-    function testSendAndReceiveERC721TokenWithDefaultCallbackHandler() public {
+    // should be able to send/receive ERC721 token with token callback plugin
+    function testSendAndReceiveERC721TokenWithDefaultCallbackPlugin() public {
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC721TokenWithDefaultCallbackHandler_sender");
-        address[] memory plugins = new address[](1);
-        bytes32[] memory manifestHashes = new bytes32[](1);
-        bytes[] memory pluginInstallData = new bytes[](1);
-        plugins[0] = address(singleOwnerPlugin);
-        manifestHashes[0] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
-        pluginInstallData[0] = abi.encode(ownerAddr);
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC721TokenWithDefaultCallbackPlugin_sender");
+        address[] memory plugins = new address[](2);
+        bytes32[] memory manifestHashes = new bytes32[](2);
+        bytes[] memory pluginInstallData = new bytes[](2);
+        plugins[0] = address(defaultTokenCallbackPlugin);
+        manifestHashes[0] = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
+        pluginInstallData[0] = "";
+        plugins[1] = address(singleOwnerPlugin);
+        manifestHashes[1] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
+        pluginInstallData[1] = abi.encode(ownerAddr);
         bytes memory initializingData = abi.encode(plugins, manifestHashes, pluginInstallData);
         factory.createAccount(ownerAddr, salt, initializingData);
         (address senderAddr,) = factory.getAddress(ownerAddr, salt, initializingData);
@@ -1064,12 +1079,15 @@ contract UpgradableMSCATest is TestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testCreateAccountFromEP");
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         // only get address w/o deployment
-        address[] memory plugins = new address[](1);
-        bytes32[] memory manifestHashes = new bytes32[](1);
-        bytes[] memory pluginInstallData = new bytes[](1);
+        address[] memory plugins = new address[](2);
+        bytes32[] memory manifestHashes = new bytes32[](2);
+        bytes[] memory pluginInstallData = new bytes[](2);
         plugins[0] = address(singleOwnerPlugin);
         manifestHashes[0] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         pluginInstallData[0] = abi.encode(ownerAddr);
+        plugins[1] = address(defaultTokenCallbackPlugin);
+        manifestHashes[1] = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
+        pluginInstallData[1] = "";
         bytes memory initializingData = abi.encode(plugins, manifestHashes, pluginInstallData);
         (address sender,) = factory.getAddress(ownerAddr, salt, initializingData);
         assertTrue(sender.code.length == 0);

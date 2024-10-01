@@ -5,7 +5,7 @@
   "scripts": {
     "clean": "rm -rf cache artifacts typechain-types",
     "build": "forge build",
-    "lint": "solhint -w 130 -c .solhint-src.json './src/**/*.sol' && solhint -w 245 -c .solhint-test.json './test/**/*.sol'",
+    "lint": "solhint -w 140 -c .solhint-src.json './src/**/*.sol' && solhint -w 290 -c .solhint-test.json './test/**/*.sol'",
     "test": "forge test -vv",
     "gasreport": "forge test --gas-report > gas/reports/gas-report.txt",
     "coverage": "forge coverage --ir-minimum",
