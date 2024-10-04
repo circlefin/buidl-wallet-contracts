@@ -30,7 +30,7 @@ import {Script, console} from "forge-std/src/Script.sol";
 
 // Skip this step if deploying MSCA 0.7 contracts (instead use 011.1_SetUpgradableMSCAFactoryPlugins.s.sol later)
 contract SetUpgradableMSCAFactoryPlugins is Script {
-    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
+    address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");

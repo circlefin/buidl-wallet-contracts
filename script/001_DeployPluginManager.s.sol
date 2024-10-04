@@ -24,7 +24,7 @@ import {PLUGIN_MANAGER_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
-    address EXPECTED_PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
+    address internal constant EXPECTED_PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
 
     function run() public {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");

@@ -18,12 +18,13 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
-import "forge-std/src/Script.sol";
+import {SingleOwnerMSCAFactory} from "../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerMSCAFactoryScript is Script {
-    address constant PLUGIN_MANAGER = 0xc751A2bFA2A4a5b27E94ad735534c16a0999d871;
-    address payable constant EXPECTED_FACTORY_ADDRESS = payable(address(0x1a1f5310eD7fF0B84Cef7E6d7D0f94Cc16D23013));
+    address internal constant PLUGIN_MANAGER = 0xc751A2bFA2A4a5b27E94ad735534c16a0999d871;
+    address payable internal constant EXPECTED_FACTORY_ADDRESS =
+        payable(address(0x1a1f5310eD7fF0B84Cef7E6d7D0f94Cc16D23013));
 
     function run() public {
         address entryPoint = vm.envAddress("ENTRY_POINT");

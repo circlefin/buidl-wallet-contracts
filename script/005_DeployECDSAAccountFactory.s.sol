@@ -18,14 +18,16 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/account/v1/factory/ECDSAAccountFactory.sol";
-import "forge-std/src/Script.sol";
+import {ECDSAAccountFactory} from "../src/account/v1/factory/ECDSAAccountFactory.sol";
+
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {Script, console} from "forge-std/src/Script.sol";
 
 /// @dev We actually still used hardhat deployment for this legacy contract. This script is more for convenience
 /// purpose.
 contract DeployECDSAAccountFactoryScript is Script {
-    // TODO: replace this with officially deployed address
-    address payable constant EXPECTED_FACTORY_ADDRESS = payable(address(0x39c09e93D074782C5ffc45da27910c14C628a183));
+    address payable internal constant EXPECTED_FACTORY_ADDRESS =
+        payable(address(0x39c09e93D074782C5ffc45da27910c14C628a183));
 
     function run() public {
         address entryPoint = vm.envAddress("ENTRY_POINT");
