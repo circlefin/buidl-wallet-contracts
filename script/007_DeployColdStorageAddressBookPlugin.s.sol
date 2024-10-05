@@ -26,7 +26,7 @@ import {Script} from "forge-std/src/Script.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract DeployColdStorageAddressBookPluginScript is Script {
-    address payable EXPECTED_PLUGIN_ADDRESS = payable(COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS);
+    address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");

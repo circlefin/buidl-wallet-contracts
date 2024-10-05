@@ -24,9 +24,9 @@ import {ENTRY_POINT, PLUGIN_MANAGER_ADDRESS, UPGRADABLE_MSCA_FACTORY_ADDRESS} fr
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployUpgradableMSCAFactoryScript is Script {
-    address OWNER = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
-    address PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
-    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
+    address internal constant PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
+    address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
+    address internal owner = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
 
     function run() public {
         address entryPoint = ENTRY_POINT;
@@ -36,7 +36,7 @@ contract DeployUpgradableMSCAFactoryScript is Script {
 
         UpgradableMSCAFactory factory;
         if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
-            factory = new UpgradableMSCAFactory{salt: 0}(OWNER, entryPoint, PLUGIN_MANAGER);
+            factory = new UpgradableMSCAFactory{salt: 0}(owner, entryPoint, PLUGIN_MANAGER);
             console.log("Deployed new factory at address: %s", address(factory));
         } else {
             factory = UpgradableMSCAFactory(EXPECTED_FACTORY_ADDRESS);

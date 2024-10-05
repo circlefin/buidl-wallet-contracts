@@ -18,13 +18,13 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {SingleOwnerPlugin} from "../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
 
 import {SINGLE_OWNER_PLUGIN_ADDRESS} from "./000_ContractAddress.sol";
-import "forge-std/src/Script.sol";
+import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerPluginScript is Script {
-    address payable EXPECTED_PLUGIN_ADDRESS = payable(SINGLE_OWNER_PLUGIN_ADDRESS);
+    address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(SINGLE_OWNER_PLUGIN_ADDRESS);
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");

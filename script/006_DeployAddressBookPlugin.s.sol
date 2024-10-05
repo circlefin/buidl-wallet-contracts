@@ -24,8 +24,8 @@ import {console} from "forge-std/src/console.sol";
 
 // Deprecated
 contract DeployAddressBookPluginScript is Script {
-    // TODO: replace this with officially deployed address
-    address payable constant EXPECTED_PLUGIN_ADDRESS = payable(address(0x1E0689ae0171CcFbE9E7C7491B1eb09e0D5b7103));
+    address payable internal constant EXPECTED_PLUGIN_ADDRESS =
+        payable(address(0x1E0689ae0171CcFbE9E7C7491B1eb09e0D5b7103));
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
