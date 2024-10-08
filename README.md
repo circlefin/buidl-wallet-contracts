@@ -15,7 +15,7 @@ This repository includes support for both the Hardhat and Foundry frameworks. Go
 ## Development
 
 ### Lint
-Run `yarn lint` to lint all `.sol` files in the `src` and `test` directories.
+Run `yarn lint` to lint all `.sol` files in the `src` and `test` directories. Run `yarn format:check` and `yarn format:write` to check for, and fix formatting issues, respectively.
 
 ### Test
 To run tests using Foundry, follow the steps below:
@@ -123,6 +123,11 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
             # Example
             cast abi-encode "constructor(address,address,uint256)" "0x0166EA90E565476f13c6a0D25ED2C35599E58785" "0x0000000071727De22E5E9d8BAf0edAc6f37da032" 18
             ```
+
+            Make sure to save this output under `script/verify/<ContractName>/abiEncodedConstructorArgs`.
+            
+            Tip: if your contract's constructor arguments have complicated types, you can get this value instead by `console.log`ing the output of `abi.encode(arg1, arg2, ...)` in Solidity.
+
          * Click verify and publish
 
 ### Deployment Metadata
