@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.0.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v1.0.0...v2.0.0) (2024-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* Revert unaudited token receiver changes ([#8](https://github.com/circlefin/buidl-wallet-contracts/issues/8))
+
+### Bug Fixes
+
+* Revert unaudited token receiver changes ([#8](https://github.com/circlefin/buidl-wallet-contracts/issues/8)) ([2549e72](https://github.com/circlefin/buidl-wallet-contracts/commit/2549e726144a87807bcc3a29628093c33d18ee10))
+
+
+### Documentation
+
+* document SingleOwnerMSCAFactory std-json-input ([#10](https://github.com/circlefin/buidl-wallet-contracts/issues/10)) ([31398de](https://github.com/circlefin/buidl-wallet-contracts/commit/31398deb3b3af7c35f3521c5ff2d10b092b2b65b))
+
+
+### Miscellaneous Chores
+
+* update deps ([#14](https://github.com/circlefin/buidl-wallet-contracts/issues/14)) ([f5575d0](https://github.com/circlefin/buidl-wallet-contracts/commit/f5575d0886bdaa49bd1100f2a06261d6060490df))
+
+
+### Code Refactoring
+
+* deployment scripts and commands ([#12](https://github.com/circlefin/buidl-wallet-contracts/issues/12)) ([7388395](https://github.com/circlefin/buidl-wallet-contracts/commit/7388395fac2ac8bcd19af9a1caaac5df3c4813f2))
+
 ## 1.0.0 (2024-09-27)
 
 
