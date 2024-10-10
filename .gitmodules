@@ -1,28 +1,4 @@
-[submodule "lib/forge-std"]
-	path = lib/forge-std
-	url = https://github.com/foundry-rs/forge-std
-	branch = v1
-[submodule "lib/openzeppelin-contracts"]
-	path = lib/openzeppelin-contracts
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-	branch = release-v5.0
-[submodule "lib/openzeppelin-contracts-upgradeable"]
-	path = lib/openzeppelin-contracts-upgradeable
-	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
-	branch = release-v5.0
 [submodule "lib/account-abstraction"]
 	path = lib/account-abstraction
 	url = https://github.com/eth-infinitism/account-abstraction
 	branch = releases/v0.7
-[submodule "lib/solady"]
-	path = lib/solady
-	url = https://github.com/vectorized/solady
-[submodule "lib/FreshCryptoLib"]
-	path = lib/FreshCryptoLib
-	url = https://github.com/rdubois-crypto/FreshCryptoLib
-[submodule "lib/p256-verifier"]
-	path = lib/p256-verifier
-	url = https://github.com/daimo-eth/p256-verifier
-[submodule "lib/modular-account-libs"]
-	path = lib/modular-account-libs
-	url = https://github.com/erc6900/modular-account-libs
