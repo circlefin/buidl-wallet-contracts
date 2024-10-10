@@ -7,6 +7,8 @@ libs = ['lib']
 solc_version = "0.8.24"
 test = 'test'
 via_ir = true
+auto_detect_solc = false
+auto_detect_remappings = false
 
 [fuzz]
 runs = 1024
