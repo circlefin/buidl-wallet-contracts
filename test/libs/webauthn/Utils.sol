@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {FCL_Elliptic_ZZ} from "FreshCryptoLib/FCL_elliptic.sol";
-import {Base64Url} from "FreshCryptoLib/utils/Base64Url.sol";
+import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
+import {Base64Url} from "@fcl/utils/Base64Url.sol";
 
 struct WebAuthnInfo {
     bytes authenticatorData;

@@ -25,6 +25,20 @@
     js-tokens "^4.0.0"
     picocolors "^1.0.0"
 
+"@modular-account-libs@github:erc6900/modular-account-libs#v0.8.0-rc.0":
+  version "0.8.0-rc.0"
+  resolved "https://codeload.github.com/erc6900/modular-account-libs/tar.gz/d64adb5bd100d6ad64d0a83b5dc13b356423d852"
+
+"@openzeppelin/contracts-upgradeable@5.0.2":
+  version "5.0.2"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-5.0.2.tgz#3e5321a2ecdd0b206064356798c21225b6ec7105"
+  integrity sha512-0MmkHSHiW2NRFiT9/r5Lu4eJq5UJ4/tzlOgYXNAIj/ONkQTVnz22pLxDvp4C4uZ9he7ZFvGn3Driptn1/iU7tQ==
+
+"@openzeppelin/contracts@5.0.2":
+  version "5.0.2"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-5.0.2.tgz#b1d03075e49290d06570b2fd42154d76c2a5d210"
+  integrity sha512-ytPc6eLGcHHnapAZ9S+5qsdomhjo6QBHTDRRBFfTxXIpsicMhVPouPgmUPebZZZGX7vt9USA+Z+0M0dSVtSUEA==
+
 "@pnpm/config.env-replace@^1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@pnpm/config.env-replace/-/config.env-replace-1.1.0.tgz#ab29da53df41e8948a00f2433f085f54de8b3a4c"
@@ -279,6 +293,14 @@ fast-uri@^3.0.1:
   version "3.0.2"
   resolved "https://registry.yarnpkg.com/fast-uri/-/fast-uri-3.0.2.tgz#d78b298cf70fd3b752fd951175a3da6a7b48f024"
   integrity sha512-GR6f0hD7XXyNJa25Tb9BuIdN0tdr+0BMi6/CJPH3wJO1JjNG3n/VsSw38AwRdKZABm8lGbPfakLRkYzx2V9row==
+
+"fcl@github:rdubois-crypto/FreshCryptoLib#8179e08cac72072bd260796633fec41fdfd5b441":
+  version "0.0.0"
+  resolved "https://codeload.github.com/rdubois-crypto/FreshCryptoLib/tar.gz/8179e08cac72072bd260796633fec41fdfd5b441"
+
+"forge-std@github:foundry-rs/forge-std#v1.9.2":
+  version "1.9.2"
+  resolved "https://codeload.github.com/foundry-rs/forge-std/tar.gz/1714bee72e286e73f76e320d110e0eaf5c4e649d"
 
 form-data-encoder@^2.1.2:
   version "2.1.4"
@@ -618,6 +640,11 @@ slice-ansi@^4.0.0:
     ansi-styles "^4.0.0"
     astral-regex "^2.0.0"
     is-fullwidth-code-point "^3.0.0"
+
+solady@0.0.243:
+  version "0.0.243"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.243.tgz#f1d3063206f44111c45a987d66f68a0a72c9f60e"
+  integrity sha512-KwYZ79Sx+KUQ04d4dyj5P+ny1yi1LYDYv2ixZtgr43Eyn3PTvc+21do+eHG63vl4ZSREh3B3W9BAIgar68qF1A==
 
 solhint@^5.0.3:
   version "5.0.3"
