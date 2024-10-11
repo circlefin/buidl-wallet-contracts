@@ -23,7 +23,7 @@ When operating a multisig, there may be significant time elapsed between individ
 - initCode
 - callData
 
-Remaining user op fields should be set to their default values. See [default minimal user op values](https://github.com/circlefin/buidl-wallet-contracts/blob/57e1588729694d3d4b09e6d4b590713e04192093/src/msca/6900/v0.7/plugins/v1_0_0/multisig/BaseMultisigPlugin.sol#L94-L123) for reference.
+Remaining user op fields should be set to their default values. See [default minimal user op values](https://github.com/circlefin/smart-wallet-contracts/blob/57e1588729694d3d4b09e6d4b590713e04192093/src/msca/6900/v0.7/plugins/v1_0_0/multisig/BaseMultisigPlugin.sol#L94-L123) for reference.
 
 The k-th signature should sign over a user op with all fields set to their actual values. Additionally, the `v` value of the k-th signature should be incremented by 32 to denote that the signature is over the actual gas values.
 

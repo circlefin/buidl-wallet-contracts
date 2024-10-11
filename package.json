@@ -16,8 +16,8 @@
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "@modular-account-libs": "github:erc6900/modular-account-libs#v0.8.0-rc.0",
-    "@openzeppelin/contracts": "5.0.2",
-    "@openzeppelin/contracts-upgradeable": "5.0.2",
+    "@openzeppelin/contracts": "4.9.6",
+    "@openzeppelin/contracts-upgradeable": "4.9.6",
     "fcl": "github:rdubois-crypto/FreshCryptoLib#8179e08cac72072bd260796633fec41fdfd5b441",
     "forge-std": "github:foundry-rs/forge-std#v1.9.2",
     "solady": "0.0.243"

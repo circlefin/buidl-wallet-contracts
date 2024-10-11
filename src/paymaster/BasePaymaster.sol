@@ -22,11 +22,11 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 
 import {IStakeManager} from "@account-abstraction/contracts/interfaces/IStakeManager.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 /**
  * The paymaster must also have a deposit, which the entry point will charge UserOperation costs from.
@@ -69,12 +69,13 @@ abstract contract BasePaymaster is
 
     function __BasePaymaster_init(address _newOwner) internal onlyInitializing {
         __UUPSUpgradeable_init();
-        __Ownable_init(_newOwner);
+        __Ownable_init();
+        transferOwnership(_newOwner);
         __Pausable_init();
     }
 
     /// @inheritdoc IPaymaster
-    function validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
+    function validatePaymasterUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
         external
         override
         whenNotPaused
@@ -84,25 +85,18 @@ abstract contract BasePaymaster is
         return _validatePaymasterUserOp(userOp, userOpHash, maxCost);
     }
 
-    function _validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
+    function _validatePaymasterUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
         internal
         virtual
         returns (bytes memory context, uint256 validationData);
 
     /// @inheritdoc IPaymaster
-    function postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost, uint256 actualUserOpFeePerGas)
-        external
-        override
-        whenNotPaused
-    {
+    function postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) external override whenNotPaused {
         _requireFromEntryPoint();
-        _postOp(mode, context, actualGasCost, actualUserOpFeePerGas);
+        _postOp(mode, context, actualGasCost);
     }
 
-    function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost, uint256 actualUserOpFeePerGas)
-        internal
-        virtual
-    {}
+    function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal virtual {}
 
     /**
      * add a deposit for this paymaster, used for paying for transaction fees

@@ -72,4 +72,27 @@ library ExecutionUtils {
         }
         return returnData;
     }
+
+    /// @dev Allocates memory for and retrieves return data from the previous external function call. The end of the
+    /// allocated data may not be aligned to 32 bytes, which means the next free memory slot might fall somewhere
+    /// between two 32-byte words. Therefore the memory address is aligned to the next 32-byte boundary to ensure
+    /// efficient memory usage. The function also stores the size of the return data and copies the return data
+    /// itself into the allocated memory.
+    /// @return returnData the data returned by the last external function call.
+    /// @notice The function ensures memory alignment by adding 63 (0x3f = 0x1f + 0x20) and clearing the last 5 bits,
+    /// ensuring the memory is pushed to the nearest multiple of 32 bytes. This avoids unaligned memory access,
+    /// which can lead to inefficiencies.
+    function fetchReturnData() internal pure returns (bytes memory returnData) {
+        assembly ("memory-safe") {
+            // allocate memory for the return data starting at the free memory pointer
+            returnData := mload(0x40)
+            // update the free memory pointer after adding the size of the return data and ensuring it is aligned to the
+            // next 32-byte boundary
+            mstore(0x40, add(returnData, and(add(returndatasize(), 0x3f), not(0x1f))))
+            // store the size of the return data at the start of the allocated memory
+            mstore(returnData, returndatasize())
+            // copy the return data to the allocated memory space
+            returndatacopy(add(returnData, 0x20), 0, returndatasize())
+        }
+    }
 }

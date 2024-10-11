@@ -84,7 +84,7 @@ contract SingleOwnerMSCAWithAddressBookPluginTest is PluginGasProfileBaseTest {
         address[] memory recipients = new address[](1);
         recipients[0] = vm.addr(1);
         bytes memory executeCallData = abi.encodeCall(IAddressBookPlugin.addAllowedRecipients, (recipients));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(executeCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(executeCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
@@ -110,7 +110,7 @@ contract SingleOwnerMSCAWithAddressBookPluginTest is PluginGasProfileBaseTest {
 
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IAddressBookPlugin.removeAllowedRecipients, (recipients));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(executeCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(executeCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
@@ -138,7 +138,7 @@ contract SingleOwnerMSCAWithAddressBookPluginTest is PluginGasProfileBaseTest {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (recipientAddr, 1, "", recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(executeCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(executeCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
@@ -161,7 +161,7 @@ contract SingleOwnerMSCAWithAddressBookPluginTest is PluginGasProfileBaseTest {
         dependencies[1] = FunctionReference(mscaAddr, uint8(SingleOwnerMSCA.FunctionId.NATIVE_USER_OP_VALIDATION_OWNER));
         bytes memory installCallData =
             abi.encodeCall(msca.installPlugin, (address(addressBookPlugin), manifestHash, "", dependencies));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(installCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(installCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
@@ -186,7 +186,7 @@ contract SingleOwnerMSCAWithAddressBookPluginTest is PluginGasProfileBaseTest {
         // now uninstall
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory uninstallCallData = abi.encodeCall(msca.uninstallPlugin, (address(addressBookPlugin), "", ""));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(uninstallCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(uninstallCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;

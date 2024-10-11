@@ -27,7 +27,6 @@ import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.s
 import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
@@ -48,9 +47,8 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
  */
 contract SponsorPaymaster is BasePaymaster {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using UserOperationLib for PackedUserOperation;
-    using PaymasterUtils for PackedUserOperation;
-    using MessageHashUtils for bytes32;
+    using UserOperationLib for UserOperation;
+    using PaymasterUtils for UserOperation;
 
     error VerifyingSignerAlreadyExists(address verifyingSigner);
     error VerifyingSignerDoesNotExist(address verifyingSigner);
@@ -60,10 +58,8 @@ contract SponsorPaymaster is BasePaymaster {
 
     // constants still work for upgradable contracts because the compiler does not reserve storage slot
     // and every occurrence is replaced by the respective constant expression
-    uint256 private constant PAYMASTER_VALIDATION_GAS_OFFSET = 20;
-    uint256 private constant PAYMASTER_POSTOP_GAS_OFFSET = 36;
-    uint256 private constant TIMESTAMP_START = 52;
-    uint256 private constant SIGNATURE_START = 116;
+    uint256 private constant TIMESTAMP_START = 20;
+    uint256 private constant SIGNATURE_START = 84;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     // for immutable values in implementations
@@ -87,12 +83,10 @@ contract SponsorPaymaster is BasePaymaster {
      * Verify our external signer has signed this request.
      * The "paymasterAndData" is expected to be the paymaster and a signature over the entire request params.
      * paymasterAndData[:20] : address(this)
-     * paymasterAndData[20:36] : paymasterVerificationGasLimit
-     * paymasterAndData[36:52] : paymasterPostOpGasLimit
-     * paymasterAndData[52:116] : abi.encode(validUntil, validAfter)
-     * paymasterAndData[116:] : signature
+     * paymasterAndData[20:84] : abi.encode(validUntil, validAfter)
+     * paymasterAndData[84:] : signature
      */
-    function _validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
+    function _validatePaymasterUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 maxCost)
         internal
         view
         override
@@ -101,21 +95,14 @@ contract SponsorPaymaster is BasePaymaster {
         // unused
         (userOpHash, maxCost);
 
-        (
-            uint128 paymasterVerificationGasLimit,
-            uint128 paymasterPostOpGasLimit,
-            uint48 validUntil,
-            uint48 validAfter,
-            bytes memory signature
-        ) = parsePaymasterAndData(userOp.paymasterAndData);
+        (uint48 validUntil, uint48 validAfter, bytes memory signature) = parsePaymasterAndData(userOp.paymasterAndData);
 
         // calculate hash and check sig if applicable
-        bytes32 hash = getHash(userOp, paymasterVerificationGasLimit, paymasterPostOpGasLimit, validUntil, validAfter)
-            .toEthSignedMessageHash();
+        bytes32 hash = ECDSA.toEthSignedMessageHash(getHash(userOp, validUntil, validAfter));
 
         // try recover the signer and verify if signer is a valid verifying signer
         // don't revert on signature failure: return SIG_VALIDATION_FAILED
-        (address recovered, ECDSA.RecoverError error,) = ECDSA.tryRecover(hash, signature);
+        (address recovered, ECDSA.RecoverError error) = ECDSA.tryRecover(hash, signature);
         if (error != ECDSA.RecoverError.NoError || !verifyingSigners.contains(recovered)) {
             return ("", _packValidationData(true, validUntil, validAfter));
         }
@@ -128,26 +115,14 @@ contract SponsorPaymaster is BasePaymaster {
 
     /**
      * paymasterAndData[:20] : address(this)
-     * paymasterAndData[20:36] : paymasterVerificationGasLimit
-     * paymasterAndData[36:52] : paymasterPostOpGasLimit
-     * paymasterAndData[52:116] : abi.encode(validUntil, validAfter)
-     * paymasterAndData[116:] : signature
+     * paymasterAndData[20:84] : abi.encode(validUntil, validAfter)
+     * paymasterAndData[84:] : signature
      */
     function parsePaymasterAndData(bytes calldata paymasterAndData)
         public
         pure
-        returns (
-            uint128 paymasterVerificationGasLimit,
-            uint128 paymasterPostOpGasLimit,
-            uint48 validUntil,
-            uint48 validAfter,
-            bytes calldata signature
-        )
+        returns (uint48 validUntil, uint48 validAfter, bytes calldata signature)
     {
-        // slice the packed bytes
-        paymasterVerificationGasLimit =
-            uint128(bytes16(paymasterAndData[PAYMASTER_VALIDATION_GAS_OFFSET:PAYMASTER_POSTOP_GAS_OFFSET]));
-        paymasterPostOpGasLimit = uint128(bytes16(paymasterAndData[PAYMASTER_POSTOP_GAS_OFFSET:TIMESTAMP_START]));
         (validUntil, validAfter) = abi.decode(paymasterAndData[TIMESTAMP_START:SIGNATURE_START], (uint48, uint48));
         signature = paymasterAndData[SIGNATURE_START:];
     }
@@ -156,40 +131,32 @@ contract SponsorPaymaster is BasePaymaster {
      * return the hash we're going to sign off-chain (and validate on-chain)
      * this method is called by the off-chain service, to sign the request.
      * it is called on-chain from the validatePaymasterUserOp, to validate the signature.
-     * note that this signature covers all fields of the UserOperation and paymaster gas fields, except the
-     * "paymasterAndData",
+     * note that this signature covers all fields of the UserOperation, except the "paymasterAndData",
      * which will carry the signature itself.
-     * struct PackedUserOperation {
+     * struct UserOperation {
      *   address sender;
      *   uint256 nonce;
      *   bytes initCode;
      *   bytes callData;
-     *   bytes32 accountGasLimits;
+     *   uint256 callGasLimit;
+     *   uint256 verificationGasLimit;
      *   uint256 preVerificationGas;
-     *   bytes32 gasFees;
+     *   uint256 maxFeePerGas;
+     *   uint256 maxPriorityFeePerGas;
      *   bytes paymasterAndData;
      *   bytes signature;
      * }
      */
-    function getHash(
-        PackedUserOperation calldata userOp,
-        uint128 paymasterVerificationGasLimit,
-        uint128 paymasterPostOpGasLimit,
-        uint48 validUntil,
-        uint48 validAfter
-    ) public view returns (bytes32) {
+    function getHash(UserOperation calldata userOp, uint48 validUntil, uint48 validAfter)
+        public
+        view
+        returns (bytes32)
+    {
         // can't use userOp.hash(), since it contains also the paymasterAndData itself.
         // EP manages nonce via NonceManager so senderNonce is redundant
+        // packUpToPaymasterAndData already encodes userOp.nonce
         return keccak256(
-            abi.encode(
-                userOp.packUpToPaymasterAndData(),
-                paymasterVerificationGasLimit,
-                paymasterPostOpGasLimit,
-                block.chainid,
-                address(this),
-                validUntil,
-                validAfter
-            )
+            abi.encode(userOp.packUpToPaymasterAndData(), block.chainid, address(this), validUntil, validAfter)
         );
     }
 

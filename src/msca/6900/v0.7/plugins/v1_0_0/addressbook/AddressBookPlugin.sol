@@ -33,13 +33,13 @@ import {IPluginExecutor} from "../../../interfaces/IPluginExecutor.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
 import {IAddressBookPlugin} from "./IAddressBookPlugin.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @dev Implementation for IAddressBookPlugin. AddressBookPlugin would require the owner validation provided by native
@@ -161,7 +161,7 @@ contract AddressBookPlugin is BasePlugin, IAddressBookPlugin, ReentrancyGuard {
     }
 
     /// @inheritdoc BasePlugin
-    function preUserOpValidationHook(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function preUserOpValidationHook(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         view
         override

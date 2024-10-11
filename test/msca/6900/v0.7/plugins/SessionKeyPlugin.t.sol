@@ -23,7 +23,7 @@ pragma solidity 0.8.24;
  * import {TestUtils} from "../../../../util/TestUtils.sol";
  * import {console} from "forge-std/src/console.sol";
  * import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
- * import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+ * import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
  * import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
  * import {ISessionKeyPlugin} from "@modular-account/plugins/session/ISessionKeyPlugin.sol";
  * import {ISessionKeyPermissionsUpdates} from
@@ -261,7 +261,7 @@ pragma solidity 0.8.24;
  *         uint256 sessionKeyPrivate,
  *         bytes memory expectedError
  *     ) internal {
- *         PackedUserOperation memory userOp = buildPartialUserOp(
+ *         UserOperation memory userOp = buildPartialUserOp(
  *             senderAddr,
  *             entryPoint.getNonce(senderAddr, 0),
  *             "0x",
@@ -277,7 +277,7 @@ pragma solidity 0.8.24;
  *
  *         // sign with session key
  *         userOp.signature = signUserOpHash(entryPoint, vm, sessionKeyPrivate, userOp);
- *         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+ *         UserOperation[] memory ops = new UserOperation[](1);
  *         ops[0] = userOp;
  *         if (expectedError.length > 0) {
  *             vm.expectRevert(expectedError);

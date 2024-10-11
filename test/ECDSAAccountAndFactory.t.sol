@@ -18,18 +18,18 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/account/v1/factory/ECDSAAccountFactory.sol";
+import {ECDSAAccountFactory} from "../src/account/v1/factory/ECDSAAccountFactory.sol";
 
-import "./util/TestERC1155.sol";
-import "./util/TestERC721.sol";
-import "./util/TestLiquidityPool.sol";
-import "./util/TestUtils.sol";
+import {ECDSAAccount} from "../src/account/v1/ECDSAAccount.sol";
+import {TestERC1155} from "./util/TestERC1155.sol";
+import {TestERC721} from "./util/TestERC721.sol";
+import {TestLiquidityPool} from "./util/TestLiquidityPool.sol";
+import {TestUtils} from "./util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
-import "forge-std/src/console.sol";
+import {console} from "forge-std/src/console.sol";
 
 contract ECDSAAccountAndFactoryTest is TestUtils {
     // erc721
@@ -122,7 +122,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
             abi.encodeWithSelector(bytes4(keccak256("upgradeToAndCall(address,bytes)")), v2ImplAddr, "");
         bytes memory executeCallData =
             abi.encodeWithSelector(bytes4(keccak256("execute(address,uint256,bytes)")), sender, 0, upgradeToCallData);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             "0x",
@@ -138,7 +138,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
 
         // verify Upgraded event
@@ -157,7 +157,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidateUserOp");
         console.log(ownerAddr);
         ECDSAAccount proxy = ecdsaAccountFactory.createAccount(ownerAddr);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(proxy),
             28,
             "0x",
@@ -184,7 +184,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidateUserOp_sigFromOthers");
         console.log(ownerAddr);
         ECDSAAccount proxy = ecdsaAccountFactory.createAccount(ownerAddr);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(proxy),
             28,
             "0x",
@@ -230,14 +230,14 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), liquidityPoolSpenderAddr, 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender, acctNonce, "0x", vm.toString(executeCallData), 83353, 102865, 45484, 516219199704, 1130000000, "0x"
         );
 
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.expectEmit(true, true, true, false);
         // successful execution
@@ -275,7 +275,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         console.log(ecdsaAccountFactoryAddr);
         bytes memory initCode = abi.encodePacked(ecdsaAccountFactoryAddr, createAccountCall);
         console.logBytes(initCode);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -291,7 +291,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.expectEmit(true, true, true, false);
         // successful execution
@@ -329,7 +329,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         // we're not supposed to provide initCode other than 0x
         bytes memory initCode = abi.encodePacked(ecdsaAccountFactoryAddr, createAccountCall);
         console.logBytes(initCode);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -344,7 +344,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.expectRevert();
         entryPoint.handleOps(ops, beneficiary);
@@ -514,7 +514,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
             abi.encodeWithSelector(bytes4(keccak256("executeBatch(address[],uint256[],bytes[])")), dest, value, func);
         bytes memory createAccountCall =
             abi.encodeWithSelector(bytes4(keccak256("createAccount(address)")), (ownerAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(abi.encodePacked(address(ecdsaAccountFactory), createAccountCall)),
@@ -530,7 +530,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
 
         vm.expectEmit(true, true, true, false);
@@ -620,23 +620,10 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
     function testIsValidSignature() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testIsValidSignature");
         ECDSAAccount proxy = ecdsaAccountFactory.createAccount(ownerAddr);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(proxy),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        bytes4 magicValue = proxy.isValidSignature(userOpHash, signature);
+        bytes32 hash = bytes32(keccak256("testIsValidSignature"));
+        bytes32 replaySafeHash = proxy.getReplaySafeMessageHash(hash);
+        bytes memory signature = signMessage(vm, eoaPrivateKey, replaySafeHash);
+        bytes4 magicValue = proxy.isValidSignature(hash, signature);
         assertEq(magicValue, bytes4(0x1626ba7e));
         vm.stopPrank();
     }
@@ -644,7 +631,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
     function testIsValidSignature_sigFromOthers() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testIsValidSignature_invalidSig");
         ECDSAAccount proxy = ecdsaAccountFactory.createAccount(ownerAddr);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(proxy),
             28,
             "0x",
@@ -681,7 +668,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         proxy.pause();
         assertEq(true, proxy.paused());
         // should fail if we pause the paused contract
-        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.expectRevert("Pausable: paused");
         proxy.pause();
         // start with balance
         vm.deal(sender, 1 ether);
@@ -695,17 +682,17 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), liquidityPoolSpenderAddr, 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender, acctNonce, "0x", vm.toString(executeCallData), 83353, 102865, 45484, 516219199704, 1130000000, "0x"
         );
 
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.expectEmit(true, true, false, true);
-        bytes memory revertReason = abi.encodePacked(PausableUpgradeable.EnforcedPause.selector);
+        bytes memory revertReason = abi.encodeWithSelector(bytes4(keccak256("Error(string)")), "Pausable: paused");
         emit UserOperationRevertReason(userOpHash, sender, acctNonce, revertReason);
         vm.startPrank(address(entryPoint));
         // should fail because of paused contract
@@ -732,14 +719,14 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), recipient, 100000000000000000, "0x"
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender, acctNonce, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
 
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
 
         // ignore gas

@@ -33,8 +33,7 @@ import {TestUtils} from "../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 contract UpgradableMSCAFactoryTest is TestUtils {
     event AccountCreated(address indexed proxy, bytes32 sender, bytes32 salt);
@@ -160,7 +159,7 @@ contract UpgradableMSCAFactoryTest is TestUtils {
             abi.encodeCall(UpgradableMSCAFactory.createAccount, (addressToBytes32(ownerAddr), salt, initializingData));
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -176,7 +175,7 @@ contract UpgradableMSCAFactoryTest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -205,20 +204,20 @@ contract UpgradableMSCAFactoryTest is TestUtils {
 
         address randomAddr = makeAddr("randomAddr");
         vm.startPrank(randomAddr);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         factory.withdrawStake(stakeWithdrawalAddr);
 
         vm.deal(randomAddr, 1 ether);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         factory.addStake{value: 123}(1);
 
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         factory.unlockStake();
 
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         factory.transferOwnership(address(0x1));
 
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
+        vm.expectRevert(bytes("Ownable: caller is not the owner"));
         address[] memory _plugins = new address[](1);
         _plugins[0] = address(singleOwnerPlugin);
         bool[] memory _permissions = new bool[](1);

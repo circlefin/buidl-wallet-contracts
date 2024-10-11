@@ -26,7 +26,7 @@ import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManag
 import "../../../util/TestLiquidityPool.sol";
 import "../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "forge-std/src/console.sol";
 
 contract SingleOwnerMSCAFactoryTest is TestUtils {
@@ -106,7 +106,7 @@ contract SingleOwnerMSCAFactoryTest is TestUtils {
             abi.encodeCall(SingleOwnerMSCAFactory.createAccount, (ownerAddr, salt, initializingData));
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -122,7 +122,7 @@ contract SingleOwnerMSCAFactoryTest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
