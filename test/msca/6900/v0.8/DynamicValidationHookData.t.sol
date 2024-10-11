@@ -24,39 +24,39 @@ import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableM
 
 import {ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
 
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
 import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
 
 import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
-    "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+    "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 
-import {TestAddressBookPlugin} from "./helpers/TestAddressBookPlugin.sol";
+import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
+
+import {HookConfigLib} from "../../../../src/msca/6900/v0.8/libs/HookConfigLib.sol";
+import {TestAddressBookModule} from "./helpers/TestAddressBookModule.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-// We use TestCircleMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
+// We use UpgradableMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
 contract DynamicValidationHookDataTest is AccountTestUtils {
     using ModuleEntityLib for ModuleEntity;
 
-    error PreRuntimeValidationHookFailed(address plugin, uint32 entityId, bytes revertReason);
+    error PreRuntimeValidationHookFailed(address module, uint32 entityId, bytes revertReason);
+    error NonCanonicalEncoding();
 
     IEntryPoint private entryPoint = new EntryPoint();
-    PluginManager private pluginManager = new PluginManager();
     uint256 internal ownerPrivateKey;
     address private ownerAddr;
     address payable private beneficiary; // e.g. bundler
-    TestCircleMSCAFactory private factory;
+    UpgradableMSCAFactory private factory;
     address private factoryOwner;
     SingleSignerValidationModule private singleSignerValidationModule;
     ModuleEntity private ownerValidation;
-    TestAddressBookPlugin private addressBookPlugin;
+    TestAddressBookModule private addressBookModule;
     bytes private initializingData;
     bytes32 private salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
     UpgradableMSCA private msca;
@@ -64,22 +64,22 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
     function setUp() public {
         factoryOwner = makeAddr("factoryOwner");
         beneficiary = payable(address(makeAddr("bundler")));
-        factory = new TestCircleMSCAFactory(factoryOwner, entryPoint, pluginManager);
+        factory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint));
         singleSignerValidationModule = new SingleSignerValidationModule();
-        addressBookPlugin = new TestAddressBookPlugin();
-        address[] memory plugins = new address[](2);
-        plugins[0] = address(singleSignerValidationModule);
-        plugins[1] = address(addressBookPlugin);
+        addressBookModule = new TestAddressBookModule();
+        address[] memory modules = new address[](2);
+        modules[0] = address(singleSignerValidationModule);
+        modules[1] = address(addressBookModule);
         bool[] memory _permissions = new bool[](2);
         _permissions[0] = true;
         _permissions[1] = true;
         vm.startPrank(factoryOwner);
-        factory.setPlugins(plugins, _permissions);
+        factory.setModules(modules, _permissions);
         vm.stopPrank();
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
 
-        address accountImplementation = address(factory.accountImplementation());
-        msca = TestCircleMSCA(payable(new ERC1967Proxy(accountImplementation, "")));
+        address accountImplementation = address(factory.ACCOUNT_IMPLEMENTATION());
+        msca = UpgradableMSCA(payable(new ERC1967Proxy(accountImplementation, "")));
     }
 
     // send native token, run through pre userOp hook (pass) => validation (pass)
@@ -90,7 +90,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
 
         // send eth
         // build userOp
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -118,7 +118,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         _installValidationForMSCA(recipientAddr);
 
         // send eth
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         // pack the recipientAddr into hook data for check
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](1);
         validationHookData[0] = PreValidationHookData({index: 0, hookData: abi.encodePacked(recipientAddr)});
@@ -126,7 +126,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         bytes memory authorizationData = encodeSignature(validationHookData, ownerValidation, "", true);
 
         vm.startPrank(ownerAddr);
-        msca.executeWithAuthorization(executeCallData, authorizationData);
+        msca.executeWithRuntimeValidation(executeCallData, authorizationData);
         vm.stopPrank();
         // verify recipient balance
         assertEq(recipientAddr.balance, 1);
@@ -140,7 +140,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
 
         // send eth
         // build userOp
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -179,7 +179,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
 
         // send eth
         // build userOp
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -215,7 +215,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
 
         // send eth
         // build userOp
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -235,7 +235,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
                 IEntryPoint.FailedOpWithRevert.selector,
                 0,
                 "AA23 reverted",
-                abi.encodeWithSignature("InvalidSignatureSegmentPacking()")
+                abi.encodeWithSignature("ValidationSignatureSegmentMissing()")
             )
         );
         entryPoint.handleOps(ops, beneficiary);
@@ -252,7 +252,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
 
         // send eth
         // build userOp
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -273,7 +273,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
                 IEntryPoint.FailedOpWithRevert.selector,
                 0,
                 "AA23 reverted",
-                abi.encodeWithSignature("SignatureSegmentOutOfOrder()")
+                abi.encodeWithSignature("ValidationSignatureSegmentMissing()")
             )
         );
         entryPoint.handleOps(ops, beneficiary);
@@ -290,7 +290,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
 
         // send eth
         // build userOp
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -310,7 +310,44 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
                 IEntryPoint.FailedOpWithRevert.selector,
                 0,
                 "AA23 reverted",
-                abi.encodeWithSignature("ZeroSignatureSegment()")
+                abi.encodeWithSignature("NonCanonicalEncoding()")
+            )
+        );
+        entryPoint.handleOps(ops, beneficiary);
+        vm.stopPrank();
+        // verify recipient balance
+        assertEq(recipientAddr.balance, 0);
+    }
+
+    function testPreUserOpHookFail_excessData() public {
+        (ownerAddr, ownerPrivateKey) = makeAddrAndKey("testPreUserOpHookFail_excessData");
+        address recipientAddr = vm.addr(1);
+        _installValidationForMSCA(recipientAddr);
+
+        // send eth
+        // build userOp
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
+        PackedUserOperation memory userOp = buildPartialUserOp(
+            address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
+        );
+        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
+        // signature is the data for ownerValidation
+        bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
+
+        PreValidationHookData[] memory validationHookData = new PreValidationHookData[](1);
+        validationHookData[0] = PreValidationHookData({index: 0, hookData: abi.encodePacked(recipientAddr)});
+        // now encode the signature with hook function, validation function, global validation function flag
+        userOp.signature =
+            abi.encodePacked(encodeSignature(validationHookData, ownerValidation, signature, true), "excess data");
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = userOp;
+        vm.startPrank(address(entryPoint));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.FailedOpWithRevert.selector,
+                0,
+                "AA23 reverted",
+                abi.encodeWithSelector(NonCanonicalEncoding.selector)
             )
         );
         entryPoint.handleOps(ops, beneficiary);
@@ -326,7 +363,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         _installValidationForMSCA(recipientAddr);
 
         // send eth
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         // pack a randomRecipient into hook data for check, would fail
         address randomRecipient = vm.addr(2);
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](1);
@@ -338,12 +375,12 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         vm.expectRevert(
             abi.encodeWithSelector(
                 PreRuntimeValidationHookFailed.selector,
-                address(addressBookPlugin),
-                uint32(TestAddressBookPlugin.EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK),
+                address(addressBookModule),
+                uint32(TestAddressBookModule.EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK),
                 abi.encodeWithSignature("UnauthorizedRecipient(address,address)", address(ownerAddr), randomRecipient)
             )
         );
-        msca.executeWithAuthorization(executeCallData, authorizationData);
+        msca.executeWithRuntimeValidation(executeCallData, authorizationData);
         vm.stopPrank();
         // verify recipient balance
         assertEq(recipientAddr.balance, 0);
@@ -356,7 +393,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         _installValidationForMSCA(recipientAddr);
 
         // send eth
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         // do not pack any hook data for check, would fail
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](0);
         // now encode the signature with hook function, validation function, global validation function flag
@@ -366,12 +403,12 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         vm.expectRevert(
             abi.encodeWithSelector(
                 PreRuntimeValidationHookFailed.selector,
-                address(addressBookPlugin),
-                uint32(TestAddressBookPlugin.EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK),
+                address(addressBookModule),
+                uint32(TestAddressBookModule.EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK),
                 abi.encodeWithSignature("UnauthorizedRecipient(address,address)", address(ownerAddr), address(0))
             )
         );
-        msca.executeWithAuthorization(executeCallData, authorizationData);
+        msca.executeWithRuntimeValidation(executeCallData, authorizationData);
         vm.stopPrank();
         // verify recipient balance
         assertEq(recipientAddr.balance, 0);
@@ -384,7 +421,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         _installValidationForMSCA(recipientAddr);
 
         // send eth
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         // pack more hook data than installed for check, would fail on validation function boundary check
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](2);
         validationHookData[0] = PreValidationHookData({index: 0, hookData: abi.encodePacked(recipientAddr)});
@@ -393,8 +430,8 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         bytes memory authorizationData = encodeSignature(validationHookData, ownerValidation, "", true);
 
         vm.startPrank(ownerAddr);
-        vm.expectRevert(abi.encodeWithSignature("InvalidSignatureSegmentPacking()"));
-        msca.executeWithAuthorization(executeCallData, authorizationData);
+        vm.expectRevert(abi.encodeWithSignature("ValidationSignatureSegmentMissing()"));
+        msca.executeWithRuntimeValidation(executeCallData, authorizationData);
         vm.stopPrank();
         // verify recipient balance
         assertEq(recipientAddr.balance, 0);
@@ -407,7 +444,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         _installValidationForMSCA(recipientAddr);
 
         // send eth
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         // pack out of order hook data for check, would fail on out of order check
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](2);
         validationHookData[0] = PreValidationHookData({index: 0, hookData: abi.encodePacked(recipientAddr)});
@@ -417,8 +454,8 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         bytes memory authorizationData = encodeSignature(validationHookData, ownerValidation, "", true);
 
         vm.startPrank(ownerAddr);
-        vm.expectRevert(abi.encodeWithSignature("SignatureSegmentOutOfOrder()"));
-        msca.executeWithAuthorization(executeCallData, authorizationData);
+        vm.expectRevert(abi.encodeWithSignature("ValidationSignatureSegmentMissing()"));
+        msca.executeWithRuntimeValidation(executeCallData, authorizationData);
         vm.stopPrank();
         // verify recipient balance
         assertEq(recipientAddr.balance, 0);
@@ -431,7 +468,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         _installValidationForMSCA(recipientAddr);
 
         // send eth
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (recipientAddr, 1, ""));
         // pack "" into hook data for check
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](1);
         // empty hook data
@@ -440,8 +477,8 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         bytes memory authorizationData = encodeSignature(validationHookData, ownerValidation, "", true);
 
         vm.startPrank(ownerAddr);
-        vm.expectRevert(abi.encodeWithSignature("ZeroSignatureSegment()"));
-        msca.executeWithAuthorization(executeCallData, authorizationData);
+        vm.expectRevert(abi.encodeWithSignature("NonCanonicalEncoding()"));
+        msca.executeWithRuntimeValidation(executeCallData, authorizationData);
         vm.stopPrank();
         // verify recipient balance
         assertEq(recipientAddr.balance, 0);
@@ -450,24 +487,25 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
     function _installValidationForMSCA(address recipientAddr) internal {
         address[] memory recipients = new address[](1);
         recipients[0] = recipientAddr;
-
-        ModuleEntity[] memory preValidationHooks = new ModuleEntity[](1);
-        preValidationHooks[0] = ModuleEntityLib.pack(
-            address(addressBookPlugin), uint32(TestAddressBookPlugin.EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK)
-        );
         // onInstall
-        bytes[] memory preValidationHooksData = new bytes[](1);
-        preValidationHooksData[0] = abi.encode(recipients);
-        bytes memory packedPreValidationHooks = abi.encode(preValidationHooks, preValidationHooksData);
+        bytes[] memory hooks = new bytes[](1);
+        hooks[0] = abi.encodePacked(
+            HookConfigLib.packValidationHook({
+                _hookFunction: ModuleEntityLib.pack(
+                    address(addressBookModule),
+                    uint32(TestAddressBookModule.EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK)
+                )
+            }),
+            abi.encode(recipients)
+        );
 
         vm.startPrank(address(msca));
         // ownerValidation is global
         msca.installValidation(
-            ValidationConfigLib.pack(ownerValidation, true, true),
+            ValidationConfigLib.pack(ownerValidation, true, true, true),
             new bytes4[](0),
             abi.encode(uint32(0), ownerAddr),
-            packedPreValidationHooks,
-            bytes("")
+            hooks
         );
         vm.stopPrank();
         vm.deal(address(msca), 1 ether);

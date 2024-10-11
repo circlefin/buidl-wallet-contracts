@@ -22,8 +22,8 @@ import {
     EIP1271_INVALID_SIGNATURE,
     EIP1271_VALID_SIGNATURE,
     EMPTY_MODULE_ENTITY,
-    WALLET_AUTHOR,
-    WALLET_VERSION_1
+    SENTINEL_BYTES32,
+    SENTINEL_BYTES4
 } from "../../../../common/Constants.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
 import {
@@ -35,41 +35,48 @@ import {
 import {AddressDLL, Bytes32DLL, Bytes4DLL, ValidationData} from "../../shared/common/Structs.sol";
 import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
 import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
-
-import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
-
 import {Bytes4DLLLib} from "../../shared/libs/Bytes4DLLLib.sol";
 import {ValidationDataLib} from "../../shared/libs/ValidationDataLib.sol";
-import {GLOBAL_VALIDATION_FLAG, RESERVED_VALIDATION_DATA_INDEX} from "../common/Constants.sol";
+import {DIRECT_CALL_VALIDATION_ENTITY_ID, GLOBAL_VALIDATION_FLAG, MAX_VALIDATION_HOOKS} from "../common/Constants.sol";
+
+import {ExecutionManifest, ManifestExecutionHook} from "../common/ModuleManifest.sol";
 import {
     Bytes32DLL,
     Call,
+    ExecutionDataView,
     ExecutionDetail,
-    ExecutionHook,
     PostExecHookToRun,
+    ValidationDataView,
     ValidationDetail
 } from "../common/Structs.sol";
 
-import {ModuleEntity, ValidationConfig} from "../common/Types.sol";
-import {IAccountExecute} from "../interfaces/IAccountExecute.sol";
-import {IAccountLoupe} from "../interfaces/IAccountLoupe.sol";
-import {IPluginManager} from "../interfaces/IPluginManager.sol";
-import {IStandardExecutor} from "../interfaces/IStandardExecutor.sol";
-import {IValidation} from "../interfaces/IValidation.sol";
-import {IValidationHook} from "../interfaces/IValidationHook.sol";
-import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";
+import {HookConfig, ModuleEntity, ValidationConfig} from "../common/Types.sol";
+
+import {IExecutionHookModule} from "../interfaces/IExecutionHookModule.sol";
+import {IModularAccount} from "../interfaces/IModularAccount.sol";
+import {IModularAccountView} from "../interfaces/IModularAccountView.sol";
+import {IModule} from "../interfaces/IModule.sol";
+
+import {IValidationHookModule} from "../interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "../interfaces/IValidationModule.sol";
+
+import {HookConfigLib} from "../libs/HookConfigLib.sol";
 import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
 import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
 import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
+import {ValidationConfigLib} from "../libs/thirdparty/ValidationConfigLib.sol";
 
-import {ModuleEntityLib} from "../libs/thirdparty/ModuleEntityLib.sol";
 import {SparseCalldataSegmentLib} from "../libs/thirdparty/SparseCalldataSegmentLib.sol";
-import {PluginManager} from "../managers/PluginManager.sol";
 import {StandardExecutor} from "../managers/StandardExecutor.sol";
 import {WalletStorageInitializable} from "./WalletStorageInitializable.sol";
+
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
+import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+
+import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
@@ -79,17 +86,17 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
  */
 abstract contract BaseMSCA is
     WalletStorageInitializable,
-    IPluginManager,
-    IAccountLoupe,
-    IStandardExecutor,
+    IAccount,
     IAccountExecute,
+    IModularAccount,
+    IModularAccountView,
     IERC165,
     IERC1271
 {
     using Bytes32DLLLib for Bytes32DLL;
     using ModuleEntityLib for ModuleEntity;
-    using ExecutionHookLib for Bytes32DLL;
-    using ExecutionHookLib for PostExecHookToRun[];
+    using HookConfigLib for Bytes32DLL;
+    using HookConfigLib for PostExecHookToRun[];
     using ExecutionUtils for address;
     using StandardExecutor for address;
     using StandardExecutor for Call[];
@@ -98,46 +105,62 @@ abstract contract BaseMSCA is
     using SelectorRegistryLib for bytes4;
     using SparseCalldataSegmentLib for bytes;
     using Bytes4DLLLib for Bytes4DLL;
+    using ValidationConfigLib for ValidationConfig;
+    using HookConfigLib for HookConfig;
+    using HookConfigLib for bytes32;
 
-    string public constant AUTHOR = WALLET_AUTHOR;
-    string public constant VERSION = WALLET_VERSION_1;
+    enum ValidationCheckingType {
+        GLOBAL,
+        SELECTOR,
+        EITHER
+    }
     // 4337 related immutable storage
+
     IEntryPoint public immutable ENTRY_POINT;
-    PluginManager public immutable pluginManager;
 
     error NotNativeFunctionSelector(bytes4 selector);
-    error PreRuntimeValidationHookFailed(address plugin, uint32 entityId, bytes revertReason);
-    error RuntimeValidationFailed(address plugin, uint32 entityId, bytes revertReason);
+    error PreRuntimeValidationHookFailed(address module, uint32 entityId, bytes revertReason);
+    error RuntimeValidationFailed(address module, uint32 entityId, bytes revertReason);
     error AlwaysDenyRule();
     error InvalidSignatureValidation(ModuleEntity sigValidation);
-    error ExecFromPluginToSelectorNotPermitted(address plugin, bytes4 selector);
-    error RuntimeValidationFunctionMissing(bytes4 selector, ModuleEntity validation);
-    error UserOpValidationFunctionMissing(bytes4 selector, ModuleEntity validation);
+    error InvalidUserOpValidation(ModuleEntity userOpValidation);
+    error ExecFromModuleToSelectorNotPermitted(address module, bytes4 selector);
+    error ValidationFunctionMissing(bytes4 selector, ModuleEntity validation);
     error InvalidCalldataLength(uint256 actualLength, uint256 requiredLength);
-    error SignatureSegmentOutOfOrder();
-    error InvalidSignatureSegmentPacking();
-    error ZeroSignatureSegment();
     error RequireUserOperationContext();
     error SelfCallRecursionDepthExceeded();
     error InvalidAuthorizationOrSigLength(uint256 actualLength, uint256 requiredLength);
     error InvalidModuleEntity(ModuleEntity moduleEntity);
+    error ExecutionDetailAlreadySet(address module, bytes4 selector);
+    error ValidationFunctionAlreadySet(bytes4 selector);
+    error FailToCallOnInstall(address module, bytes revertReason);
+    error InvalidExecutionSelector(address module, bytes4 selector);
+    error InvalidExecutionHook(address module, bytes4 selector);
+    error GlobalValidationFunctionAlreadySet(ModuleEntity validationFunction);
+    error PreValidationHookLimitExceeded();
+    error NullModule();
+    error InterfaceNotSupported(address module, bytes4 interfaceId);
+    error InvalidHookUninstallData();
 
     /**
-     * @dev Wraps execution of a native function (as opposed to a function added by plugins) with runtime validations
+     * @dev Wraps execution of a native function (as opposed to a function added by modules) with runtime validations
      * (not from EP)
-     *      and hooks. Used by execute, executeBatch, installPlugin, uninstallPlugin, upgradeTo and upgradeToAndCall.
+     *      and hooks. Used by execute, executeBatch, installModule, uninstallModule, upgradeTo and upgradeToAndCall.
      *      If the call is from entry point, then validateUserOp will run.
      *      https://eips.ethereum.org/assets/eip-6900/Modular_Account_Call_Flow.svg
      */
     modifier validateNativeFunction() {
-        if (!msg.sig._isNativeFunctionSelector()) {
+        if (!msg.sig._isNativeExecutionFunction()) {
             revert NotNativeFunctionSelector(msg.sig);
         }
-        ExecutionDetail storage executionDetail = WalletStorageLib.getLayout().executionDetails[msg.sig];
-        _checkPermittedCallerIfNotFromEP(executionDetail);
-        PostExecHookToRun[] memory postExecHooks = executionDetail.executionHooks._processPreExecHooks(msg.data);
+        WalletStorageLib.Layout storage walletStorage = WalletStorageLib.getLayout();
+        (
+            PostExecHookToRun[] memory postExecHooksFromDirectCallValidation,
+            PostExecHookToRun[] memory postExecHooksFromExecutionSelector
+        ) = _checkCallPermission(walletStorage);
         _;
-        postExecHooks._processPostExecHooks();
+        postExecHooksFromExecutionSelector._processPostExecHooks();
+        postExecHooksFromDirectCallValidation._processPostExecHooks();
     }
 
     /**
@@ -149,30 +172,31 @@ abstract contract BaseMSCA is
         _;
     }
 
-    constructor(IEntryPoint _newEntryPoint, PluginManager _newPluginManager) {
+    constructor(IEntryPoint _newEntryPoint) {
         ENTRY_POINT = _newEntryPoint;
-        pluginManager = _newPluginManager;
         // lock the implementation contract so it can only be called from proxies
         _disableWalletStorageInitializers();
     }
 
     receive() external payable {}
 
-    /// @notice Manage fallback calls made to the plugins.
+    /// @notice Manage fallback calls made to the modules.
     /// @dev Route calls to execution functions based on incoming msg.sig
-    ///      If there's no plugin associated with this function selector, revert
+    ///      If there's no module associated with this function selector, revert
     fallback(bytes calldata) external payable returns (bytes memory result) {
-        // load the executionDetail before we run the preExecHooks because they may modify the plugins
-        ExecutionDetail storage executionDetail = WalletStorageLib.getLayout().executionDetails[msg.sig];
-        address executionFunctionPlugin = executionDetail.plugin;
-        // valid plugin address should not be 0
-        if (executionFunctionPlugin == address(0)) {
+        WalletStorageLib.Layout storage walletStorage = WalletStorageLib.getLayout();
+        address executionFunctionModule = walletStorage.executionDetails[msg.sig].module;
+        // valid module address should not be address(0)
+        if (executionFunctionModule == address(0)) {
             revert InvalidExecutionFunction(msg.sig);
         }
-        _checkPermittedCallerIfNotFromEP(executionDetail);
-        PostExecHookToRun[] memory postExecHooks = executionDetail.executionHooks._processPreExecHooks(msg.data);
-        result = executionFunctionPlugin.callWithReturnDataOrRevert(msg.value, msg.data);
-        postExecHooks._processPostExecHooks();
+        (
+            PostExecHookToRun[] memory postExecHooksFromDirectCallValidation,
+            PostExecHookToRun[] memory postExecHooksFromExecutionSelector
+        ) = _checkCallPermission(walletStorage);
+        result = executionFunctionModule.callWithReturnDataOrRevert(msg.value, msg.data);
+        postExecHooksFromExecutionSelector._processPostExecHooks();
+        postExecHooksFromDirectCallValidation._processPostExecHooks();
         return result;
     }
 
@@ -180,7 +204,7 @@ abstract contract BaseMSCA is
      * @dev Return the entryPoint used by this account.
      * subclass should return the current entryPoint used by this account.
      */
-    function getEntryPoint() external view returns (IEntryPoint) {
+    function entryPoint() public view returns (IEntryPoint) {
         return ENTRY_POINT;
     }
 
@@ -192,6 +216,7 @@ abstract contract BaseMSCA is
     function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
         virtual
+        override
         returns (uint256 validationData)
     {
         if (msg.sender != address(ENTRY_POINT)) {
@@ -225,9 +250,22 @@ abstract contract BaseMSCA is
         if (!WalletStorageLib.getLayout().validationDetails[sigValidation].isSignatureValidation) {
             revert InvalidSignatureValidation(sigValidation);
         }
-        (address plugin, uint32 entityId) = sigValidation.unpack();
+        signature = signature[24:];
+        HookConfig[] memory validationHooks =
+            WalletStorageLib.getLayout().validationDetails[sigValidation].validationHooks;
+        for (uint256 i = 0; i < validationHooks.length; ++i) {
+            (address hookModule, uint32 hookEntityId) = validationHooks[i].unpackValidationHook().unpack();
+            bytes memory currentSignatureSegment;
+            (currentSignatureSegment, signature) = signature.advanceSegmentIfAtIndex(uint8(i));
+            IValidationHookModule(hookModule).preSignatureValidationHook(
+                hookEntityId, msg.sender, hash, currentSignatureSegment
+            );
+        }
+        // validation function
+        signature = signature.getFinalSegment();
+        (address module, uint32 entityId) = sigValidation.unpack();
         if (
-            IValidation(plugin).validateSignature(address(this), entityId, msg.sender, hash, signature[24:])
+            IValidationModule(module).validateSignature(address(this), entityId, msg.sender, hash, signature)
                 == EIP1271_VALID_SIGNATURE
         ) {
             return EIP1271_VALID_SIGNATURE;
@@ -240,77 +278,74 @@ abstract contract BaseMSCA is
      * This method returns the next sequential nonce.
      * For a nonce of a specific key, use `entrypoint.getNonce(account, key)`
      */
-    function getNonce() public view virtual returns (uint256) {
-        return ENTRY_POINT.getNonce(address(this), 0);
+    function getNonce() public view returns (uint256) {
+        return entryPoint().getNonce(address(this), 0);
     }
 
-    /// @inheritdoc IPluginManager
+    /// @inheritdoc IModularAccount
     /// @notice Maybe be validated by a global validation.
-    function installPlugin(address plugin, bytes memory pluginInstallData) external override validateNativeFunction {
-        bytes memory data = abi.encodeCall(PluginManager.installPlugin, (plugin, pluginInstallData));
-        address(pluginManager).delegateCall(data);
-        emit PluginInstalled(plugin);
-    }
-
-    /// @inheritdoc IPluginManager
-    /// @notice Maybe be validated by a global validation.
-    function uninstallPlugin(address plugin, bytes memory config, bytes memory pluginUninstallData)
+    function installExecution(address module, ExecutionManifest calldata manifest, bytes calldata moduleInstallData)
         external
         override
         validateNativeFunction
     {
-        bytes memory data = abi.encodeCall(PluginManager.uninstallPlugin, (plugin, config, pluginUninstallData));
-        address(pluginManager).delegateCall(data);
-        emit PluginUninstalled(plugin, true);
+        _installExecution(module, manifest, moduleInstallData);
+        emit ExecutionInstalled(module, manifest);
     }
 
-    /// @inheritdoc IPluginManager
+    /// @inheritdoc IModularAccount
     /// @notice Maybe be validated by a global validation.
+    function uninstallExecution(address module, ExecutionManifest calldata manifest, bytes calldata moduleUninstallData)
+        external
+        override
+        validateNativeFunction
+    {
+        bool onUninstallSuccess = _uninstallExecution(module, manifest, moduleUninstallData);
+        emit ExecutionUninstalled(module, onUninstallSuccess, manifest);
+    }
+
+    /// @inheritdoc IModularAccount
+    /// @notice Maybe be validated by a global validation.
+    /// @dev This function can be used to update (to a certain degree) previously installed validation functions.
+    ///      - preValidationHook, executionHooks, and selectors can be added later. Though they won't be deleted.
+    ///      - isGlobal and isSignatureValidation can also be updated later.
     function installValidation(
         ValidationConfig validationConfig,
         bytes4[] calldata selectors,
         bytes calldata installData,
-        bytes calldata hooks,
-        bytes calldata permissionHooks
+        bytes[] calldata hooks
     ) external override validateNativeFunction {
-        bytes memory data = abi.encodeCall(
-            PluginManager.installValidation, (validationConfig, selectors, installData, hooks, permissionHooks)
-        );
-        address(pluginManager).delegateCall(data);
-        emit ValidationInstalled(validationConfig, selectors);
+        _installValidation(validationConfig, selectors, installData, hooks);
+        emit ValidationInstalled(validationConfig.module(), validationConfig.entityId());
     }
 
-    /// @inheritdoc IPluginManager
+    /// @inheritdoc IModularAccount
     /// @notice Maybe be validated by a global validation.
     function uninstallValidation(
         ModuleEntity validationFunction,
         bytes calldata uninstallData,
-        bytes calldata hookUninstallData,
-        bytes calldata permissionHookUninstallData
+        bytes[] calldata hookUninstallData
     ) external override validateNativeFunction {
-        bytes memory data = abi.encodeCall(
-            PluginManager.uninstallValidation,
-            (validationFunction, uninstallData, hookUninstallData, permissionHookUninstallData)
-        );
-        address(pluginManager).delegateCall(data);
-        emit ValidationUnInstalled(validationFunction);
+        bool onUninstallSuccess = _uninstallValidation(validationFunction, uninstallData, hookUninstallData);
+        (address module, uint32 entityId) = validationFunction.unpack();
+        emit ValidationUninstalled(module, entityId, onUninstallSuccess);
     }
 
     /// @inheritdoc IAccountExecute
-    function executeUserOp(PackedUserOperation calldata userOp, bytes32) external {
+    function executeUserOp(PackedUserOperation calldata userOp, bytes32) external override {
         if (msg.sender != address(ENTRY_POINT)) {
             revert UnauthorizedCaller();
         }
         // use case: spending limits hook
-        Bytes32DLL storage permissionHooks = WalletStorageLib.getLayout().validationDetails[ModuleEntity.wrap(
+        Bytes32DLL storage executionHooks = WalletStorageLib.getLayout().validationDetails[ModuleEntity.wrap(
             bytes24(userOp.signature[:24])
-        )].permissionHooks;
-        PostExecHookToRun[] memory postPermissionHooks = permissionHooks._processPreExecHooks(msg.data);
+        )].executionHooks;
+        PostExecHookToRun[] memory postExecHooks = executionHooks._processPreExecHooks(msg.data);
         address(this).callWithReturnDataOrRevert(0, userOp.callData[4:]);
-        postPermissionHooks._processPostExecHooks();
+        postExecHooks._processPostExecHooks();
     }
 
-    /// @inheritdoc IStandardExecutor
+    /// @inheritdoc IModularAccount
     /// @notice Maybe be validated by a global validation.
     function execute(address target, uint256 value, bytes calldata data)
         external
@@ -322,7 +357,7 @@ abstract contract BaseMSCA is
         return target.execute(value, data);
     }
 
-    /// @inheritdoc IStandardExecutor
+    /// @inheritdoc IModularAccount
     /// @notice Maybe be validated by a global validation.
     function executeBatch(Call[] calldata calls)
         external
@@ -334,9 +369,9 @@ abstract contract BaseMSCA is
         return calls.executeBatch();
     }
 
-    /// @inheritdoc IStandardExecutor
+    /// @inheritdoc IModularAccount
     /// @notice Maybe be validated by a global validation.
-    function executeWithAuthorization(bytes calldata data, bytes calldata authorization)
+    function executeWithRuntimeValidation(bytes calldata data, bytes calldata authorization)
         external
         payable
         returns (bytes memory result)
@@ -354,66 +389,62 @@ abstract contract BaseMSCA is
         ModuleEntity validationFunction = ModuleEntity.wrap(bytes24(authorization[:24]));
         bool isGlobalValidation = uint8(authorization[24]) == GLOBAL_VALIDATION_FLAG;
         WalletStorageLib.Layout storage walletStorage = WalletStorageLib.getLayout();
-        if (!_checkHookAndValidationForCalldata(walletStorage, data, validationFunction, isGlobalValidation)) {
+        if (
+            !_checkValidationForCalldata(
+                walletStorage,
+                data,
+                validationFunction,
+                isGlobalValidation ? ValidationCheckingType.GLOBAL : ValidationCheckingType.SELECTOR
+            )
+        ) {
             // just use the outer selector for error
-            revert RuntimeValidationFunctionMissing(bytes4(data[:4]), validationFunction);
+            revert ValidationFunctionMissing(bytes4(data[:4]), validationFunction);
         }
         _processRuntimeHooksAndValidation(
-            walletStorage.validationDetails[validationFunction].preValidationHooks,
+            walletStorage.validationDetails[validationFunction].validationHooks,
             validationFunction,
             data,
             authorization[25:]
         );
 
-        // run permission checks
-        Bytes32DLL storage permissionHooks =
-            WalletStorageLib.getLayout().validationDetails[validationFunction].permissionHooks;
-        PostExecHookToRun[] memory postPermissionHooks = permissionHooks._processPreExecHooks(msg.data);
+        // run execution checks
+        Bytes32DLL storage execHooks = WalletStorageLib.getLayout().validationDetails[validationFunction].executionHooks;
+        PostExecHookToRun[] memory postExecHooks = execHooks._processPreExecHooks(msg.data);
         // self execute call
         result = address(this).callWithReturnDataOrRevert(0, data);
-        postPermissionHooks._processPostExecHooks();
+        postExecHooks._processPostExecHooks();
         return result;
     }
 
-    /// @inheritdoc IAccountLoupe
-    function getExecutionData(bytes4 selector) external view returns (address) {
-        WalletStorageLib.Layout storage walletStorage = WalletStorageLib.getLayout();
-        if (selector._isNativeFunctionSelector()) {
-            return address(this);
+    /// @inheritdoc IModularAccountView
+    function getExecutionData(bytes4 selector) external view returns (ExecutionDataView memory executionData) {
+        if (selector._isGlobalValidationAllowedNativeExecutionFunction()) {
+            executionData.module = address(this);
+            executionData.allowGlobalValidation = true;
         } else {
-            return walletStorage.executionDetails[selector].plugin;
+            ExecutionDetail storage executionDetail = WalletStorageLib.getLayout().executionDetails[selector];
+            executionData.module = executionDetail.module;
+            executionData.skipRuntimeValidation = executionDetail.skipRuntimeValidation;
+            executionData.allowGlobalValidation = executionDetail.allowGlobalValidation;
+            executionData.executionHooks = executionDetail.executionHooks._getExecutionHooks();
         }
+        return executionData;
     }
 
-    /// @inheritdoc IAccountLoupe
-    function getSelectors(ModuleEntity validationFunction) external view returns (bytes4[] memory) {
-        return WalletStorageLib.getLayout().validationDetails[validationFunction].selectors.getAll();
-    }
-
-    /// @inheritdoc IAccountLoupe
-    function getExecutionHooks(bytes4 selector) external view returns (ExecutionHook[] memory) {
-        return WalletStorageLib.getLayout().executionDetails[selector].executionHooks._getExecutionHooks();
-    }
-
-    /// @inheritdoc IAccountLoupe
-    function getPermissionHooks(ModuleEntity validationFunction)
+    /// @inheritdoc IModularAccountView
+    function getValidationData(ModuleEntity validationFunction)
         external
         view
-        override
-        returns (ExecutionHook[] memory)
+        returns (ValidationDataView memory validationData)
     {
-        return WalletStorageLib.getLayout().validationDetails[validationFunction].permissionHooks._getExecutionHooks();
-    }
-
-    /// @inheritdoc IAccountLoupe
-    function getPreValidationHooks(ModuleEntity validationFunction) external view returns (ModuleEntity[] memory) {
-        return WalletStorageLib.getLayout().validationDetails[validationFunction].preValidationHooks;
-    }
-
-    /// @notice Gets an array of all installed plugins
-    /// @return pluginAddresses The addresses of all installed plugins
-    function getInstalledPlugins() external view returns (address[] memory pluginAddresses) {
-        return WalletStorageLib.getLayout().installedPlugins.getAll();
+        ValidationDetail storage validationDetail = WalletStorageLib.getLayout().validationDetails[validationFunction];
+        validationData.isGlobal = validationDetail.isGlobal;
+        validationData.isSignatureValidation = validationDetail.isSignatureValidation;
+        validationData.isUserOpValidation = validationDetail.isUserOpValidation;
+        validationData.validationHooks = validationDetail.validationHooks;
+        validationData.executionHooks = validationDetail.executionHooks._getExecutionHooks();
+        validationData.selectors = validationDetail.selectors.getAll();
+        return validationData;
     }
 
     /**
@@ -474,10 +505,16 @@ abstract contract BaseMSCA is
         ModuleEntity validationFunction = ModuleEntity.wrap(bytes24(userOp.signature[:24]));
         bool isGlobalValidation = uint8(userOp.signature[24]) == GLOBAL_VALIDATION_FLAG;
         WalletStorageLib.Layout storage walletStorage = WalletStorageLib.getLayout();
-        if (!_checkHookAndValidationForCalldata(walletStorage, userOp.callData, validationFunction, isGlobalValidation))
-        {
+        if (
+            !_checkValidationForCalldata(
+                walletStorage,
+                userOp.callData,
+                validationFunction,
+                isGlobalValidation ? ValidationCheckingType.GLOBAL : ValidationCheckingType.SELECTOR
+            )
+        ) {
             // just use the outer selector for error
-            revert UserOpValidationFunctionMissing(bytes4(userOp.callData[0:4]), validationFunction);
+            revert ValidationFunctionMissing(bytes4(userOp.callData[0:4]), validationFunction);
         }
         // check if there are permission hooks associated with the validation function, and revert if we're not calling
         // `executeUserOp`,
@@ -486,63 +523,49 @@ abstract contract BaseMSCA is
         // are associated with validation function in storage,
         // only `executeUserOp` would have access to userOp
         ValidationDetail storage validationDetail = walletStorage.validationDetails[validationFunction];
-        if (validationDetail.permissionHooks.size() > 0 && bytes4(userOp.callData[:4]) != this.executeUserOp.selector) {
+        if (validationDetail.executionHooks.size() > 0 && bytes4(userOp.callData[:4]) != this.executeUserOp.selector) {
             revert RequireUserOperationContext();
+        }
+
+        if (!validationDetail.isUserOpValidation) {
+            revert InvalidUserOpValidation(validationFunction);
         }
 
         // use restored signature
         return _processUserOpHooksAndValidation(
-            validationDetail.preValidationHooks, validationFunction, userOp, userOp.signature[25:], userOpHash
+            validationDetail.validationHooks, validationFunction, userOp, userOp.signature[25:], userOpHash
         );
     }
 
     function _processUserOpHooksAndValidation(
-        ModuleEntity[] memory validationHookFunctions,
+        HookConfig[] memory validationHookFunctions,
         ModuleEntity validationFunction,
         PackedUserOperation memory userOp,
         bytes calldata signature,
         bytes32 userOpHash
     ) internal virtual returns (uint256 validationData) {
-        bytes calldata signatureSegment;
-        (signatureSegment, signature) = signature.getNextSegment();
         ValidationData memory unpackedValidationData = ValidationData(0, 0xFFFFFFFFFFFF, address(0));
         // if the function selector has associated pre user operation validation hooks, then those hooks MUST be run
         // sequentially
         uint256 currentValidationData;
         for (uint256 i = 0; i < validationHookFunctions.length; ++i) {
-            if (signatureSegment.getIndex() == i) {
-                // exclude the index
-                userOp.signature = signatureSegment.getBody();
-                if (userOp.signature.length == 0) {
-                    revert ZeroSignatureSegment();
-                }
-                // move forward both segment and calldata
-                (signatureSegment, signature) = signature.getNextSegment();
-                if (signatureSegment.getIndex() <= i) {
-                    revert SignatureSegmentOutOfOrder();
-                }
-            } else {
-                userOp.signature = "";
-            }
+            (userOp.signature, signature) = signature.advanceSegmentIfAtIndex(uint8(i));
             // send the userOp with signature segment for this particular hook function
-            (address hookPlugin, uint32 hookEntityId) = validationHookFunctions[i].unpack();
+            (address hookModule, uint32 hookEntityId) = validationHookFunctions[i].unpackValidationHook().unpack();
             currentValidationData =
-                IValidationHook(hookPlugin).preUserOpValidationHook(hookEntityId, userOp, userOpHash);
+                IValidationHookModule(hookModule).preUserOpValidationHook(hookEntityId, userOp, userOpHash);
             unpackedValidationData = unpackedValidationData._intersectValidationData(currentValidationData);
             // if any return an authorizer value other than 0 or 1, execution MUST revert
             if (unpackedValidationData.authorizer != address(0) && unpackedValidationData.authorizer != address(1)) {
                 revert InvalidAuthorizer();
             }
         }
-        // a single byte index caps the total number of pre-validation hooks at 255
-        if (signatureSegment.getIndex() != RESERVED_VALIDATION_DATA_INDEX) {
-            revert InvalidSignatureSegmentPacking();
-        }
-        userOp.signature = signatureSegment.getBody();
-        (address plugin, uint32 entityId) = validationFunction.unpack();
+        // validation function
+        userOp.signature = signature.getFinalSegment();
+        (address module, uint32 entityId) = validationFunction.unpack();
         // execute the validation function with the user operation and its hash as parameters using the call opcode
-        currentValidationData = IValidation(plugin).validateUserOp(entityId, userOp, userOpHash);
-        // intercept with validation function call
+        currentValidationData = IValidationModule(module).validateUserOp(entityId, userOp, userOpHash);
+        // intersect with validation function call
         unpackedValidationData = unpackedValidationData._intersectValidationData(currentValidationData);
         if (unpackedValidationData.authorizer != address(0) && unpackedValidationData.authorizer != address(1)) {
             // only revert on unexpected values
@@ -552,52 +575,265 @@ abstract contract BaseMSCA is
     }
 
     /**
-     * @dev Default validation logic is from installed plugins. However, you can override this validation logic in MSCA
+     * @dev Default validation logic is from installed modules. However, you can override this validation logic in MSCA
      *      implementations. For instance, semi MSCA such as single owner semi MSCA may want to honor the validation
      *      from native owner.
      */
     function _processRuntimeHooksAndValidation(
-        ModuleEntity[] memory validationHookFunctions,
+        HookConfig[] memory validationHookFunctions,
         ModuleEntity validationFunction,
         bytes calldata data,
-        bytes calldata authorization
+        bytes calldata authorizationData
     ) internal virtual {
-        bytes calldata authorizationSegment;
-        (authorizationSegment, authorization) = authorization.getNextSegment();
         for (uint256 i = 0; i < validationHookFunctions.length; ++i) {
             bytes memory currentAuthorization;
-            if (authorizationSegment.getIndex() == i) {
-                // exclude the index
-                currentAuthorization = authorizationSegment.getBody();
-                if (currentAuthorization.length == 0) {
-                    revert ZeroSignatureSegment();
-                }
-                // move forward both segment and calldata
-                (authorizationSegment, authorization) = authorization.getNextSegment();
-                if (authorizationSegment.getIndex() <= i) {
-                    revert SignatureSegmentOutOfOrder();
-                }
-            } else {
-                currentAuthorization = "";
-            }
+            (currentAuthorization, authorizationData) = authorizationData.advanceSegmentIfAtIndex(uint8(i));
             // send the authorization segment for this particular hook function
-            (address hookPlugin, uint32 hookEntityId) = validationHookFunctions[i].unpack();
-            try IValidationHook(hookPlugin).preRuntimeValidationHook(
+            (address hookModule, uint32 hookEntityId) = validationHookFunctions[i].unpackValidationHook().unpack();
+            try IValidationHookModule(hookModule).preRuntimeValidationHook(
                 hookEntityId, msg.sender, msg.value, data, currentAuthorization
-            ) {} catch (bytes memory revertReason) {
-                revert PreRuntimeValidationHookFailed(hookPlugin, hookEntityId, revertReason);
+            ) {} catch {
+                bytes memory revertReason = ExecutionUtils.fetchReturnData();
+                revert PreRuntimeValidationHookFailed(hookModule, hookEntityId, revertReason);
             }
         }
-        // a single byte index caps the total number of pre-validation hooks at 255
-        if (authorizationSegment.getIndex() != RESERVED_VALIDATION_DATA_INDEX) {
-            revert InvalidSignatureSegmentPacking();
+        // validation function
+        authorizationData = authorizationData.getFinalSegment();
+        (address module, uint32 entityId) = validationFunction.unpack();
+        try IValidationModule(module).validateRuntime(
+            address(this), entityId, msg.sender, msg.value, data, authorizationData
+        ) {} catch {
+            bytes memory revertReason = ExecutionUtils.fetchReturnData();
+            revert RuntimeValidationFailed(module, entityId, revertReason);
         }
-        (address plugin, uint32 entityId) = validationFunction.unpack();
-        try IValidation(plugin).validateRuntime(
-            address(this), entityId, msg.sender, msg.value, data, authorizationSegment.getBody()
-        ) {} catch (bytes memory revertReason) {
-            revert RuntimeValidationFailed(plugin, entityId, revertReason);
+    }
+
+    function _installExecution(address module, ExecutionManifest calldata manifest, bytes calldata moduleInstallData)
+        internal
+    {
+        if (module == address(0)) {
+            revert NullModule();
         }
+        WalletStorageLib.Layout storage storageLayout = WalletStorageLib.getLayout();
+        uint256 length = manifest.interfaceIds.length;
+        for (uint256 i = 0; i < length; ++i) {
+            storageLayout.supportedInterfaces[manifest.interfaceIds[i]] += 1;
+        }
+
+        // record execution details
+        //////////////////////////////////////////////
+        // install execution functions and hooks
+        //////////////////////////////////////////////
+        length = manifest.executionFunctions.length;
+        for (uint256 i = 0; i < length; ++i) {
+            bytes4 selector = manifest.executionFunctions[i].executionSelector;
+            if (storageLayout.executionDetails[selector].module != address(0)) {
+                revert ExecutionDetailAlreadySet(module, selector);
+            }
+            if (selector._isNativeFunction() || selector._isErc4337Function() || selector._isIModuleFunction()) {
+                revert InvalidExecutionSelector(module, selector);
+            }
+            storageLayout.executionDetails[selector].module = module;
+            storageLayout.executionDetails[selector].skipRuntimeValidation =
+                manifest.executionFunctions[i].skipRuntimeValidation;
+            storageLayout.executionDetails[selector].allowGlobalValidation =
+                manifest.executionFunctions[i].allowGlobalValidation;
+        }
+
+        // install execution hooks
+        length = manifest.executionHooks.length;
+        for (uint256 i = 0; i < length; ++i) {
+            ManifestExecutionHook memory manifestExecHook = manifest.executionHooks[i];
+            bytes4 selector = manifestExecHook.executionSelector;
+            if (!manifestExecHook.isPreHook && !manifestExecHook.isPostHook) {
+                revert InvalidExecutionHook(module, selector);
+            }
+            HookConfig hookConfig = HookConfigLib.packExecHook({
+                _module: module,
+                _entityId: manifestExecHook.entityId,
+                _hasPre: manifestExecHook.isPreHook,
+                _hasPost: manifestExecHook.isPostHook
+            });
+            storageLayout.executionDetails[selector].executionHooks.append(hookConfig.toBytes32());
+        }
+
+        // call onInstall to initialize module data for the modular account
+        _onInstall(module, moduleInstallData, type(IModule).interfaceId);
+    }
+
+    function _uninstallExecution(
+        address module,
+        ExecutionManifest calldata manifest,
+        bytes calldata moduleUninstallData
+    ) internal returns (bool) {
+        WalletStorageLib.Layout storage storageLayout = WalletStorageLib.getLayout();
+        // uninstall the components in reverse order (by component type) of their installation
+        //////////////////////////////////////////////
+        // uninstall execution hooks and functions
+        //////////////////////////////////////////////
+        uint256 length = manifest.executionHooks.length;
+        for (uint256 i = 0; i < length; ++i) {
+            ManifestExecutionHook memory manifestExecHook = manifest.executionHooks[i];
+            HookConfig hookConfig = HookConfigLib.packExecHook({
+                _module: module,
+                _entityId: manifestExecHook.entityId,
+                _hasPre: manifestExecHook.isPreHook,
+                _hasPost: manifestExecHook.isPostHook
+            });
+            storageLayout.executionDetails[manifestExecHook.executionSelector].executionHooks.remove(
+                hookConfig.toBytes32()
+            );
+        }
+
+        length = manifest.executionFunctions.length;
+        for (uint256 i = 0; i < length; ++i) {
+            bytes4 selector = manifest.executionFunctions[i].executionSelector;
+            storageLayout.executionDetails[selector].module = address(0);
+            storageLayout.executionDetails[selector].skipRuntimeValidation = false;
+            storageLayout.executionDetails[selector].allowGlobalValidation = false;
+        }
+
+        length = manifest.interfaceIds.length;
+        for (uint256 i = 0; i < length; ++i) {
+            storageLayout.supportedInterfaces[manifest.interfaceIds[i]] -= 1;
+        }
+        // call the module’s onUninstall callback with the data provided in the uninstallData parameter;
+        // This serves to clear the module state for the modular account;
+        // If onUninstall reverts, execution SHOULD continue to allow the uninstall to complete
+        return _onUninstall(module, moduleUninstallData);
+    }
+
+    function _installValidation(
+        ValidationConfig validationConfig,
+        bytes4[] calldata selectors,
+        bytes calldata installData,
+        bytes[] calldata hooks
+    ) internal {
+        ModuleEntity validationModuleEntity = validationConfig.moduleEntity();
+        ValidationDetail storage validationDetail =
+            WalletStorageLib.getLayout().validationDetails[validationModuleEntity];
+        uint256 hooksLength = hooks.length;
+        for (uint256 i = 0; i < hooksLength; ++i) {
+            HookConfig hookConfig = HookConfig.wrap(bytes25(hooks[i][:25]));
+            bytes calldata hookData = hooks[i][25:];
+            if (hookConfig.isValidationHook()) {
+                validationDetail.validationHooks.push(hookConfig);
+                // Avoid collision between reserved index and actual indices
+                if (validationDetail.validationHooks.length > MAX_VALIDATION_HOOKS) {
+                    revert PreValidationHookLimitExceeded();
+                }
+                _onInstall(hookConfig.getModule(), hookData, type(IValidationHookModule).interfaceId);
+            } else {
+                validationDetail.executionHooks.append(hookConfig.toBytes32());
+                _onInstall(hookConfig.getModule(), hookData, type(IExecutionHookModule).interfaceId);
+            }
+        }
+
+        uint256 selectorsLength = selectors.length;
+        for (uint256 i = 0; i < selectorsLength; ++i) {
+            // revert internally
+            validationDetail.selectors.append(selectors[i]);
+        }
+
+        validationDetail.isGlobal = validationConfig.isGlobal();
+        validationDetail.isSignatureValidation = validationConfig.isSignatureValidation();
+        validationDetail.isUserOpValidation = validationConfig.isUserOpValidation();
+        // call onInstall to initialize module data for the modular account
+        _onInstall(validationModuleEntity.module(), installData, type(IValidationModule).interfaceId);
+    }
+
+    function _uninstallValidation(
+        ModuleEntity validationFunction,
+        bytes calldata uninstallData,
+        bytes[] calldata hookUninstallData
+    ) internal returns (bool) {
+        ValidationDetail storage validationDetail = WalletStorageLib.getLayout().validationDetails[validationFunction];
+        validationDetail.isGlobal = false;
+        validationDetail.isSignatureValidation = false;
+        validationDetail.isUserOpValidation = false;
+
+        bool onUninstallSucceeded = true;
+        if (hookUninstallData.length > 0) {
+            // verify the structure of uninstall data is provided correctly
+            if (
+                hookUninstallData.length
+                    != validationDetail.validationHooks.length + validationDetail.executionHooks.size()
+            ) {
+                revert InvalidHookUninstallData();
+            }
+            // uninstall pre validation hooks
+            uint256 uninstalled = 0;
+            uint256 hooksLength = validationDetail.validationHooks.length;
+            for (uint256 i = 0; i < hooksLength; ++i) {
+                bytes calldata hookData = hookUninstallData[uninstalled];
+                address hookModule = ModuleEntityLib.module(validationDetail.validationHooks[i].getModuleEntity());
+                onUninstallSucceeded = onUninstallSucceeded && _onUninstall(hookModule, hookData);
+                uninstalled++;
+            }
+
+            delete validationDetail.validationHooks;
+
+            // uninstall execution hooks
+            Bytes32DLL storage executionHooks = validationDetail.executionHooks;
+            hooksLength = executionHooks.size();
+            bytes32 startHook = SENTINEL_BYTES32;
+            for (uint256 i = 0; i < hooksLength; ++i) {
+                (bytes32[] memory hooksToRemove, bytes32 nextHook) = executionHooks.getPaginated(startHook, 10);
+                for (uint256 j = 0; j < hooksToRemove.length; ++j) {
+                    onUninstallSucceeded = onUninstallSucceeded
+                        && _onUninstall(hooksToRemove[j].toHookConfig().getModule(), hookUninstallData[uninstalled]);
+                    executionHooks.remove(hooksToRemove[j]);
+                    uninstalled++;
+                }
+                if (nextHook == SENTINEL_BYTES32) {
+                    break;
+                }
+                startHook = nextHook;
+            }
+        }
+
+        Bytes4DLL storage selectors = validationDetail.selectors;
+        uint256 selectorsLength = selectors.size();
+        bytes4 startSelector = SENTINEL_BYTES4;
+        for (uint256 i = 0; i < selectorsLength; ++i) {
+            (bytes4[] memory selectorsToRemove, bytes4 nextSelector) = selectors.getPaginated(startSelector, 10);
+            for (uint256 j = 0; j < selectorsToRemove.length; ++j) {
+                selectors.remove(selectorsToRemove[j]);
+            }
+            if (nextSelector == SENTINEL_BYTES4) {
+                break;
+            }
+            startSelector = nextSelector;
+        }
+
+        // call validation uninstall
+        return onUninstallSucceeded && _onUninstall(validationFunction.module(), uninstallData);
+    }
+
+    function _onInstall(address module, bytes calldata data, bytes4 interfaceId) internal {
+        if (data.length > 0) {
+            if (!ERC165Checker.supportsInterface(module, interfaceId)) {
+                revert InterfaceNotSupported(module, interfaceId);
+            }
+            // solhint-disable-next-line no-empty-blocks
+            try IModule(module).onInstall(data) {}
+            catch {
+                bytes memory revertReason = ExecutionUtils.fetchReturnData();
+                revert FailToCallOnInstall(module, revertReason);
+            }
+        }
+    }
+
+    // @dev return bool onUninstallSuccess.
+    function _onUninstall(address module, bytes calldata data) internal returns (bool) {
+        if (data.length > 0) {
+            // solhint-disable-next-line no-empty-blocks
+            try IModule(module).onUninstall(data) {}
+            catch {
+                return false;
+            }
+        }
+        return true;
     }
 
     function _checkAccessRuleFromEPOrAcctItself() internal view {
@@ -606,14 +842,56 @@ abstract contract BaseMSCA is
         }
     }
 
-    function _checkPermittedCallerIfNotFromEP(ExecutionDetail storage executionDetail) internal view {
-        if (msg.sender != address(ENTRY_POINT) && msg.sender != address(this) && !executionDetail.skipRuntimeValidation)
+    // @notice If a call is from entry point, account itself, or skips runtime validation, it's already accessing
+    // account storage.
+    // For other calls (e.g. from modules), we need directCallValidation to protect the account storage. This is
+    // done by running the associated preRuntimeValidationHooks and preExecutionHooks.
+    // For both scenarios, we run preExecutionHooks associated with the selector (msg.sig).
+    function _checkCallPermission(WalletStorageLib.Layout storage walletStorage)
+        internal
+        returns (
+            PostExecHookToRun[] memory postExecHooksFromDirectCallValidation,
+            PostExecHookToRun[] memory postExecHooksFromExecutionSelector
+        )
+    {
+        ExecutionDetail storage executionDetail = WalletStorageLib.getLayout().executionDetails[msg.sig];
+        if (msg.sender == address(ENTRY_POINT) || msg.sender == address(this) || executionDetail.skipRuntimeValidation)
         {
-            revert ExecFromPluginToSelectorNotPermitted(msg.sender, msg.sig);
+            // no directCallValidation associated pre hooks
+            postExecHooksFromDirectCallValidation = new PostExecHookToRun[](0);
+        } else {
+            ModuleEntity directCallValidation = ModuleEntityLib.pack(msg.sender, DIRECT_CALL_VALIDATION_ENTITY_ID);
+            // check directCallValidation
+            if (
+                !_checkValidationForCalldata(
+                    walletStorage, msg.data, directCallValidation, ValidationCheckingType.EITHER
+                )
+            ) {
+                revert ValidationFunctionMissing(msg.sig, directCallValidation);
+            }
+            // if direct call is allowed, run associated validationHooks
+            ValidationDetail storage validationDetail = walletStorage.validationDetails[directCallValidation];
+            HookConfig[] memory validationHooks = validationDetail.validationHooks;
+            uint256 length = validationHooks.length;
+            for (uint256 i = 0; i < length; ++i) {
+                (address module, uint32 entityId) = validationHooks[i].unpackValidationHook().unpack();
+                // solhint-disable-next-line no-empty-blocks
+                try IValidationHookModule(module).preRuntimeValidationHook(
+                    entityId, msg.sender, msg.value, msg.data, ""
+                ) {} catch {
+                    bytes memory revertReason = ExecutionUtils.fetchReturnData();
+                    revert PreRuntimeValidationHookFailed(module, entityId, revertReason);
+                }
+            }
+            // if direct call is allowed, run associated preExecutionHooks
+            postExecHooksFromDirectCallValidation = validationDetail.executionHooks._processPreExecHooks(msg.data);
         }
+        // run preExecutionHooks for the selector (msg.sig)
+        postExecHooksFromExecutionSelector = executionDetail.executionHooks._processPreExecHooks(msg.data);
+        return (postExecHooksFromDirectCallValidation, postExecHooksFromExecutionSelector);
     }
 
-    /// @dev Check if the hook and validation function is enabled for the calldata.
+    /// @dev Check if the validation function is enabled for the calldata.
     /// @notice Self-call rule: if the function selector is execute, we don't allow self call because the inner call may
     /// instead be pulled up to the top-level call,
     ///                         if the function selector is executeBatch, then we inspect the selector in each Call
@@ -621,12 +899,15 @@ abstract contract BaseMSCA is
     ///                             * the validation currently being used must apply to inner call selector
     ///                             * the inner call selector must not recursively call into the account's execute or
     /// executeBatch functions
-    function _checkHookAndValidationForCalldata(
+    function _checkValidationForCalldata(
         WalletStorageLib.Layout storage walletStorage,
         bytes calldata callData,
         ModuleEntity validationFunction,
-        bool isGlobalValidationFunction
+        ValidationCheckingType validationCheckingType
     ) internal view returns (bool) {
+        if (ModuleEntity.unwrap(validationFunction) == EMPTY_MODULE_ENTITY) {
+            revert InvalidModuleEntity(validationFunction);
+        }
         bytes4 outerSelector = bytes4(callData[:4]);
         if (outerSelector == this.executeUserOp.selector) {
             // passing executeUserOp function selector at the beginning of callData will cause the entryPoint to pass
@@ -639,20 +920,16 @@ abstract contract BaseMSCA is
             callData = callData[4:];
         }
         // check outer selector is allowed by the validation function
-        if (
-            !_checkHookAndValidationForSelector(
-                walletStorage, outerSelector, validationFunction, isGlobalValidationFunction
-            )
-        ) {
+        if (!_checkValidationForSelector(walletStorage, outerSelector, validationFunction, validationCheckingType)) {
             return false;
         }
         // executeBatch may be used to batch calls into the account itself, but not for execute
-        if (outerSelector == IStandardExecutor.execute.selector) {
+        if (outerSelector == IModularAccount.execute.selector) {
             (address target,,) = abi.decode(callData[4:], (address, uint256, bytes));
             if (target == address(this)) {
                 revert SelfCallRecursionDepthExceeded();
             }
-        } else if (outerSelector == IStandardExecutor.executeBatch.selector) {
+        } else if (outerSelector == IModularAccount.executeBatch.selector) {
             (Call[] memory calls) = abi.decode(callData[4:], (Call[]));
             for (uint256 i = 0; i < calls.length; ++i) {
                 // to prevent arbitrarily-deep recursive checking, all self-calls must occur at the top level of the
@@ -660,15 +937,15 @@ abstract contract BaseMSCA is
                 if (calls[i].target == address(this)) {
                     bytes4 innerSelector = bytes4(calls[i].data);
                     if (
-                        innerSelector == IStandardExecutor.execute.selector
-                            || innerSelector == IStandardExecutor.executeBatch.selector
+                        innerSelector == IModularAccount.execute.selector
+                            || innerSelector == IModularAccount.executeBatch.selector
                     ) {
                         revert SelfCallRecursionDepthExceeded();
                     }
                     // check all of the inner calls are allowed by the validation function
                     if (
-                        !_checkHookAndValidationForSelector(
-                            walletStorage, innerSelector, validationFunction, isGlobalValidationFunction
+                        !_checkValidationForSelector(
+                            walletStorage, innerSelector, validationFunction, validationCheckingType
                         )
                     ) {
                         return false;
@@ -679,31 +956,48 @@ abstract contract BaseMSCA is
         return true;
     }
 
-    /// @dev Check if the hook and validation function is enabled for the selector.
-    function _checkHookAndValidationForSelector(
+    /// @dev Check if the validation function is enabled for the selector, either global or per selector.
+    function _checkValidationForSelector(
         WalletStorageLib.Layout storage walletStorage,
         bytes4 selector,
         ModuleEntity validationFunction,
-        bool isGlobalValidationFunction
+        ValidationCheckingType validationCheckingType
     ) internal view returns (bool) {
-        if (ModuleEntity.unwrap(validationFunction) == EMPTY_MODULE_ENTITY) {
-            revert InvalidModuleEntity(validationFunction);
-        }
-        if (isGlobalValidationFunction) {
-            // 1. the function selector need to be enabled for global validation
-            // 2. the global validation has been registered
-            if (
-                (selector._isNativeFunctionSelector() || walletStorage.executionDetails[selector].allowGlobalValidation)
-                    && walletStorage.validationDetails[validationFunction].isGlobal
-            ) {
+        if (validationCheckingType == ValidationCheckingType.GLOBAL) {
+            if (_isAllowedForGlobalValidation(walletStorage, selector, validationFunction)) {
                 return true;
             }
-        } else {
-            // selector per validation
-            if (walletStorage.validationDetails[validationFunction].selectors.contains(selector)) {
+        } else if (validationCheckingType == ValidationCheckingType.SELECTOR) {
+            if (_isAllowedForSelectorValidation(walletStorage, selector, validationFunction)) {
+                return true;
+            }
+        } else if (validationCheckingType == ValidationCheckingType.EITHER) {
+            if (
+                _isAllowedForGlobalValidation(walletStorage, selector, validationFunction)
+                    || _isAllowedForSelectorValidation(walletStorage, selector, validationFunction)
+            ) {
                 return true;
             }
         }
         return false;
+    }
+
+    function _isAllowedForGlobalValidation(
+        WalletStorageLib.Layout storage walletStorage,
+        bytes4 selector,
+        ModuleEntity validationFunction
+    ) internal view returns (bool) {
+        // 1. the function selector need to be enabled for global validation
+        // 2. the global validation has been registered
+        return (selector._isNativeExecutionFunction() || walletStorage.executionDetails[selector].allowGlobalValidation)
+            && walletStorage.validationDetails[validationFunction].isGlobal;
+    }
+
+    function _isAllowedForSelectorValidation(
+        WalletStorageLib.Layout storage walletStorage,
+        bytes4 selector,
+        ModuleEntity validationFunction
+    ) internal view returns (bool) {
+        return walletStorage.validationDetails[validationFunction].selectors.contains(selector);
     }
 }

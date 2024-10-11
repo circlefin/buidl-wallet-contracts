@@ -18,18 +18,15 @@
  */
 pragma solidity 0.8.24;
 
-// validation by function selector
-uint8 constant PER_SELECTOR_VALIDATION_FLAG = 0;
+import {IValidationModule} from "../../interfaces/IValidationModule.sol";
 
-// global validation enabled
-uint8 constant GLOBAL_VALIDATION_FLAG = 1;
+interface ISingleSignerValidationModule is IValidationModule {
+    event SignerTransferred(
+        address indexed account, uint32 indexed entityId, address indexed newSigner, address previousSigner
+    );
 
-// maximum number of validation hooks that can be installed, [0, 255) hooks, then validation function at
-// RESERVED_VALIDATION_DATA_INDEX
-uint8 constant MAX_VALIDATION_HOOKS = 255;
-
-// index marking the start of the validation function data
-uint8 constant RESERVED_VALIDATION_DATA_INDEX = 255;
-
-// magic value for the Entity ID of direct call validation
-uint32 constant DIRECT_CALL_VALIDATION_ENTITY_ID = type(uint32).max;
+    /// @dev Transfers signer of the account validation to a new signer.
+    /// @param entityId The entityId for the account and the signer.
+    /// @param newSigner The address of the new signer.
+    function transferSigner(uint32 entityId, address newSigner) external;
+}

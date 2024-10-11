@@ -25,7 +25,7 @@ import {ModuleEntity} from "../../common/Types.sol";
 // 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA________________________ // Address
 // 0x________________________________________BBBBBBBB________________ // Entity ID
 // 0x________________________________________________0000000000000000 // unused
-/// @notice Forked from 6900 reference impl with some modifications.
+/// @notice Inspired by 6900 reference impl with some modifications.
 library ModuleEntityLib {
     function pack(address addr, uint32 entityId) internal pure returns (ModuleEntity) {
         return ModuleEntity.wrap(bytes24(bytes20(addr)) | bytes24(uint192(entityId)));
@@ -53,7 +53,7 @@ library ModuleEntityLib {
         return ModuleEntity.unwrap(a) != ModuleEntity.unwrap(b);
     }
 
-    function getAddress(ModuleEntity moduleEntity) internal pure returns (address addr) {
+    function module(ModuleEntity moduleEntity) internal pure returns (address addr) {
         bytes24 underlying = ModuleEntity.unwrap(moduleEntity);
         addr = address(bytes20(underlying));
     }
