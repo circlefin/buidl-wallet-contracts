@@ -21,7 +21,7 @@ pragma solidity 0.8.24;
 import {TestUtils} from "../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {console} from "forge-std/src/console.sol";
 
 abstract contract PluginGasProfileBaseTest is TestUtils {
@@ -42,15 +42,17 @@ abstract contract PluginGasProfileBaseTest is TestUtils {
     function buildPartialUserOp(address sender, uint256 nonce, string memory callData)
         public
         pure
-        returns (PackedUserOperation memory userOp)
+        returns (UserOperation memory userOp)
     {
         userOp.sender = sender;
         userOp.nonce = nonce;
         userOp.initCode = vm.parseBytes("0x");
         userOp.callData = vm.parseBytes(callData);
-        userOp.accountGasLimits = bytes32(abi.encodePacked(uint128(1500000), uint128(1000000)));
+        userOp.callGasLimit = 1000000;
+        userOp.verificationGasLimit = 1500000;
         userOp.preVerificationGas = 21000;
-        userOp.gasFees = bytes32(abi.encodePacked(uint128(1), uint128(1)));
+        userOp.maxFeePerGas = 1;
+        userOp.maxPriorityFeePerGas = 1;
         userOp.paymasterAndData = vm.parseBytes("0x");
     }
 
@@ -68,10 +70,8 @@ abstract contract PluginGasProfileBaseTest is TestUtils {
         }
     }
 
-    function executeUserOp(address msca, PackedUserOperation memory op, string memory testName, uint256 value)
-        internal
-    {
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+    function executeUserOp(address msca, UserOperation memory op, string memory testName, uint256 value) internal {
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = op;
         uint256 ethBefore = entryPoint.balanceOf(msca) + msca.balance;
         entryPoint.handleOps(ops, beneficiary);
@@ -84,15 +84,17 @@ abstract contract PluginGasProfileBaseTest is TestUtils {
         sum += gasUsed;
     }
 
-    function pack(PackedUserOperation memory _op) internal pure returns (bytes memory) {
+    function pack(UserOperation memory _op) internal pure returns (bytes memory) {
         bytes memory packed = abi.encode(
             _op.sender,
             _op.nonce,
             _op.initCode,
             _op.callData,
-            _op.accountGasLimits,
+            _op.callGasLimit,
+            _op.verificationGasLimit,
             _op.preVerificationGas,
-            _op.gasFees,
+            _op.maxFeePerGas,
+            _op.maxPriorityFeePerGas,
             _op.paymasterAndData,
             _op.signature
         );

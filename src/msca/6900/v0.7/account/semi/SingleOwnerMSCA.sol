@@ -27,7 +27,8 @@ import {
     EMPTY_FUNCTION_REFERENCE,
     SENTINEL_BYTES21,
     SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED
+    SIG_VALIDATION_SUCCEEDED,
+    WALLET_VERSION_1
 } from "../../../../../common/Constants.sol";
 import {ExecutionUtils} from "../../../../../utils/ExecutionUtils.sol";
 import {
@@ -50,7 +51,7 @@ import {WalletStorageV1Lib} from "../../libs/WalletStorageV1Lib.sol";
 import {PluginManager} from "../../managers/PluginManager.sol";
 import {BaseMSCA} from "../BaseMSCA.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
@@ -58,16 +59,15 @@ import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Re
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {BaseERC712CompliantAccount} from "../../../../../erc712/BaseERC712CompliantAccount.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @dev Semi-MSCA that enshrines single owner into the account storage.
  */
-contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, IERC1271 {
+contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, IERC1271, BaseERC712CompliantAccount {
     using ExecutionUtils for address;
     using ECDSA for bytes32;
-    using MessageHashUtils for bytes32;
     using RepeatableFunctionReferenceDLLLib for RepeatableBytes21DLL;
     using FunctionReferenceLib for bytes21;
     using FunctionReferenceLib for FunctionReference;
@@ -77,6 +77,11 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
         NATIVE_RUNTIME_VALIDATION_OWNER_OR_SELF,
         NATIVE_USER_OP_VALIDATION_OWNER
     }
+
+    string public constant NAME = "Circle_SingleOwnerMSCA";
+    bytes32 private constant _HASHED_NAME = keccak256(bytes(NAME));
+    bytes32 private constant _HASHED_VERSION = keccak256(bytes(WALLET_VERSION_1));
+    bytes32 private constant _MESSAGE_TYPEHASH = keccak256("CircleSingleOwnerMSCAMessage(bytes32 hash)");
 
     event SingleOwnerMSCAInitialized(address indexed account, address indexed entryPointAddress, address owner);
     event OwnershipTransferred(address indexed account, address indexed previousOwner, address indexed newOwner);
@@ -123,11 +128,14 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
                 return EIP1271_INVALID_SIGNATURE;
             }
             return abi.decode(returnData, (bytes4));
+        } else {
+            // use address(this) to prevent replay attacks
+            bytes32 replaySafeHash = getReplaySafeMessageHash(hash);
+            if (SignatureChecker.isValidSignatureNow(owner, replaySafeHash, signature)) {
+                return EIP1271_VALID_SIGNATURE;
+            }
+            return EIP1271_INVALID_SIGNATURE;
         }
-        if (_verifySignature(owner, hash, signature)) {
-            return EIP1271_VALID_SIGNATURE;
-        }
-        return EIP1271_INVALID_SIGNATURE;
     }
 
     /**
@@ -191,7 +199,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
      * functions.
      *      In either case, we run the hooks from plugins if there's any.
      */
-    function _authenticateAndAuthorizeUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function _authenticateAndAuthorizeUserOp(UserOperation calldata userOp, bytes32 userOpHash)
         internal
         override
         returns (uint256 validationData)
@@ -233,7 +241,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
                 executionDetail.userOpValidationFunction.functionId, userOp, userOpHash
             );
         } else {
-            if (_verifySignature(owner, userOpHash, userOp.signature)) {
+            if (SignatureChecker.isValidSignatureNow(owner, userOpHash.toEthSignedMessageHash(), userOp.signature)) {
                 currentValidationData = SIG_VALIDATION_SUCCEEDED;
             } else {
                 currentValidationData = SIG_VALIDATION_FAILED;
@@ -321,6 +329,12 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
     }
 
     /// @inheritdoc UUPSUpgradeable
+    function upgradeTo(address newImplementation) public override onlyProxy validateNativeFunction {
+        _authorizeUpgrade(newImplementation);
+        _upgradeToAndCallUUPS(newImplementation, new bytes(0), false);
+    }
+
+    /// @inheritdoc UUPSUpgradeable
     function upgradeToAndCall(address newImplementation, bytes memory data)
         public
         payable
@@ -328,7 +342,8 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
         onlyProxy
         validateNativeFunction
     {
-        super.upgradeToAndCall(newImplementation, data);
+        _authorizeUpgrade(newImplementation);
+        _upgradeToAndCallUUPS(newImplementation, data, true);
     }
 
     /**
@@ -339,7 +354,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
 
     function _processPreUserOpValidationHooks(
         ExecutionDetail storage executionDetail,
-        PackedUserOperation calldata userOp,
+        UserOperation calldata userOp,
         bytes32 userOpHash
     ) internal override returns (ValidationData memory unpackedValidationData) {
         unpackedValidationData = ValidationData(0, 0xFFFFFFFFFFFF, address(0));
@@ -391,27 +406,18 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
         }
     }
 
-    /**
-     * @dev For EOA owner, run ecrecover. For smart contract owner, run 1271 staticcall.
-     */
-    function _verifySignature(address owner, bytes32 hash, bytes memory signature) internal view returns (bool) {
-        // EOA owner (ECDSA)
-        // if the signature (personal sign) is signed over userOpHash.toEthSignedMessageHash (prepended with
-        // 'x\x19Ethereum Signed Message:\n32'), then we recover using userOpHash.toEthSignedMessageHash;
-        // or if the signature (typed data sign) is signed over userOpHash directly, then we recover userOpHash directly
-        (address recovered, ECDSA.RecoverError error,) = hash.toEthSignedMessageHash().tryRecover(signature);
-        if (error == ECDSA.RecoverError.NoError && recovered == owner) {
-            return true;
-        }
-        (recovered, error,) = hash.tryRecover(signature);
-        if (error == ECDSA.RecoverError.NoError && recovered == owner) {
-            return true;
-        }
-        if (SignatureChecker.isValidERC1271SignatureNow(owner, hash, signature)) {
-            // smart contract owner.isValidSignature should be smart enough to sign over the non-modified hash or over
-            // the hash that is modified in the way owner would expect
-            return true;
-        }
-        return false;
+    /// @inheritdoc BaseERC712CompliantAccount
+    function _getAccountTypeHash() internal pure override returns (bytes32) {
+        return _MESSAGE_TYPEHASH;
+    }
+
+    /// @inheritdoc BaseERC712CompliantAccount
+    function _getAccountName() internal pure override returns (bytes32) {
+        return _HASHED_NAME;
+    }
+
+    /// @inheritdoc BaseERC712CompliantAccount
+    function _getAccountVersion() internal pure override returns (bytes32) {
+        return _HASHED_VERSION;
     }
 }

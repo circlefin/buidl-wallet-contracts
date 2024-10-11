@@ -24,6 +24,7 @@ pragma solidity 0.8.24;
 import {
     CredentialType,
     OwnerData,
+    OwnershipMetadata,
     PublicKey,
     WebAuthnData,
     WebAuthnSigDynamicPart
@@ -34,8 +35,7 @@ import {
     PLUGIN_AUTHOR,
     PLUGIN_VERSION_1,
     SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED,
-    ZERO_BYTES32
+    SIG_VALIDATION_SUCCEEDED
 } from "../../../../../src/common/Constants.sol";
 
 import {AddressBytesLib} from "../../../../../src/libs/AddressBytesLib.sol";
@@ -56,12 +56,11 @@ import {MockContractOwner} from "../../../../util/MockContractOwner.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {stdJson} from "forge-std/src/StdJson.sol";
 import {VmSafe} from "forge-std/src/Vm.sol";
 import {console} from "forge-std/src/console.sol";
@@ -72,7 +71,6 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     using PublicKeyLib for PublicKey;
     using AddressBytesLib for address;
     using stdJson for string;
-    using MessageHashUtils for bytes32;
 
     event OwnersAdded(address account, bytes30[] owners, OwnerData[] weights);
     event OwnersRemoved(address account, bytes30[] owners, uint256 totalWeightRemoved);
@@ -91,7 +89,6 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     error ThresholdWeightExceedsTotalWeight(uint256 thresholdWeight, uint256 totalWeight);
     error TooManyOwners(uint256 currentNumOwners, uint256 numOwnersToAdd);
     error ZeroOwnersInputNotAllowed();
-    error ECDSAInvalidSignature();
 
     WeightedWebauthnMultisigPlugin private plugin;
     address private account;
@@ -255,8 +252,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         emit ThresholdUpdated(account, thresholdWeightOne, 0);
 
         plugin.onUninstall(abi.encode(""));
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         assertEq(returnedOwners.length, 0);
         assertEq(returnedOwnersData.length, 0);
         assertEq(returnedThresholdWeight, 0);
@@ -269,8 +270,8 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_pluginManifest() public {
         PluginManifest memory manifest = plugin.pluginManifest();
-        // 5 execution functions (onInstall, onUninstall, addOwners, removeOwners, updateMultisigWeights)
-        assertEq(5, manifest.executionFunctions.length);
+        // 4 execution functions (addOwners, removeOwners, updateMultisigWeights, isValidSignature)
+        assertEq(4, manifest.executionFunctions.length);
 
         // 7 native + 1 plugin exec func
         assertEq(8, manifest.userOpValidationFunctions.length);
@@ -380,9 +381,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         assertEq(returnedOwners.length, 4);
         assertEq(returnedOwnersData.length, 4);
         // (reverse insertion order)
@@ -440,9 +445,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (
             bytes30[] memory returnedOwnersAfterUpdate,
             OwnerData[] memory returnedOwnersDataAfterUpdate,
-            uint256 returnedThresholdWeightAfterUpdate
+            OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 6);
         assertEq(returnedOwnersDataAfterUpdate.length, 6);
         // new
@@ -479,8 +485,8 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_addOwnersSameThreshold() public {
         _install();
-        (,, uint256 _oldThresholdWeight) = plugin.ownershipInfoOf(account);
-        _addOwners(ownerTwoList, weightTwoList, pubKeyTwoList, pubKeyWeightTwoList, _oldThresholdWeight);
+        (,, OwnershipMetadata memory ownershipMetadata) = plugin.ownershipInfoOf(account);
+        _addOwners(ownerTwoList, weightTwoList, pubKeyTwoList, pubKeyWeightTwoList, ownershipMetadata.thresholdWeight);
     }
 
     function test_addOwners_notInitialized() public {
@@ -604,9 +610,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         plugin.removeOwners(ownerOneList, pubKeyOneList, thresholdWeightOne);
 
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedWeights, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedWeights,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         // Total Weight
         assertEq(_sum(returnedWeights), weightTwo + pubKeyWeightTwo);
 
@@ -697,9 +707,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         assertEq(returnedOwners.length, 6);
         assertEq(returnedOwnersData.length, 6);
         // (reverse insertion order)
@@ -764,9 +778,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (
             bytes30[] memory returnedOwnersAfterUpdate,
             OwnerData[] memory returnedOwnersDataAfterUpdate,
-            uint256 returnedThresholdWeightAfterUpdate
+            OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 2);
         assertEq(returnedOwnersDataAfterUpdate.length, 2);
 
@@ -795,8 +810,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.prank(account);
         plugin.removeOwners(ownerOneList, pubKeyOneList, 0);
 
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedWeights, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedWeights,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         // Total Weight
         assertEq(_sum(returnedWeights), weightTwo + pubKeyWeightTwo);
@@ -830,8 +849,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         emit OwnersRemoved(account, _tOwners, weightOne + pubKeyWeightOne);
         plugin.removeOwners(ownerOneList, pubKeyOneList, thresholdWeightTwo);
 
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedWeights, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedWeights,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         // Total Weight
         assertEq(_sum(returnedWeights), weightTwo + pubKeyWeightTwo);
@@ -943,8 +966,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.prank(account);
         plugin.updateMultisigWeights(ownerOneList, _updatedWeights, pubKeyOneList, _updatedWeights, _newThresholdWeight);
 
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedWeights, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedWeights,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         // Total Weight
         assertEq(_sum(returnedWeights), _updatedWeight + _updatedWeight);
@@ -1057,9 +1084,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.updateMultisigWeights(_emptyAddresses, _emptyWeights, _emptyPubKeys, _emptyWeights, _newThresholdWeight);
 
         // Only threshold should be updated
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         (uint256 res,,,,) = plugin.ownerDataPerAccount(ownerOne.toBytes30(), account);
         assertEq(res, weightOne);
         (res,,,,) = plugin.ownerDataPerAccount(pubKeyOne.toBytes30(), account);
@@ -1145,8 +1176,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         assertEq(returnedOwners.length, 6);
         assertEq(returnedOwnersData.length, 6);
@@ -1182,9 +1217,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (
             bytes30[] memory returnedOwnersAfterUpdate,
             OwnerData[] memory returnedOwnersDataAfterUpdate,
-            uint256 returnedThresholdWeightAfterUpdate
+            OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 6);
         assertEq(returnedOwnersDataAfterUpdate.length, 6);
         assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
@@ -1209,25 +1245,6 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertTrue(isSupported);
         isSupported = plugin.supportsInterface(type(IEntryPoint).interfaceId);
         assertFalse(isSupported);
-    }
-
-    function test_eip712Domain() public {
-        (
-            bytes1 fields,
-            string memory name,
-            string memory version,
-            uint256 chainId,
-            address verifyingContract,
-            bytes32 salt,
-            uint256[] memory extensions
-        ) = plugin.eip712Domain();
-        assertEq(fields, hex"1f");
-        assertEq(name, "Weighted Multisig Webauthn Plugin");
-        assertEq(version, "1.0.0");
-        assertEq(chainId, block.chainid);
-        assertEq(verifyingContract, account);
-        assertEq(salt, bytes32(bytes20(address(plugin))));
-        assertEq(extensions.length, 0);
     }
 
     function test_isOwnerOf() public {
@@ -1278,9 +1295,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     function test_ownershipInfoOf() public {
         _install();
 
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
-
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         (uint256 res,,,,) = plugin.ownerDataPerAccount(ownerOne.toBytes30(), account);
         assertEq(res, weightOne);
 
@@ -1338,8 +1358,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         assertEq(returnedOwners.length, 2);
         assertEq(returnedOwnersData.length, 2);
@@ -1373,9 +1397,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (
             bytes30[] memory returnedOwnersAfterUpdate,
             OwnerData[] memory returnedOwnersDataAfterUpdate,
-            uint256 returnedThresholdWeightAfterUpdate
+            OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
 
+        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 3);
         assertEq(returnedOwnersDataAfterUpdate.length, 3);
         // new
@@ -1409,9 +1434,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.prank(account);
         plugin.addOwners(newOwners, newWeights, newPubKeys, newPubKeyWeights, newThresholdWeight);
 
-        (returnedOwnersAfterUpdate, returnedOwnersDataAfterUpdate, returnedThresholdWeightAfterUpdate) =
+        (returnedOwnersAfterUpdate, returnedOwnersDataAfterUpdate, ownershipMetadataAfterUpdate) =
             plugin.ownershipInfoOf(account);
 
+        returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 4);
         assertEq(returnedOwnersDataAfterUpdate.length, 4);
         // new
@@ -1464,8 +1490,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         assertEq(returnedOwners.length, 3);
         assertEq(returnedOwnersData.length, 3);
@@ -1491,9 +1521,9 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (
             bytes30[] memory returnedOwnersAfterUpdate,
             OwnerData[] memory returnedWeightsAfterUpdate,
-            uint256 returnedThresholdWeightAfterUpdate
+            OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
-
+        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 1);
         assertEq(returnedWeightsAfterUpdate.length, 1);
         assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
@@ -1545,8 +1575,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
         assertEq(returnedOwners.length, 3);
         assertEq(returnedOwnersData.length, 3);
@@ -1573,9 +1607,9 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (
             bytes30[] memory returnedOwnersAfterUpdate,
             OwnerData[] memory returnedOwnersDataAfterUpdate,
-            uint256 returnedThresholdWeightAfterUpdate
+            OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
-
+        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 3);
         assertEq(returnedOwnersDataAfterUpdate.length, 3);
         assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
@@ -1594,7 +1628,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (address signer, uint256 signerPrivateKey) = makeAddrAndKey(salt);
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         bytes memory signature = signMessage(vm, signerPrivateKey, wrappedDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1628,7 +1662,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         // range bound the possible set of priv keys
         (address signer, uint256 privateKey) = makeAddrAndKey(salt);
-        bytes32 messageDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1652,7 +1686,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         // range bound the possible set of priv keys
         (, uint256 privateKey) = makeAddrAndKey(salt);
-        bytes32 messageDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageDigest);
 
         // sig check should fail (not owner)
@@ -1666,7 +1700,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         Owner memory contractOwner = _createContractOwner(seed);
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         bytes memory signerSig = signMessage(vm, contractOwner.signerWallet.privateKey, wrappedDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1702,7 +1736,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         bytes32 digest = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
         Owner memory newOwner = _createContractOwner(seed);
-        bytes32 messageDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(newOwner.signerWallet.privateKey, messageDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1725,7 +1759,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         _install();
 
         bytes32 digest = keccak256(message);
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         WebAuthnSigDynamicPart memory webAuthnSigDynamicPart;
         webAuthnSigDynamicPart.webAuthnData = _getWebAuthnData(wrappedDigest);
         bytes32 digestToSign = _getWebAuthnMessageHash(webAuthnSigDynamicPart.webAuthnData);
@@ -1765,7 +1799,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     function testIsValidSignature_p256Owner_emptyDigest() public {
         _install();
         bytes32 digest = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         WebAuthnSigDynamicPart memory webAuthnSigDynamicPart;
         webAuthnSigDynamicPart.webAuthnData = _getWebAuthnData(wrappedDigest);
         bytes32 digestToSign = _getWebAuthnMessageHash(webAuthnSigDynamicPart.webAuthnData);
@@ -1802,7 +1836,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         bytes32 digest = keccak256(message);
         // for k1 signer
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         WebAuthnSigDynamicPart memory webAuthnSigDynamicPart;
         // for r1 signer
         webAuthnSigDynamicPart.webAuthnData = _getWebAuthnData(wrappedDigest);
@@ -1940,7 +1974,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         Owner memory contractOwner = _createContractOwner(123);
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         bytes memory signerSig = signMessage(vm, contractOwner.signerWallet.privateKey, wrappedDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1969,7 +2003,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (, uint256 signerPrivateKey) = makeAddrAndKey("testIsValidSignature_invalidEOAOwner");
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
 
         address anotherOwner = vm.addr(1);
         address[] memory ownersToAdd1 = new address[](1);
@@ -2023,7 +2057,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(abi.encode(listOfTwoOwners, listOfTwoWeights, new PublicKey[](0), new uint256[](0), threshold));
 
         // 2. create a valid signature for installed owner
-        bytes32 messageDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageDigest);
         bytes memory sig = abi.encodePacked(r, s, v);
 
@@ -2052,7 +2086,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         bytes32 digest = 0x0000000000000000000000000000000000000000000000000000000000000000;
         // range bound the possible set of priv keys
         (, uint256 privateKey) = makeAddrAndKey(salt);
-        bytes32 messageDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageDigest);
 
         // (60 - 32 = 28)
@@ -2062,7 +2096,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         // sig check should fail (not owner)
         vm.prank(account);
-        vm.expectRevert(ECDSAInvalidSignature.selector);
+        vm.expectRevert("ECDSA: invalid signature");
         plugin.isValidSignature(digest, sig);
     }
 
@@ -2072,7 +2106,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         // incorrect digest
         bytes32 messageDigest = bytes32("foo");
         vm.prank(account);
-        vm.expectRevert(ECDSAInvalidSignature.selector);
+        vm.expectRevert("ECDSA: invalid signature");
         plugin.checkNSignatures(messageDigest, messageDigest, account, INVALID_ECDSA_SIGNATURE);
     }
 
@@ -2084,7 +2118,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5212e8eb1830be145cc7b6b2c955c7667a74e14c/test/utils/cryptography/ECDSA.test.js#L195C7-L195C92
         bytes32 messageDigest = 0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9;
         vm.prank(account);
-        vm.expectRevert(ECDSAInvalidSignature.selector);
+        vm.expectRevert("ECDSA: invalid signature");
         plugin.checkNSignatures(messageDigest, messageDigest, account, INVALID_ECDSA_SIGNATURE);
     }
 
@@ -2095,7 +2129,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.assume(seed1 != seed2);
 
         Owner memory newOwner1 = _createContractOwner(seed1);
-        bytes32 messageDigest = plugin.getMessageHash(address(account), abi.encode(digest));
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
 
         // sign with owner2 (owner which does not match owner packed into constant part of contract sig)
         Owner memory newOwner2 = _createContractOwner(seed2);
@@ -2110,9 +2144,9 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(firstFailure, 0);
     }
 
-    function testFuzz_userOpValidationFunction_eoaOwner(string memory salt, PackedUserOperation memory userOp) public {
+    function testFuzz_userOpValidationFunction_eoaOwner(string memory salt, UserOperation memory userOp) public {
         // make sure we have actual digest set in userOp when it's submitted for estimation (simulation) or validation
-        vm.assume(userOp.accountGasLimits != 0);
+        vm.assume(userOp.maxFeePerGas != 0);
         _install();
 
         // range bound the possible set of priv keys
@@ -2151,9 +2185,9 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         );
     }
 
-    function testFuzz_userOpValidationFunction_contractOwner(uint256 seed, PackedUserOperation memory userOp) public {
+    function testFuzz_userOpValidationFunction_contractOwner(uint256 seed, UserOperation memory userOp) public {
         // make sure we have actual digest set in userOp when it's submitted for estimation (simulation) or validation
-        vm.assume(userOp.accountGasLimits != 0);
+        vm.assume(userOp.maxFeePerGas != 0);
         _install();
         Owner memory newOwner = _createContractOwner(seed);
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
@@ -2207,9 +2241,9 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         );
     }
 
-    function testFuzz_userOpValidationFunction_p256Owner(PackedUserOperation memory userOp) public {
+    function testFuzz_userOpValidationFunction_p256Owner(UserOperation memory userOp) public {
         // make sure we have actual digest set in userOp when it's submitted for estimation (simulation) or validation
-        vm.assume(userOp.accountGasLimits != 0);
+        vm.assume(userOp.maxFeePerGas != 0);
         _install();
         // full userOp hash
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
@@ -2258,7 +2292,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     }
 
     // mixed signature types in userOp.signature
-    function testFuzz_userOpValidation_mixedSigTypes(uint256 k, uint256 n, PackedUserOperation memory userOp) public {
+    function testFuzz_userOpValidation_mixedSigTypes(uint256 k, uint256 n, UserOperation memory userOp) public {
         // 1 < n < 10
         n %= 11;
         vm.assume(n > 0);
@@ -2278,8 +2312,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         // create minimal userOpHash
         userOp.preVerificationGas = 0;
-        userOp.accountGasLimits = ZERO_BYTES32;
-        userOp.gasFees = ZERO_BYTES32;
+        userOp.maxFeePerGas = 0;
+        userOp.maxPriorityFeePerGas = 0;
+        userOp.callGasLimit = 0;
+        userOp.verificationGasLimit = 0;
         userOp.paymasterAndData = "";
 
         // minimal userOp hash
@@ -2468,7 +2504,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_failUserOpValidationFunction_noActualDigest() public {
         _install();
-        PackedUserOperation memory userOp;
+        UserOperation memory userOp;
         // range bound the possible set of priv keys
         (address signer, uint256 privateKey) = makeAddrAndKey("test_failUserOpValidationFunction_noActualDigest");
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
@@ -2500,7 +2536,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function testFuzz_failUserOpValidation_notImplementedFunction(
         uint8 functionId,
-        PackedUserOperation calldata userOp,
+        UserOperation calldata userOp,
         bytes32 userOpHash
     ) public {
         vm.assume(uint8(BaseMultisigPlugin.FunctionId.USER_OP_VALIDATION_OWNER) != functionId);
@@ -2515,9 +2551,9 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_failUserOpValidationFunction_badAddress() public {
         _install();
-        PackedUserOperation memory userOp;
+        UserOperation memory userOp;
         // actual digest
-        userOp.accountGasLimits = bytes32(0x0000000000000000000000000000000000000000000000000000000000000001);
+        userOp.callGasLimit = uint256(1);
 
         Owner memory newOwner = _createContractOwner(0);
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
@@ -2542,11 +2578,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function testFuzz_failUserOpValidationFunction_wrongNumberOfSigsOnActualDigest(
         string memory salt1,
-        PackedUserOperation memory userOp
+        UserOperation memory userOp
     ) public {
-        userOp.accountGasLimits = ZERO_BYTES32;
         userOp.preVerificationGas = 0;
-        userOp.gasFees = ZERO_BYTES32;
+        userOp.maxFeePerGas = 0;
+        userOp.maxPriorityFeePerGas = 0;
+        userOp.callGasLimit = 0;
+        userOp.verificationGasLimit = 0;
         userOp.paymasterAndData = "";
 
         // make salts different
@@ -2575,7 +2613,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         userOp.signature = abi.encodePacked(r, s, v);
 
         // set an actual gas field
-        userOp.accountGasLimits = bytes32(0x0000000000000000000000000000000000000000000000000000000000000005);
+        userOp.callGasLimit = uint256(1);
         bytes32 actualUserOpHash = entryPoint.getUserOpHash(userOp);
 
         // Should fail with 0 sigs over actual digest
@@ -2625,7 +2663,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_failUserOpValidation_sigOffset() public {
         _install();
-        PackedUserOperation memory userOp;
+        UserOperation memory userOp;
         // make sure we have actual digest set in userOp when it's submitted for estimation (simulation) or validation
         userOp.preVerificationGas = 1;
 
@@ -2691,7 +2729,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_failUserOpValidation_contractSignatureTooLong() public {
         _install();
-        PackedUserOperation memory userOp;
+        UserOperation memory userOp;
         // make sure we have actual digest set in userOp when it's submitted for estimation (simulation) or validation
         userOp.preVerificationGas = 1;
 
@@ -2722,7 +2760,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_failUserOpValidation_webauthnSignatureTooLong() public {
         _install();
-        PackedUserOperation memory userOp;
+        UserOperation memory userOp;
         // make sure we have actual digest set in userOp when it's submitted for estimation (simulation) or validation
         userOp.preVerificationGas = 1;
 
@@ -2749,6 +2787,111 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         );
     }
 
+    function testAddUpdateThenRemoveWeights() public {
+        // install with owner1
+        address owner1 = address(0x1);
+        uint256 weight1 = 2;
+        uint256 thresholdWeight = 2;
+        vm.expectEmit(true, true, true, true);
+        address[] memory ownerList = new address[](1);
+        uint256[] memory weightList = new uint256[](1);
+        PublicKey[] memory emptyPubKeyList = new PublicKey[](0);
+        uint256[] memory emptyPubKeyWeightList = new uint256[](0);
+        // set the initial weight
+        ownerList[0] = owner1;
+        weightList[0] = weight1;
+
+        (bytes30[] memory _tOwners, OwnerData[] memory _tWeights) =
+            _mergeOwnersData(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList);
+        emit OwnersAdded(account, _tOwners, _tWeights);
+
+        vm.expectEmit(true, true, true, true);
+        emit ThresholdUpdated(account, 0, thresholdWeight);
+
+        plugin.onInstall(abi.encode(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, thresholdWeight));
+
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
+        (uint256 res,,,,) = plugin.ownerDataPerAccount(owner1.toBytes30(), account);
+        assertEq(res, weight1);
+
+        uint256 returnedTotalWeight = ownershipMetadata.totalWeight;
+        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
+        console.log("after installation with owner1, current total weight: %d", returnedTotalWeight);
+        console.log("after installation with owner1, current total threshold weight: %d", returnedThresholdWeight);
+        assertEq(returnedTotalWeight, weight1); // == 2
+        assertEq(returnedThresholdWeight, thresholdWeight); // == 2
+        assertEq(ownershipMetadata.numOwners, 1);
+
+        // add owner2
+        address owner2 = address(0x2);
+        uint256 weight2 = 2;
+        ownerList[0] = owner2;
+        weightList[0] = weight2;
+        thresholdWeight = 4;
+        vm.prank(account);
+        plugin.addOwners(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, thresholdWeight);
+
+        (returnedOwners, returnedOwnersData, ownershipMetadata) = plugin.ownershipInfoOf(account);
+        returnedTotalWeight = ownershipMetadata.totalWeight;
+        returnedThresholdWeight = ownershipMetadata.thresholdWeight;
+        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
+        console.log("after adding owner2, new total weight: %d", returnedTotalWeight);
+        console.log("after adding owner2, total threshold weight: %d", returnedThresholdWeight);
+        assertEq(returnedTotalWeight, weight1 + weight2); // == 4
+        assertEq(returnedThresholdWeight, thresholdWeight); // == 4
+        assertEq(ownershipMetadata.numOwners, 2);
+
+        // update owner2's weight from 2 to 4
+        address[] memory updatedOwnerList = new address[](1);
+        updatedOwnerList[0] = owner2;
+        uint256 updatedWeight2 = 4;
+        uint256[] memory updatedWeights = new uint256[](1);
+        updatedWeights[0] = updatedWeight2;
+
+        (_tOwners, _tWeights) =
+            _mergeOwnersData(updatedOwnerList, updatedWeights, emptyPubKeyList, emptyPubKeyWeightList);
+        vm.expectEmit(true, true, true, true);
+        emit OwnersUpdated(account, _tOwners, _tWeights);
+        vm.prank(account);
+        thresholdWeight = 4;
+        plugin.updateMultisigWeights(
+            updatedOwnerList, updatedWeights, emptyPubKeyList, emptyPubKeyWeightList, thresholdWeight
+        );
+
+        (returnedOwners, returnedOwnersData, ownershipMetadata) = plugin.ownershipInfoOf(account);
+        returnedTotalWeight = ownershipMetadata.totalWeight;
+        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
+        uint256 expectedTotalWeight = weight1 + updatedWeight2;
+        console.log("expected total weight: %d", expectedTotalWeight);
+        console.log("after updating owner2, new total weight: %d", returnedTotalWeight);
+        console.log("after updating owner2, new total threshold weight: %d", returnedThresholdWeight);
+        assertEq(returnedTotalWeight, expectedTotalWeight); // == 6
+        assertEq(returnedThresholdWeight, thresholdWeight); // == 4
+        assertEq(ownershipMetadata.numOwners, 2);
+
+        // remove owner1
+        thresholdWeight = 4;
+        address[] memory ownersToRemove = new address[](1);
+        ownersToRemove[0] = owner1;
+        vm.prank(account);
+        plugin.removeOwners(ownersToRemove, emptyPubKeyList, thresholdWeight);
+        (returnedOwners, returnedOwnersData, ownershipMetadata) = plugin.ownershipInfoOf(account);
+        returnedTotalWeight = ownershipMetadata.totalWeight;
+        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
+        expectedTotalWeight = updatedWeight2;
+        console.log("expected total weight: %d", expectedTotalWeight);
+        console.log("after removing owner1, new total weight: %d", returnedTotalWeight);
+        console.log("after removing owner1, new total threshold weight: %d", returnedThresholdWeight);
+        assertEq(returnedTotalWeight, expectedTotalWeight); // == 4
+        assertEq(returnedThresholdWeight, thresholdWeight); // == 4
+        assertEq(ownershipMetadata.numOwners, 1);
+    }
+
     function _addOwners(
         address[] memory _owners,
         uint256[] memory _weights,
@@ -2756,8 +2899,8 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256[] memory _pubKeyWeights,
         uint256 _newThresholdWeight
     ) internal {
-        (,, uint256 _oldThresholdWeight) = plugin.ownershipInfoOf(account);
-
+        (,, OwnershipMetadata memory ownershipMetadata) = plugin.ownershipInfoOf(account);
+        uint256 _oldThresholdWeight = ownershipMetadata.thresholdWeight;
         if (_newThresholdWeight > 0 && _newThresholdWeight != _oldThresholdWeight) {
             vm.expectEmit(true, true, true, true);
             emit ThresholdUpdated(account, _oldThresholdWeight, _newThresholdWeight);
@@ -2791,9 +2934,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             abi.encode(ownerOneList, weightOneList, pubKeyOneList, pubKeyWeightOneList, thresholdWeightOne)
         );
 
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(account);
-
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         (uint256 res,,,,) = plugin.ownerDataPerAccount(ownerOne.toBytes30(), account);
         assertEq(res, weightOne);
 
@@ -2822,9 +2968,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256 _threshold
     ) internal view {
         // Ownership Metadata is updated, including threshold
-        (bytes30[] memory returnedOwners, OwnerData[] memory returnedOwnersData, uint256 returnedThresholdWeight) =
-            plugin.ownershipInfoOf(_account);
-
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(_account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         // Total Weight
         assertEq(_sum(returnedOwnersData), _sum(_expectedWeights));
 

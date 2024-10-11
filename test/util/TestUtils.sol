@@ -19,16 +19,15 @@
 pragma solidity 0.8.24;
 
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Test} from "forge-std/src/Test.sol";
 import {Vm} from "forge-std/src/Vm.sol";
 
 contract TestUtils is Test {
-    using MessageHashUtils for bytes32;
-
     /// @dev Secp256r1 curve order / 2 used as guard to prevent signature malleability issue.
     uint256 internal constant _P256_N_DIV_2 = FCL_Elliptic_ZZ.n / 2;
 
@@ -43,25 +42,27 @@ contract TestUtils is Test {
         uint256 maxFeePerGas,
         uint256 maxPriorityFeePerGas,
         string memory paymasterAndData
-    ) public pure returns (PackedUserOperation memory userOp) {
+    ) public pure returns (UserOperation memory userOp) {
         userOp.sender = sender;
         userOp.nonce = nonce;
         userOp.initCode = vm.parseBytes(initCode);
         userOp.callData = vm.parseBytes(callData);
-        userOp.accountGasLimits = bytes32(abi.encodePacked(uint128(verificationGasLimit), uint128(callGasLimit)));
+        userOp.callGasLimit = callGasLimit;
+        userOp.verificationGasLimit = verificationGasLimit;
         userOp.preVerificationGas = preVerificationGas;
-        userOp.gasFees = bytes32(abi.encodePacked(uint128(maxPriorityFeePerGas), uint128(maxFeePerGas)));
+        userOp.maxFeePerGas = maxFeePerGas;
+        userOp.maxPriorityFeePerGas = maxPriorityFeePerGas;
         userOp.paymasterAndData = vm.parseBytes(paymasterAndData);
     }
 
     // userOp.signature
-    function signUserOpHash(IEntryPoint entryPoint, Vm vm, uint256 key, PackedUserOperation memory userOp)
+    function signUserOpHash(IEntryPoint entryPoint, Vm vm, uint256 key, UserOperation memory userOp)
         public
         view
         returns (bytes memory signature)
     {
         bytes32 hash = entryPoint.getUserOpHash(userOp);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, hash.toEthSignedMessageHash());
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, ECDSA.toEthSignedMessageHash(hash));
         signature = abi.encodePacked(r, s, v);
     }
 

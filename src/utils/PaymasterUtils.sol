@@ -21,8 +21,7 @@ pragma solidity 0.8.24;
 /* solhint-disable reason-string */
 /* solhint-disable no-inline-assembly */
 
-import {UserOperationLib} from "@account-abstraction/contracts/core/UserOperationLib.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation, UserOperationLib} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 enum ChargeMode {
     GAS_ONLY, // paymaster will charge a network fee
@@ -54,30 +53,44 @@ enum ChargeMode {
  * For more details, please refer to https://docs.chain.link/data-feeds/price-feeds/addresses/?network=ethereum
  */
 library PaymasterUtils {
-    using UserOperationLib for PackedUserOperation;
+    using UserOperationLib for UserOperation;
 
     /**
-     * struct PackedUserOperation {
+     * struct UserOperation {
      *   address sender;
      *   uint256 nonce;
      *   bytes initCode;
      *   bytes callData;
-     *   bytes32 accountGasLimits;
+     *   uint256 callGasLimit;
+     *   uint256 verificationGasLimit;
      *   uint256 preVerificationGas;
-     *   bytes32 gasFees;
+     *   uint256 maxFeePerGas;
+     *   uint256 maxPriorityFeePerGas;
      *   bytes paymasterAndData;
      *   bytes signature;
      * }
      */
-    function packUpToPaymasterAndData(PackedUserOperation calldata userOp) internal pure returns (bytes memory ret) {
+    function packUpToPaymasterAndData(UserOperation calldata userOp) internal pure returns (bytes memory ret) {
         address sender = userOp.getSender();
         uint256 nonce = userOp.nonce;
         bytes32 hashInitCode = calldataKeccak(userOp.initCode);
         bytes32 hashCallData = calldataKeccak(userOp.callData);
-        bytes32 accountGasLimits = userOp.accountGasLimits;
+        uint256 callGasLimit = userOp.callGasLimit;
+        uint256 verificationGasLimit = userOp.verificationGasLimit;
         uint256 preVerificationGas = userOp.preVerificationGas;
-        bytes32 gasFees = userOp.gasFees;
-        return abi.encode(sender, nonce, hashInitCode, hashCallData, accountGasLimits, preVerificationGas, gasFees);
+        uint256 maxFeePerGas = userOp.maxFeePerGas;
+        uint256 maxPriorityFeePerGas = userOp.maxPriorityFeePerGas;
+        return abi.encode(
+            sender,
+            nonce,
+            hashInitCode,
+            hashCallData,
+            callGasLimit,
+            verificationGasLimit,
+            preVerificationGas,
+            maxFeePerGas,
+            maxPriorityFeePerGas
+        );
     }
 
     /**

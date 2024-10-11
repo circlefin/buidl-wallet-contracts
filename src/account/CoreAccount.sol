@@ -24,7 +24,7 @@ import {BaseAccount} from "@account-abstraction/contracts/core/BaseAccount.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 /**
@@ -70,7 +70,8 @@ abstract contract CoreAccount is
 
     // for mutable values in proxies
     function __CoreAccount_init(address _newOwner) internal onlyInitializing {
-        __Ownable_init(_newOwner);
+        __Ownable_init();
+        transferOwnership(_newOwner);
         __Pausable_init();
     }
 

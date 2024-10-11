@@ -34,8 +34,6 @@ import "../../../util/TestUtils.sol";
 
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
 
-import {DefaultTokenCallbackPlugin} from
-    "../../../../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
 import {TestUserOpAllPassValidator} from "./TestUserOpAllPassValidator.sol";
 import "./TestUserOpValidator.sol";
 import "./TestUserOpValidatorHook.sol";
@@ -90,6 +88,7 @@ contract SingleOwnerMSCATest is TestUtils {
     TestLiquidityPool private testLiquidityPool;
     SingleOwnerMSCAFactory private factory;
     IERC1820Registry private erc1820Registry;
+    SingleOwnerPlugin private singleOwnerPlugin = new SingleOwnerPlugin();
 
     function setUp() public {
         beneficiary = payable(address(makeAddr("bundler")));
@@ -183,7 +182,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), address(testERC1155), 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -198,7 +197,7 @@ contract SingleOwnerMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, sendingOwnerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -232,7 +231,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), address(testERC721), 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -247,7 +246,7 @@ contract SingleOwnerMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, sendingOwnerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -298,7 +297,6 @@ contract SingleOwnerMSCATest is TestUtils {
 
         // install singleOwnerPlugin before renounceNativeOwner
         address ownerInPlugin = makeAddr("testRenounceOwnershipWithRuntimeValidation_ownerInPlugin");
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         vm.startPrank(sendingOwnerAddr);
         bytes32 manifest = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         sender.installPlugin(
@@ -435,7 +433,6 @@ contract SingleOwnerMSCATest is TestUtils {
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         assertEq(sender.getInstalledPlugins().length, 0);
         vm.deal(address(sender), 1 ether);
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
         bytes32 manifest = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
@@ -472,7 +469,6 @@ contract SingleOwnerMSCATest is TestUtils {
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         assertEq(sender.getInstalledPlugins().length, 0);
         vm.deal(address(sender), 1 ether);
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
         bytes32 manifest = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
@@ -506,22 +502,17 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory initializingData = abi.encode(sendingOwnerAddr);
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         vm.deal(address(sender), 1 ether);
-        DefaultTokenCallbackPlugin defaultTokenCallbackPlugin = new DefaultTokenCallbackPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
-        bytes32 manifest = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
-        FunctionReference[] memory emptyFR = new FunctionReference[](0);
-        sender.installPlugin(address(defaultTokenCallbackPlugin), manifest, "", emptyFR);
-
         ExecutionFunctionConfig memory executionFunctionConfig =
             sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
+        assertEq(executionFunctionConfig.plugin, address(sender));
         vm.stopPrank();
 
         // okay to use a random address to view
         vm.startPrank(vm.addr(123));
         executionFunctionConfig = sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
+        assertEq(executionFunctionConfig.plugin, address(sender));
         vm.stopPrank();
     }
 
@@ -584,21 +575,16 @@ contract SingleOwnerMSCATest is TestUtils {
         (address sendingOwnerAddr, uint256 sendingOwnerPrivateKey) = makeAddrAndKey("testERC1271");
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         bytes memory initializingData = abi.encode(sendingOwnerAddr);
-        // build a random user op to sign with owner key
-        // technically it could be any message
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            sendingOwnerAddr, 0, "0x", "0x", 83353000, 10286500, 454840, 516219199704, 1130000000, "0x"
-        );
-
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, sendingOwnerPrivateKey, userOp);
         SingleOwnerMSCA account = factory.createAccount(sendingOwnerAddr, salt, initializingData);
-        assertEq(EIP1271_VALID_SIGNATURE, account.isValidSignature(userOpHash, signature));
+        bytes32 hash = bytes32(keccak256("testVerify1271SignatureForSingleOwnerMSCA"));
+        bytes32 replaySafeHash = account.getReplaySafeMessageHash(hash);
+        bytes memory signature = signMessage(vm, sendingOwnerPrivateKey, replaySafeHash);
+        assertEq(EIP1271_VALID_SIGNATURE, account.isValidSignature(hash, signature));
 
         // sign a hash with a random key
         (, uint256 randomPrivateKey) = makeAddrAndKey("random");
-        signature = signUserOpHash(entryPoint, vm, randomPrivateKey, userOp);
-        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(userOpHash, signature));
+        signature = signMessage(vm, randomPrivateKey, replaySafeHash);
+        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(hash, signature));
     }
 
     /// single owner plugin is not activated
@@ -610,18 +596,15 @@ contract SingleOwnerMSCATest is TestUtils {
         (address ownerInPluginAddr, uint256 ownerInPluginPrivateKey) =
             makeAddrAndKey("testCreateSemiAccountThenInstallSingleOwnerPluginThenVerify1271Signature_plugin");
         installSingleOwnerPlugin(semiMSCA, nativeOwnerPrivateKey, ownerInPluginAddr);
-        // build a user op to sign
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            nativeOwnerAddr, 0, "0x", "0x", 83353000, 10286500, 454840, 516219199704, 1130000000, "0x"
-        );
 
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, nativeOwnerPrivateKey, userOp);
-        assertEq(EIP1271_VALID_SIGNATURE, account.isValidSignature(userOpHash, signature));
+        bytes32 hash = bytes32(keccak256("testCreateSemiAccountThenInstallSingleOwnerPluginThenVerify1271Signature"));
+        bytes32 replaySafeHash = account.getReplaySafeMessageHash(hash);
+        bytes memory signature = signMessage(vm, nativeOwnerPrivateKey, replaySafeHash);
+        assertEq(EIP1271_VALID_SIGNATURE, account.isValidSignature(hash, signature));
 
         // would not work because the plugin is not activated yet
-        signature = signUserOpHash(entryPoint, vm, ownerInPluginPrivateKey, userOp);
-        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(userOpHash, signature));
+        signature = signMessage(vm, ownerInPluginPrivateKey, replaySafeHash);
+        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(hash, signature));
     }
 
     function testCreateSemiAccountThenInstallSingleOwnerPluginThenRenounceNativeOwnershipThenVerify1271Signature()
@@ -639,18 +622,23 @@ contract SingleOwnerMSCATest is TestUtils {
         // renounce native ownership using native owner private key
         renounceNativeOwner(semiMSCA, nativeOwnerPrivateKey);
 
-        // build a user op to sign
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            nativeOwnerAddr, 0, "0x", "0x", 83353000, 10286500, 454840, 516219199704, 1130000000, "0x"
+        bytes32 hash = bytes32(
+            keccak256(
+                "testCreateSemiAccountThenInstallSingleOwnerPluginThenRenounceNativeOwnershipThenVerify1271Signature"
+            )
         );
-
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, ownerInPluginPrivateKey, userOp);
-        assertEq(EIP1271_VALID_SIGNATURE, account.isValidSignature(userOpHash, signature));
+        bytes32 replaySafeHash = singleOwnerPlugin.getReplaySafeMessageHash(semiMSCA, hash);
+        bytes memory signature = signMessage(vm, ownerInPluginPrivateKey, replaySafeHash);
+        assertEq(EIP1271_VALID_SIGNATURE, account.isValidSignature(hash, signature));
 
         // would not work because the plugin has already been activated
-        signature = signUserOpHash(entryPoint, vm, nativeOwnerPrivateKey, userOp);
-        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(userOpHash, signature));
+        signature = signMessage(vm, nativeOwnerPrivateKey, replaySafeHash);
+        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(hash, signature));
+
+        // would not work because we need the replaySafeHash from plugin instead of account
+        replaySafeHash = account.getReplaySafeMessageHash(hash);
+        signature = signMessage(vm, nativeOwnerPrivateKey, replaySafeHash);
+        assertEq(EIP1271_INVALID_SIGNATURE, account.isValidSignature(hash, signature));
     }
 
     function testSigningFromWrongOwner() public {
@@ -665,7 +653,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 100000000000, "0x"
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             semiMSCA,
             acctNonce,
             "0x",
@@ -680,7 +668,7 @@ contract SingleOwnerMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, randomOwnerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         bytes4 errorSelector = bytes4(keccak256("FailedOp(uint256,string)"));
@@ -727,7 +715,7 @@ contract SingleOwnerMSCATest is TestUtils {
         address liquidityPoolSpenderAddr = address(testLiquidityPool);
         bytes memory tokenTransferCallData = abi.encodeCall(testLiquidityPool.transfer, (recipient, 1000000));
         address factoryAddr = address(factory);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -743,7 +731,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         bytes memory revertReason =
@@ -822,7 +810,7 @@ contract SingleOwnerMSCATest is TestUtils {
             abi.encodeCall(SingleOwnerMSCAFactory.createAccount, (ownerAddr, salt, initializingData));
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -838,7 +826,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -851,7 +839,6 @@ contract SingleOwnerMSCATest is TestUtils {
     }
 
     function installSingleOwnerPlugin(address semiMSCA, uint256 ownerPrivateKey, address ownerInPlugin) internal {
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         bytes32 manifestHash = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(semiMSCA, 0);
@@ -860,7 +847,7 @@ contract SingleOwnerMSCATest is TestUtils {
             IPluginManager.installPlugin,
             (address(singleOwnerPlugin), manifestHash, abi.encode(ownerInPlugin), dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             semiMSCA,
             acctNonce,
             "0x",
@@ -876,7 +863,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -894,7 +881,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 100000000000, "0x"
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -909,7 +896,7 @@ contract SingleOwnerMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, senderPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -926,7 +913,7 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 100000000000, "0x"
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -941,7 +928,7 @@ contract SingleOwnerMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, senderPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectRevert();
@@ -955,7 +942,7 @@ contract SingleOwnerMSCATest is TestUtils {
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(semiMSCA, 0);
         bytes memory renounceOwnerCallData = abi.encodeCall(SingleOwnerMSCA.renounceNativeOwnership, ());
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             semiMSCA,
             acctNonce,
             "0x",
@@ -970,7 +957,7 @@ contract SingleOwnerMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);

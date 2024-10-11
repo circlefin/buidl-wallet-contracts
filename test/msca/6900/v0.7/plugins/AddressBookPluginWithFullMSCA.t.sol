@@ -268,7 +268,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (recipientAddr, 1, "", recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -283,7 +283,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -312,7 +312,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (recipientAddr, 1, "", recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -328,7 +328,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         (, uint256 randomPrivateKey) = makeAddrAndKey("testExecuteWithAddressBookPassPreUserOpHookButFailValidation");
         bytes memory signature = signUserOpHash(entryPoint, vm, randomPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         // revert due to validation
@@ -358,7 +358,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (recipientAddr, 1, "", recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -373,7 +373,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         // revert due to preUserOpValidationHook == 1
@@ -404,7 +404,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (recipientAddr, 1, "", recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -420,7 +420,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         (, uint256 randomPrivateKey) = makeAddrAndKey("testExecuteWithAddressBookFailPreUserOpHookAndValidation");
         bytes memory signature = signUserOpHash(entryPoint, vm, randomPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         // revert due to preUserOpValidationHook == 1 and validation
@@ -623,7 +623,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (target, value, data, recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -638,7 +638,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -667,7 +667,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectRevert();
@@ -703,7 +703,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (target, value, data, recipientAddr));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -718,7 +718,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectRevert();
@@ -750,7 +750,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -968,7 +968,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         recipients[0] = recipientAddr;
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IAddressBookPlugin.addAllowedRecipients, (recipients));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -983,7 +983,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -1013,7 +1013,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
 
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -1068,11 +1068,11 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         address recipient = address(0);
         bytes memory executeCallData =
             abi.encodeCall(AddressBookPlugin.executeWithAddressBook, (target, value, data, recipient));
-        PackedUserOperation memory userOp =
+        UserOperation memory userOp =
             buildPartialUserOp(address(msca), 0, "0x", vm.toString(executeCallData), 5000000, 20000000, 0, 2, 1, "0x");
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         userOp.signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        PackedUserOperation[] memory userOps = new PackedUserOperation[](1);
+        UserOperation[] memory userOps = new UserOperation[](1);
         userOps[0] = userOp;
         console.log("");
         console.log("address(msca).balance -> %s", address(msca).balance);
@@ -1099,7 +1099,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
             buildPartialUserOp(address(msca), 1, "0x", vm.toString(executeCallData), 5000000, 20000000, 0, 2, 1, "0x");
         userOpHash = entryPoint.getUserOpHash(userOp);
         userOp.signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOps = new PackedUserOperation[](1);
+        userOps = new UserOperation[](1);
         userOps[0] = userOp;
         console.log("");
         console.log("address(msca).balance -> %s", address(msca).balance);

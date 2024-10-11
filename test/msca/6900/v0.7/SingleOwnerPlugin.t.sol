@@ -44,7 +44,7 @@ import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
@@ -329,7 +329,7 @@ contract SingleOwnerPluginTest is TestUtils {
         bytes memory transferOwnershipCallData =
             abi.encodeCall(singleOwnerPlugin.transferOwnership, (address(newOwner)));
         bytes memory initCode = "";
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -346,7 +346,7 @@ contract SingleOwnerPluginTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey1, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -376,7 +376,7 @@ contract SingleOwnerPluginTest is TestUtils {
         // wrap transferOwnershipCallData into execute function for fun
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (sender, 0, transferOwnershipCallData));
         bytes memory initCode = "";
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -393,7 +393,7 @@ contract SingleOwnerPluginTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey2, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -407,7 +407,7 @@ contract SingleOwnerPluginTest is TestUtils {
 
     function testNotImplementedFuncs() public {
         uint8 functionId;
-        PackedUserOperation memory uo;
+        UserOperation memory uo;
         bytes32 userOpHash;
         vm.expectRevert(
             abi.encodeWithSelector(NotImplemented.selector, BasePlugin.preUserOpValidationHook.selector, functionId)

@@ -34,12 +34,12 @@ import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
 
 import {ISingleOwnerPlugin} from "./ISingleOwnerPlugin.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import {BaseERC712CompliantModule} from "../../../../shared/erc712/BaseERC712CompliantModule.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
@@ -54,12 +54,12 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
  * rules.
  *      If the owner uses a storage slot not associated with itself, then the validation would fail.
  */
-contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
+contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC712CompliantModule {
     using ECDSA for bytes32;
-    using MessageHashUtils for bytes32;
 
-    string public constant NAME = "Single Owner Plugin";
-    string constant TRANSFER_OWNERSHIP = "Transfer_Ownership";
+    string public constant _NAME = "Single Owner Plugin";
+    bytes32 private constant _PLUGIN_TYPEHASH = keccak256("CircleSingleOwnerPluginMessage(bytes32 hash)");
+    string internal constant TRANSFER_OWNERSHIP = "Transfer_Ownership";
     // MSCA => owner
     mapping(address => address) internal _mscaOwners;
 
@@ -89,7 +89,9 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
 
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes memory signature) external view override returns (bytes4) {
-        if (_verifySignature(hash, signature)) {
+        // msg.sender is SCA address
+        bytes32 replaySafeHash = getReplaySafeMessageHash(msg.sender, hash);
+        if (_verifySignature(replaySafeHash, signature)) {
             return EIP1271_VALID_SIGNATURE;
         }
         return EIP1271_INVALID_SIGNATURE;
@@ -107,7 +109,7 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
     }
 
     /// @inheritdoc BasePlugin
-    function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function userOpValidationFunction(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         view
         override
@@ -116,7 +118,7 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
         if (functionId != uint8(FunctionId.USER_OP_VALIDATION_OWNER)) {
             revert InvalidValidationFunctionId(functionId);
         }
-        if (_verifySignature(userOpHash, userOp.signature)) {
+        if (_verifySignature(userOpHash.toEthSignedMessageHash(), userOp.signature)) {
             return SIG_VALIDATION_SUCCEEDED;
         }
         return SIG_VALIDATION_FAILED;
@@ -152,7 +154,7 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
         ManifestFunction memory userOpValidationAssociatedFunction =
             ManifestFunction(ManifestAssociatedFunctionType.SELF, uint8(FunctionId.USER_OP_VALIDATION_OWNER), 0);
         // the following function calls (from entry point) should be gated by the userOpValidationAssociatedFunction
-        manifest.userOpValidationFunctions = new ManifestAssociatedFunction[](6);
+        manifest.userOpValidationFunctions = new ManifestAssociatedFunction[](7);
         // plugin functions
         manifest.userOpValidationFunctions[0] =
             ManifestAssociatedFunction(this.transferOwnership.selector, userOpValidationAssociatedFunction);
@@ -166,6 +168,8 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
         manifest.userOpValidationFunctions[4] =
             ManifestAssociatedFunction(IPluginManager.uninstallPlugin.selector, userOpValidationAssociatedFunction);
         manifest.userOpValidationFunctions[5] =
+            ManifestAssociatedFunction(UUPSUpgradeable.upgradeTo.selector, userOpValidationAssociatedFunction);
+        manifest.userOpValidationFunctions[6] =
             ManifestAssociatedFunction(UUPSUpgradeable.upgradeToAndCall.selector, userOpValidationAssociatedFunction);
 
         ManifestFunction memory runtimeValidationAssociatedFunction =
@@ -173,7 +177,7 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
         ManifestFunction memory runtimeAlwaysAllowAssociatedFunction =
             ManifestFunction(ManifestAssociatedFunctionType.RUNTIME_VALIDATION_ALWAYS_ALLOW, 0, 0);
         // the following direct function calls (from EOA/SC) should be gated by the runtimeValidationAssociatedFunction
-        manifest.runtimeValidationFunctions = new ManifestAssociatedFunction[](9);
+        manifest.runtimeValidationFunctions = new ManifestAssociatedFunction[](10);
         // plugin functions
         manifest.runtimeValidationFunctions[0] =
             ManifestAssociatedFunction(this.transferOwnership.selector, runtimeValidationAssociatedFunction);
@@ -187,13 +191,15 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
         manifest.runtimeValidationFunctions[4] =
             ManifestAssociatedFunction(IPluginManager.uninstallPlugin.selector, runtimeValidationAssociatedFunction);
         manifest.runtimeValidationFunctions[5] =
+            ManifestAssociatedFunction(UUPSUpgradeable.upgradeTo.selector, runtimeValidationAssociatedFunction);
+        manifest.runtimeValidationFunctions[6] =
             ManifestAssociatedFunction(UUPSUpgradeable.upgradeToAndCall.selector, runtimeValidationAssociatedFunction);
         // always allow the following direct function calls (from EOA/SC)
-        manifest.runtimeValidationFunctions[6] =
-            ManifestAssociatedFunction(this.getOwner.selector, runtimeAlwaysAllowAssociatedFunction);
         manifest.runtimeValidationFunctions[7] =
-            ManifestAssociatedFunction(this.getOwnerOf.selector, runtimeAlwaysAllowAssociatedFunction);
+            ManifestAssociatedFunction(this.getOwner.selector, runtimeAlwaysAllowAssociatedFunction);
         manifest.runtimeValidationFunctions[8] =
+            ManifestAssociatedFunction(this.getOwnerOf.selector, runtimeAlwaysAllowAssociatedFunction);
+        manifest.runtimeValidationFunctions[9] =
             ManifestAssociatedFunction(this.isValidSignature.selector, runtimeAlwaysAllowAssociatedFunction);
         manifest.interfaceIds = new bytes4[](2);
         manifest.interfaceIds[0] = type(IERC1271).interfaceId;
@@ -204,7 +210,7 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
     /// @inheritdoc BasePlugin
     function pluginMetadata() external pure virtual override returns (PluginMetadata memory) {
         PluginMetadata memory metadata;
-        metadata.name = NAME;
+        metadata.name = _NAME;
         metadata.version = PLUGIN_VERSION_1;
         metadata.author = PLUGIN_AUTHOR;
 
@@ -240,23 +246,16 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271 {
         if (owner == address(0)) {
             revert NoOwnerForMSCA(msg.sender);
         }
-        // EOA owner (ECDSA)
-        // if the signature (personal sign) is signed over userOpHash.toEthSignedMessageHash (prepended with
-        // 'x\x19Ethereum Signed Message:\n32'), then we recover using userOpHash.toEthSignedMessageHash;
-        // or if the signature (typed data sign) is signed over userOpHash directly, then we recover userOpHash directly
-        (address recovered, ECDSA.RecoverError error,) = hash.toEthSignedMessageHash().tryRecover(signature);
-        if (error == ECDSA.RecoverError.NoError && recovered == owner) {
-            return true;
-        }
-        (recovered, error,) = hash.tryRecover(signature);
-        if (error == ECDSA.RecoverError.NoError && recovered == owner) {
-            return true;
-        }
-        if (SignatureChecker.isValidERC1271SignatureNow(owner, hash, signature)) {
-            // smart contract owner.isValidSignature should be smart enough to sign over the non-modified hash or over
-            // the hash that is modified in the way owner would expect
-            return true;
-        }
-        return false;
+        return SignatureChecker.isValidSignatureNow(owner, hash, signature);
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleTypeHash() internal pure override returns (bytes32) {
+        return _PLUGIN_TYPEHASH;
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleIdHash() internal pure override returns (bytes32) {
+        return keccak256(abi.encodePacked(_NAME, PLUGIN_VERSION_1));
     }
 }

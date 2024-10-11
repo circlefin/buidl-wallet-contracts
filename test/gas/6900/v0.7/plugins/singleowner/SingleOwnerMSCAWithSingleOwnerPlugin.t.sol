@@ -76,7 +76,7 @@ contract SingleOwnerMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
         FunctionReference[] memory fr = new FunctionReference[](0);
         bytes memory installCallData =
             abi.encodeCall(msca.installPlugin, (address(singleOwnerPlugin), manifestHash, abi.encode(ownerAddr), fr));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(installCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(installCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
@@ -100,7 +100,7 @@ contract SingleOwnerMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory uninstallCallData =
             abi.encodeCall(msca.uninstallPlugin, (address(singleOwnerPlugin), "", abi.encode(address(0))));
-        PackedUserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(uninstallCallData));
+        UserOperation memory userOp = buildPartialUserOp(mscaAddr, acctNonce, vm.toString(uninstallCallData));
 
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;

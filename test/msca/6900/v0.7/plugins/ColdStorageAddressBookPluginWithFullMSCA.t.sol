@@ -48,7 +48,7 @@ import {TestLiquidityPool} from "../../../../util/TestLiquidityPool.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {console} from "forge-std/src/console.sol";
 
 // some common test cases related to plugin itself is covered in ColdStorageAddressBookPluginWithSemiMSCATest
@@ -288,7 +288,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         vm.deal(mscaAddr, 1 ether);
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -303,7 +303,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -331,7 +331,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         vm.deal(mscaAddr, 1 ether);
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -347,7 +347,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         (, uint256 randomPrivateKey) = makeAddrAndKey("testExecuteWithAddressBookPassPreUserOpHookButFailValidation");
         bytes memory signature = signUserOpHash(entryPoint, vm, randomPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         // revert due to validation
@@ -376,7 +376,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         vm.deal(mscaAddr, 1 ether);
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -391,7 +391,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         // revert due to preUserOpValidationHook == 1
@@ -421,7 +421,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         vm.deal(mscaAddr, 1 ether);
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (recipientAddr, 1, ""));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -437,7 +437,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         (, uint256 randomPrivateKey) = makeAddrAndKey("testExecuteWithAddressBookFailPreUserOpHookAndValidation");
         bytes memory signature = signUserOpHash(entryPoint, vm, randomPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         // revert due to preUserOpValidationHook == 1 and validation
@@ -619,7 +619,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         bytes memory data = abi.encodeCall(testLiquidityPool.transfer, (recipientAddr, 2));
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (target, value, data));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -634,7 +634,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -663,7 +663,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectRevert();
@@ -698,7 +698,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         bytes memory data = abi.encodeCall(testLiquidityPool.transfer, (recipientAddr, 2));
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (target, value, data));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -713,7 +713,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectRevert();
@@ -745,7 +745,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -955,7 +955,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         recipients[0] = recipientAddr;
         uint256 acctNonce = entryPoint.getNonce(mscaAddr, 0);
         bytes memory executeCallData = abi.encodeCall(IAddressBookPlugin.addAllowedRecipients, (recipients));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             mscaAddr,
             acctNonce,
             "0x",
@@ -970,7 +970,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -1000,7 +1000,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
 
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -1054,7 +1054,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         bytes memory data = "";
         // should fail because recipient was not added before
         bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (target, value, data));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             entryPoint.getNonce(mscaAddr, 0),
             "0x",
@@ -1068,7 +1068,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         );
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         userOp.signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        PackedUserOperation[] memory userOps = new PackedUserOperation[](1);
+        UserOperation[] memory userOps = new UserOperation[](1);
         userOps[0] = userOp;
         console.log("");
         console.log("address(msca).balance -> %s", address(msca).balance);
@@ -1102,7 +1102,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         );
         userOpHash = entryPoint.getUserOpHash(userOp);
         userOp.signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOps = new PackedUserOperation[](1);
+        userOps = new UserOperation[](1);
         userOps[0] = userOp;
         console.log("");
         console.log("address(msca).balance -> %s", address(msca).balance);
@@ -1134,7 +1134,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         );
         userOpHash = entryPoint.getUserOpHash(userOp);
         userOp.signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOps = new PackedUserOperation[](1);
+        userOps = new UserOperation[](1);
         userOps[0] = userOp;
         console.log("");
         console.log("address(msca).balance -> %s", address(msca).balance);

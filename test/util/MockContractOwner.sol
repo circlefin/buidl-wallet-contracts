@@ -18,7 +18,7 @@ contract MockContractOwner is IERC1271 {
 
     function isValidSignature(bytes32 digest, bytes memory signature) public view override returns (bytes4) {
         // EOA owner of this contractOwner path
-        (address signer,,) = ECDSA.tryRecover(digest, signature);
+        (address signer,) = ECDSA.tryRecover(digest, signature);
         if (signer == owner) {
             return _1271_MAGIC_VALUE;
         }

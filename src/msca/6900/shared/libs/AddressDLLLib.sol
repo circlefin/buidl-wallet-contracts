@@ -26,8 +26,8 @@ import {AddressDLL} from "../common/Structs.sol";
  *      Item is expected to be unique.
  */
 library AddressDLLLib {
-    address constant SENTINEL_ADDRESS = address(0x0);
-    uint160 constant SENTINEL_ADDRESS_UINT = 0;
+    address internal constant SENTINEL_ADDRESS = address(0x0);
+    uint160 internal constant SENTINEL_ADDRESS_UINT = 0;
 
     event AddressAdded(address indexed addr);
     event AddressRemoved(address indexed addr);

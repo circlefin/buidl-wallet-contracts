@@ -22,7 +22,6 @@ import {Create2FailedDeployment, InvalidInitializationInput, InvalidLength} from
 import {UpgradableMSCA} from "../account/UpgradableMSCA.sol";
 import {PluginManager} from "../managers/PluginManager.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
@@ -45,9 +44,10 @@ contract UpgradableMSCAFactory is Ownable2Step {
 
     error PluginIsNotAllowed(address plugin);
 
-    constructor(address _owner, address _entryPointAddr, address _pluginManagerAddr) Ownable(_owner) {
+    constructor(address _owner, address _entryPointAddr, address _pluginManagerAddr) {
         entryPoint = IEntryPoint(_entryPointAddr);
         PluginManager _pluginManager = PluginManager(_pluginManagerAddr);
+        _transferOwnership(_owner);
         accountImplementation = new UpgradableMSCA(entryPoint, _pluginManager);
         emit FactoryDeployed(address(this), address(accountImplementation), _entryPointAddr);
     }

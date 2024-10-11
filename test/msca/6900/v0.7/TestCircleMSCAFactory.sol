@@ -41,7 +41,8 @@ contract TestCircleMSCAFactory is Ownable {
     error RequireAtLeastOnePluginDuringDeployment();
     error PluginIsNotAllowed(address plugin);
 
-    constructor(address _owner, IEntryPoint _entryPoint, PluginManager _pluginManager) Ownable(_owner) {
+    constructor(address _owner, IEntryPoint _entryPoint, PluginManager _pluginManager) {
+        transferOwnership(_owner);
         accountImplementation = new TestCircleMSCA(_entryPoint, _pluginManager);
         entryPoint = _entryPoint;
     }

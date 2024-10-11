@@ -20,7 +20,7 @@ pragma solidity 0.8.24;
 
 import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
 import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 contract TestUserOpValidator is BasePlugin {
     ValidationData private expectedValidationData;
@@ -31,7 +31,7 @@ contract TestUserOpValidator is BasePlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function userOpValidationFunction(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         view
         override

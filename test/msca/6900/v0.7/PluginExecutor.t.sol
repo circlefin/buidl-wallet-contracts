@@ -162,7 +162,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testTokenPlugin), manifestHash, pluginInstallData, dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             0,
             "0x",
@@ -179,7 +179,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -227,7 +227,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
 
@@ -270,7 +270,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testTokenPlugin), manifestHash, abi.encode(1000), dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             0,
             "0x",
@@ -287,7 +287,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -338,7 +338,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, true);
@@ -389,7 +389,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testTokenPlugin), manifestHash, pluginInstallData, dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             0,
             "0x",
@@ -406,7 +406,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -472,7 +472,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         bytes memory data = abi.encodeCall(
@@ -516,7 +516,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testTokenPlugin), manifestHash, pluginInstallData, dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             0,
             "0x",
@@ -533,7 +533,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -615,7 +615,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -659,7 +659,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         bytes4 errorSelector = bytes4(keccak256("supplyLiquidity(address,address,uint256)"));
@@ -689,7 +689,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testPermitAnyExternalAddressPlugin), manifestHash, "", dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             acctNonce,
             "0x",
@@ -706,7 +706,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -773,7 +773,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
 
@@ -818,7 +818,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testPermitAnyExternalAddressPlugin), manifestHash, "", dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             acctNonce,
             "0x",
@@ -835,7 +835,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -876,7 +876,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, true);
@@ -920,7 +920,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testPermitAnyExternalAddressPlugin), manifestHash, "", dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             acctNonce,
             "0x",
@@ -937,7 +937,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -969,7 +969,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, true);
@@ -997,7 +997,7 @@ contract PluginExecutorTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(hookPlugin), manifestHash, abi.encode(1000), dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             0,
             "0x",
@@ -1014,7 +1014,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -1059,7 +1059,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -1082,7 +1082,7 @@ contract PluginExecutorTest is TestUtils {
         FunctionReference[] memory dependencies = new FunctionReference[](0);
         bytes memory installPluginCallData =
             abi.encodeCall(IPluginManager.installPlugin, (address(hookPlugin), manifestHash, "", dependencies));
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             acctNonce,
             "0x",
@@ -1099,7 +1099,7 @@ contract PluginExecutorTest is TestUtils {
         // signed by singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -1156,7 +1156,7 @@ contract PluginExecutorTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
