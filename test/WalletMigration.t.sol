@@ -122,9 +122,8 @@ contract WalletMigrationTest is TestUtils {
         vm.deal(senderAddr, 1 ether);
 
         uint256 acctNonce = entryPoint.getNonce(senderAddr, 0);
-        bytes memory executeCallData = abi.encodeWithSelector(
-            bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 100000000000, "0x"
-        );
+        bytes memory executeCallData =
+            abi.encodeWithSelector(bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 100000000000, "");
         PackedUserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,

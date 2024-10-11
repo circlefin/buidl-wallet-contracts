@@ -60,6 +60,7 @@ contract TestERC777 is IERC777 {
         return _balances[tokenHolder];
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function burn(uint256 amount, bytes calldata data) external {}
 
     function granularity() external view returns (uint256) {
@@ -82,15 +83,19 @@ contract TestERC777 is IERC777 {
         return 1000;
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function authorizeOperator(address) external {}
 
+    // solhint-disable-next-line no-empty-blocks
     function revokeOperator(address) external {}
 
     function defaultOperators() external view returns (address[] memory a) {
         return new address[](0);
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function operatorSend(address, address, uint256, bytes calldata, bytes calldata) external {}
 
+    // solhint-disable-next-line no-empty-blocks
     function operatorBurn(address, uint256, bytes calldata, bytes calldata) external {}
 }

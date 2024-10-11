@@ -18,21 +18,33 @@
  */
 pragma solidity 0.8.24;
 
-import {SIG_VALIDATION_FAILED} from "../../common/Constants.sol";
-import "../CoreAccount.sol";
-import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {
+    EIP1271_INVALID_SIGNATURE,
+    EIP1271_VALID_SIGNATURE,
+    SIG_VALIDATION_FAILED,
+    WALLET_VERSION_1
+} from "../../common/Constants.sol";
+
+import {BaseERC712CompliantAccount} from "../../erc712/BaseERC712CompliantAccount.sol";
+import {CoreAccount} from "../CoreAccount.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /**
  * @dev Upgradable & ownable (by EOA key) contract. One of the most common templates.
  */
-contract ECDSAAccount is CoreAccount, UUPSUpgradeable {
+contract ECDSAAccount is CoreAccount, UUPSUpgradeable, BaseERC712CompliantAccount {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
+
+    string public constant NAME = "Circle_ECDSAAccount";
+    bytes32 private constant _HASHED_NAME = keccak256(bytes(NAME));
+    bytes32 private constant _HASHED_VERSION = keccak256(bytes(WALLET_VERSION_1));
+    bytes32 private constant _MESSAGE_TYPEHASH = keccak256("CircleECDSAAccountMessage(bytes32 hash)");
 
     /// @inheritdoc UUPSUpgradeable
     // The {_authorizeUpgrade} function must be overridden to include access restriction to the upgrade mechanism.
@@ -69,9 +81,26 @@ contract ECDSAAccount is CoreAccount, UUPSUpgradeable {
     }
 
     function isValidSignature(bytes32 hash, bytes memory signature) external view override returns (bytes4) {
-        if (!SignatureChecker.isValidSignatureNow(owner(), hash.toEthSignedMessageHash(), signature)) {
-            return bytes4(0xffffffff);
+        // use address(this) to prevent replay attacks
+        bytes32 replaySafeHash = getReplaySafeMessageHash(hash);
+        if (SignatureChecker.isValidSignatureNow(owner(), replaySafeHash, signature)) {
+            return EIP1271_VALID_SIGNATURE;
         }
-        return EIP1271_MAGIC_VALUE;
+        return EIP1271_INVALID_SIGNATURE;
+    }
+
+    /// @inheritdoc BaseERC712CompliantAccount
+    function _getAccountTypeHash() internal pure override returns (bytes32) {
+        return _MESSAGE_TYPEHASH;
+    }
+
+    /// @inheritdoc BaseERC712CompliantAccount
+    function _getAccountName() internal pure override returns (bytes32) {
+        return _HASHED_NAME;
+    }
+
+    /// @inheritdoc BaseERC712CompliantAccount
+    function _getAccountVersion() internal pure override returns (bytes32) {
+        return _HASHED_VERSION;
     }
 }
