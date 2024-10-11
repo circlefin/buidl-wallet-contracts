@@ -19,7 +19,7 @@
 
 pragma solidity 0.8.24;
 
-import {CredentialType, OwnerData, PublicKey} from "../../../../../../common/CommonStructs.sol";
+import {CredentialType, OwnerData, OwnershipMetadata, PublicKey} from "../../../../../../common/CommonStructs.sol";
 
 import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
 import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
@@ -27,7 +27,6 @@ import {SetValueLib} from "../../../../../../libs/SetValueLib.sol";
 import {NotImplemented} from "../../../../shared/common/Errors.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
 import {BaseMultisigPlugin} from "./BaseMultisigPlugin.sol";
-import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
 import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
 
 import {
@@ -62,16 +61,6 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
     // reference:
     // https://github.com/ethereum/EIPs/blob/30fec793f3cb6769cb44d2d0daa5238451f67c48/EIPS/eip-712.md#specification
     bytes2 internal constant EIP712_PREFIX = "\x19\x01";
-
-    /// @notice Metadata of the ownership of an account.
-    /// @param numOwners number of owners on the account
-    /// @param thresholdWeight weight of signatures required to perform an action
-    /// @param totalWeight total weight of signatures required to perform an action
-    struct OwnershipMetadata {
-        uint256 numOwners;
-        uint256 thresholdWeight;
-        uint256 totalWeight;
-    }
 
     constructor(address entryPoint) BaseMultisigPlugin(entryPoint) {}
 
@@ -115,21 +104,6 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
 
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 digest, bytes memory signature) external view virtual returns (bytes4);
-
-    /// @inheritdoc IERC712CompliantPlugin
-    function eip712Domain()
-        external
-        view
-        virtual
-        returns (
-            bytes1 fields,
-            string memory name,
-            string memory version,
-            uint256 chainId,
-            address verifyingContract,
-            bytes32 salt,
-            uint256[] memory extensions
-        );
 
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
     // ┃    Plugin interface functions    ┃
@@ -188,31 +162,17 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
     function ownershipInfoOf(address account)
         external
         view
-        returns (bytes30[] memory ownerAddresses, OwnerData[] memory ownersData, uint256 thresholdWeight)
+        returns (
+            bytes30[] memory ownerAddresses,
+            OwnerData[] memory ownersData,
+            OwnershipMetadata memory ownershipMetadata
+        )
     {
         ownerAddresses = _owners.getAll(account).toBytes30Array();
         ownersData = _getOwnersData(ownerAddresses, account);
 
-        return (ownerAddresses, ownersData, _ownerMetadata[account].thresholdWeight);
+        return (ownerAddresses, ownersData, _ownerMetadata[account]);
     }
-
-    /// @inheritdoc IERC712CompliantPlugin
-    function encodeMessageData(address account, bytes memory message) public view override returns (bytes memory) {
-        bytes32 messageHash = keccak256(abi.encode(_getPluginTypeHash(), keccak256(message)));
-        return abi.encodePacked(EIP712_PREFIX, _domainSeparator(account), messageHash);
-    }
-
-    /// @inheritdoc IERC712CompliantPlugin
-    function getMessageHash(address account, bytes memory message) external view returns (bytes32) {
-        return keccak256(encodeMessageData(account, message));
-    }
-
-    /// @dev Returns the domain separator
-    /// @param account account to encode in domain separator
-    function _domainSeparator(address account) internal view virtual returns (bytes32);
-
-    /// @dev Returns the plugin typehash
-    function _getPluginTypeHash() internal pure virtual returns (bytes32);
 
     /// @inheritdoc IWeightedMultisigPlugin
     function checkNSignatures(bytes32 actualDigest, bytes32 minimalDigest, address account, bytes memory signatures)
@@ -323,6 +283,7 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
         OwnershipMetadata storage metadata = _ownerMetadata[msg.sender];
         uint256 _initialTotalWeight = metadata.totalWeight;
         uint256 _newTotalWeight = _initialTotalWeight + totalWeightAdditions - totalWeightReductions;
+        metadata.totalWeight = _newTotalWeight;
 
         _validateAndOptionallySetThresholdWeight(newThresholdWeight, _newTotalWeight, metadata);
 

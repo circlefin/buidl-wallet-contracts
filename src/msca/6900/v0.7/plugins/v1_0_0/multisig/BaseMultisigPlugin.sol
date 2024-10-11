@@ -20,24 +20,18 @@
 pragma solidity 0.8.24;
 
 import {
-    EMPTY_HASH,
-    SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED,
-    ZERO,
-    ZERO_BYTES32
+    EMPTY_HASH, SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCEEDED, ZERO
 } from "../../../../../../common/Constants.sol";
 
-import {CastLib} from "../../../../../../libs/CastLib.sol";
-
+import {MessageHashUtils} from "../../../../../../libs/MessageHashUtils.sol";
 import {NotImplemented} from "../../../../shared/common/Errors.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
 } from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @title Base Multisig Plugin
 /// @author Circle
@@ -73,9 +67,9 @@ abstract contract BaseMultisigPlugin is BasePlugin {
     AssociatedLinkedListSet internal _owners;
 
     address public immutable ENTRYPOINT;
-    string constant ADD_OWNERS_PERMISSION = "Add Owners";
-    string constant UPDATE_MULTISIG_WEIGHTS_PERMISSION = "Update Multisig Weights";
-    string constant REMOVE_OWNERS_PERMISSION = "Remove Owners";
+    string internal constant ADD_OWNERS_PERMISSION = "Add Owners";
+    string internal constant UPDATE_MULTISIG_WEIGHTS_PERMISSION = "Update Multisig Weights";
+    string internal constant REMOVE_OWNERS_PERMISSION = "Remove Owners";
 
     constructor(address entryPoint) {
         ENTRYPOINT = entryPoint;
@@ -99,7 +93,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
         returns (bool success, uint256 firstFailure);
 
     /// @inheritdoc BasePlugin
-    function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function userOpValidationFunction(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         view
         override
@@ -128,7 +122,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
     /// (user op hash with gas fields or paymasterAndData set to default values.)
     /// @param userOp The user operation
     /// @return minimal user op hash
-    function _getMinimalUserOpDigest(PackedUserOperation calldata userOp) internal view returns (bytes32) {
+    function _getMinimalUserOpDigest(UserOperation calldata userOp) internal view returns (bytes32) {
         address sender;
         assembly ("memory-safe") {
             sender := calldataload(userOp)
@@ -143,9 +137,11 @@ abstract contract BaseMultisigPlugin is BasePlugin {
                 nonce,
                 hashInitCode,
                 hashCallData,
-                ZERO_BYTES32, // accountGasLimits
+                ZERO, // callGasLimit = 0
+                ZERO, // verificationGasLimit = 0
                 ZERO, // preVerificationGas = 0
-                ZERO_BYTES32, // gasFees
+                ZERO, // maxFeePerGas = 0
+                ZERO, // maxPriorityFeePerGas = 0
                 EMPTY_HASH // paymasterAndData = keccak256('')
             )
         );

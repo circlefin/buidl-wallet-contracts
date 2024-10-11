@@ -25,11 +25,9 @@ import "./util/TestUtils.sol";
 import "@account-abstraction/contracts/core/EntryPoint.sol";
 import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract SponsorPaymasterTest is TestUtils {
-    using UserOperationLib for PackedUserOperation;
-    using MessageHashUtils for bytes32;
+    using UserOperationLib for UserOperation;
 
     event Upgraded(address indexed implementation);
 
@@ -43,8 +41,6 @@ contract SponsorPaymasterTest is TestUtils {
     uint48 internal MOCK_VALID_UNTIL = 1691493273;
     uint48 internal MOCK_VALID_AFTER = 1681493273;
     bytes internal MOCK_OFFCHAIN_SIG = "0x123456";
-    uint128 internal MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT = 1500;
-    uint128 internal MOCK_PAYMASTER_POST_OP_GAS_LIMIT = 3000;
 
     function setUp() public {
         verifyingSigner1 = vm.addr(verifyingSigner1PrivateKey);
@@ -123,21 +119,10 @@ contract SponsorPaymasterTest is TestUtils {
 
     function testParsePaymasterAndData_validData() public {
         bytes memory paymasterAndData = abi.encodePacked(
-            address(sponsorPaymaster),
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER),
-            MOCK_OFFCHAIN_SIG
+            address(sponsorPaymaster), abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER), MOCK_OFFCHAIN_SIG
         );
-        (
-            uint128 paymasterVerificationGasLimit,
-            uint128 paymasterPostOpGasLimit,
-            uint48 validUntil,
-            uint48 validAfter,
-            bytes memory signature
-        ) = sponsorPaymaster.parsePaymasterAndData(paymasterAndData);
-        assertEq(paymasterVerificationGasLimit, MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT);
-        assertEq(paymasterPostOpGasLimit, MOCK_PAYMASTER_POST_OP_GAS_LIMIT);
+        (uint48 validUntil, uint48 validAfter, bytes memory signature) =
+            sponsorPaymaster.parsePaymasterAndData(paymasterAndData);
         assertEq(validUntil, MOCK_VALID_UNTIL);
         assertEq(validAfter, MOCK_VALID_AFTER);
         assertEq(signature, MOCK_OFFCHAIN_SIG);
@@ -145,7 +130,7 @@ contract SponsorPaymasterTest is TestUtils {
 
     function testValidatePaymasterUserOp_invalidSig() public {
         address sender = vm.parseAddress("0x15Ba972e507B6c5acCBE50D6f4Ed899E6aaB8c19");
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             28,
             "0x",
@@ -155,11 +140,9 @@ contract SponsorPaymasterTest is TestUtils {
             45484,
             516219199704,
             1130000000,
-            // fake
-            "0xef6d11758ed59849431fa0995186371167ab70b9e3a07441b2936101464c1fd6c35a4504b955e033096f87960bacb2576dc8db3e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d193078313233343536"
+            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
         );
-
-        bytes32 userOpHash = vm.parseBytes32("0x9ba9b6abf4c22ac5ff8353ef5e548cc71790a9cdf71fca735460615ae213acad");
+        bytes32 userOpHash = vm.parseBytes32("0x8FF4A88D25B1E70C6D23440F76CD1D0B0FCA957717B9B2084FDF2430653618DA");
         vm.startPrank(address(entryPoint));
         (bytes memory context, uint256 validationData) =
             sponsorPaymaster.validatePaymasterUserOp(userOp, userOpHash, 41216566026689742);
@@ -172,7 +155,7 @@ contract SponsorPaymasterTest is TestUtils {
 
     function testValidatePaymasterUserOp_validSigInvalidSigner() public {
         address sender = vm.parseAddress("0x15Ba972e507B6c5acCBE50D6f4Ed899E6aaB8c19");
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             28,
             "0x",
@@ -185,25 +168,15 @@ contract SponsorPaymasterTest is TestUtils {
             // fake and overwritten later
             "0xef6d11758ed59849431fa0995186371167ab70b9e3a07441b2936101464c1fd6c35a4504b955e033096f87960bacb2576dc8db3e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d193078313233343536"
         );
-        bytes32 paymasterHash = sponsorPaymaster.getHash(
-            userOp,
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            MOCK_VALID_UNTIL,
-            MOCK_VALID_AFTER
-        ).toEthSignedMessageHash();
+        bytes32 paymasterHash =
+            ECDSA.toEthSignedMessageHash(sponsorPaymaster.getHash(userOp, MOCK_VALID_UNTIL, MOCK_VALID_AFTER));
 
         // invalid verifyingSigner signature
         uint256 invalidVerifyingSignerPrivateKey = 0x456;
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(invalidVerifyingSignerPrivateKey, paymasterHash);
         bytes memory paymasterSig = abi.encodePacked(r, s, v);
-        bytes memory actualPaymasterAndData = abi.encodePacked(
-            address(sponsorPaymaster),
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER),
-            paymasterSig
-        );
+        bytes memory actualPaymasterAndData =
+            abi.encodePacked(address(sponsorPaymaster), abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER), paymasterSig);
         userOp.paymasterAndData = actualPaymasterAndData;
 
         bytes32 userOpHash = vm.parseBytes32("0x958df3886f2f9889defaf96ce0d44e2dc5f91c0753d0569a776f9261cfc5be32");
@@ -220,7 +193,7 @@ contract SponsorPaymasterTest is TestUtils {
 
     function testValidatePaymasterUserOp_validSig() public {
         address sender = vm.parseAddress("0x15Ba972e507B6c5acCBE50D6f4Ed899E6aaB8c19");
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             28,
             "0x",
@@ -233,24 +206,14 @@ contract SponsorPaymasterTest is TestUtils {
             // fake and overwritten later
             "0xef6d11758ed59849431fa0995186371167ab70b9e3a07441b2936101464c1fd6c35a4504b955e033096f87960bacb2576dc8db3e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d193078313233343536"
         );
-        bytes32 paymasterHash = sponsorPaymaster.getHash(
-            userOp,
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            MOCK_VALID_UNTIL,
-            MOCK_VALID_AFTER
-        ).toEthSignedMessageHash();
+        bytes32 paymasterHash =
+            ECDSA.toEthSignedMessageHash(sponsorPaymaster.getHash(userOp, MOCK_VALID_UNTIL, MOCK_VALID_AFTER));
 
         // verifyingSigner1 signature
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifyingSigner1PrivateKey, paymasterHash);
         bytes memory paymasterSig = abi.encodePacked(r, s, v);
-        bytes memory actualPaymasterAndData = abi.encodePacked(
-            address(sponsorPaymaster),
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER),
-            paymasterSig
-        );
+        bytes memory actualPaymasterAndData =
+            abi.encodePacked(address(sponsorPaymaster), abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER), paymasterSig);
         userOp.paymasterAndData = actualPaymasterAndData;
 
         bytes32 userOpHash = vm.parseBytes32("0x958df3886f2f9889defaf96ce0d44e2dc5f91c0753d0569a776f9261cfc5be32");
@@ -266,13 +229,8 @@ contract SponsorPaymasterTest is TestUtils {
         // verifyingSigner2 signature
         (v, r, s) = vm.sign(verifyingSigner2PrivateKey, paymasterHash);
         bytes memory paymasterSig2 = abi.encodePacked(r, s, v);
-        bytes memory actualPaymasterAndData2 = abi.encodePacked(
-            address(sponsorPaymaster),
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER),
-            paymasterSig
-        );
+        bytes memory actualPaymasterAndData2 =
+            abi.encodePacked(address(sponsorPaymaster), abi.encode(MOCK_VALID_UNTIL, MOCK_VALID_AFTER), paymasterSig);
         userOp.paymasterAndData = actualPaymasterAndData2;
         (context, validationData) = sponsorPaymaster.validatePaymasterUserOp(userOp, userOpHash, 41216566026689742);
         // sigPassed
@@ -295,7 +253,7 @@ contract SponsorPaymasterTest is TestUtils {
     function testPauseAndUnpauseContract() public {
         (address randomAddr) = makeAddr("randomAccount");
         vm.startPrank(randomAddr);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
+        vm.expectRevert("Ownable: caller is not the owner");
         sponsorPaymaster.pause();
         vm.stopPrank();
 
@@ -303,11 +261,11 @@ contract SponsorPaymasterTest is TestUtils {
         sponsorPaymaster.pause();
         assertEq(true, sponsorPaymaster.paused());
         // should fail if we pause the paused contract
-        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.expectRevert("Pausable: paused");
         sponsorPaymaster.pause();
         // try to call method in paused state
         address sender = vm.parseAddress("0x15Ba972e507B6c5acCBE50D6f4Ed899E6aaB8c19");
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             28,
             "0x",
@@ -319,13 +277,8 @@ contract SponsorPaymasterTest is TestUtils {
             1130000000,
             "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
         );
-        bytes32 paymasterHash = sponsorPaymaster.getHash(
-            userOp,
-            MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
-            MOCK_PAYMASTER_POST_OP_GAS_LIMIT,
-            MOCK_VALID_UNTIL,
-            MOCK_VALID_AFTER
-        ).toEthSignedMessageHash();
+        bytes32 paymasterHash =
+            ECDSA.toEthSignedMessageHash(sponsorPaymaster.getHash(userOp, MOCK_VALID_UNTIL, MOCK_VALID_AFTER));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(verifyingSigner1PrivateKey, paymasterHash);
         bytes memory paymasterSig = abi.encodePacked(r, s, v);
         bytes memory actualPaymasterAndData =
@@ -333,7 +286,7 @@ contract SponsorPaymasterTest is TestUtils {
         userOp.paymasterAndData = actualPaymasterAndData;
         bytes32 userOpHash = vm.parseBytes32("0x8FF4A88D25B1E70C6D23440F76CD1D0B0FCA957717B9B2084FDF2430653618DA");
         vm.startPrank(address(entryPoint));
-        vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
+        vm.expectRevert("Pausable: paused");
         // should fail because of paused contract
         sponsorPaymaster.validatePaymasterUserOp(userOp, userOpHash, 41216566026689742);
         // now unpause
@@ -354,7 +307,7 @@ contract SponsorPaymasterTest is TestUtils {
         // verify Upgraded event
         vm.expectEmit(true, false, false, false);
         emit Upgraded(v2ImplAddr);
-        sponsorPaymaster.upgradeToAndCall(v2ImplAddr, "");
+        sponsorPaymaster.upgradeTo(v2ImplAddr);
         vm.stopPrank();
     }
 

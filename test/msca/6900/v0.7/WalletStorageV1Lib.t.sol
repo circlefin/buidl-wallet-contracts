@@ -33,12 +33,12 @@ contract WalletStorageV1LibTest is TestUtils {
     using FunctionReferenceLib for bytes21;
     using FunctionReferenceLib for FunctionReference;
 
-    address constant SENTINEL_ADDRESS = address(0x0);
+    address private constant SENTINEL_ADDRESS = address(0x0);
     IEntryPoint private entryPoint = new EntryPoint();
     PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
 
     function setUp() public {
         beneficiary = payable(address(makeAddr("bundler")));

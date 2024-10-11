@@ -40,7 +40,6 @@ import {WalletStorageV1Lib} from "../../../../src/msca/6900/v0.7/libs/WalletStor
 
 import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {ERC1967Utils} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol";
 import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
 
 // testing contract with some convenience methods
@@ -162,7 +161,7 @@ contract TestCircleMSCA is UpgradableMSCA {
     }
 
     function setImplementation(address newImplementation) external {
-        StorageSlot.getAddressSlot(ERC1967Utils.IMPLEMENTATION_SLOT).value = newImplementation;
+        StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
     }
 
     function getPluginDetail(address plugin) external view returns (PluginDetailWrapper memory pluginDetailWrapper) {

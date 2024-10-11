@@ -57,8 +57,7 @@ import {TestValidatorHook} from "./TestUserOpValidatorHook.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 contract UpgradableMSCATest is TestUtils {
     using FunctionReferenceLib for bytes21;
@@ -89,7 +88,7 @@ contract UpgradableMSCATest is TestUtils {
     PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
     TestERC1155 private testERC1155;
     TestERC721 private testERC721;
     TestLiquidityPool private testLiquidityPool;
@@ -121,7 +120,7 @@ contract UpgradableMSCATest is TestUtils {
     function testInvalidCalldataLength() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testInvalidCalldataLength");
         UpgradableMSCA msca = new UpgradableMSCA(entryPoint, pluginManager);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -148,7 +147,7 @@ contract UpgradableMSCATest is TestUtils {
     function testNotFoundFunctionSelector() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testNotFoundFunctionSelector");
         UpgradableMSCA msca = new UpgradableMSCA(entryPoint, pluginManager);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -180,7 +179,7 @@ contract UpgradableMSCATest is TestUtils {
         ExecutionFunctionConfig memory executionFunctionConfig;
         executionFunctionConfig.userOpValidationFunction = EMPTY_FUNCTION_REFERENCE.unpack();
         msca.initExecutionDetail(functionSelector, executionFunctionConfig);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -218,7 +217,7 @@ contract UpgradableMSCATest is TestUtils {
         ExecutionFunctionConfig memory executionFunctionConfig =
             ExecutionFunctionConfig(executionPlugin, userOpValidator, runtimeValidator);
         msca.initExecutionDetail(functionSelector, executionFunctionConfig);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -256,7 +255,7 @@ contract UpgradableMSCATest is TestUtils {
         ExecutionFunctionConfig memory executionFunctionConfig =
             ExecutionFunctionConfig(executionPlugin, userOpValidator, runtimeValidator);
         msca.initExecutionDetail(functionSelector, executionFunctionConfig);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -295,7 +294,7 @@ contract UpgradableMSCATest is TestUtils {
         ExecutionFunctionConfig memory executionFunctionConfig =
             ExecutionFunctionConfig(executionPlugin, userOpValidator, runtimeValidator);
         msca.initExecutionDetail(functionSelector, executionFunctionConfig);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -334,7 +333,7 @@ contract UpgradableMSCATest is TestUtils {
 
         FunctionReference memory preUserOpValidationHook = PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE.unpack();
         msca.setPreUserOpValidationHook(selector, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -372,7 +371,7 @@ contract UpgradableMSCATest is TestUtils {
         FunctionReference memory preUserOpValidationHook =
             FunctionReference(address(new TestValidatorHook(expectValidatorHookToPass)), 5);
         msca.setPreUserOpValidationHook(selector, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -410,7 +409,7 @@ contract UpgradableMSCATest is TestUtils {
         FunctionReference memory preUserOpValidationHook =
             FunctionReference(address(new TestValidatorHook(expectValidatorHookToPass)), 5);
         msca.setPreUserOpValidationHook(selector, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -454,7 +453,7 @@ contract UpgradableMSCATest is TestUtils {
         FunctionReference memory preUserOpValidationHook =
             FunctionReference(address(new TestValidatorHook(expectValidatorHookToFail)), 3);
         msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -496,7 +495,7 @@ contract UpgradableMSCATest is TestUtils {
         FunctionReference memory preUserOpValidationHook =
             FunctionReference(address(new TestValidatorHook(expectValidatorHookToPass)), 3);
         msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -543,7 +542,7 @@ contract UpgradableMSCATest is TestUtils {
         FunctionReference memory preUserOpValidationHook =
             FunctionReference(address(new TestValidatorHook(expectValidatorHookToPass)), 3);
         msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -593,7 +592,7 @@ contract UpgradableMSCATest is TestUtils {
             FunctionReference(address(new TestValidatorHook(expectValidatorHookToFail)), 3);
         msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook1);
         msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook2);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -654,7 +653,7 @@ contract UpgradableMSCATest is TestUtils {
         msca.setPreUserOpValidationHook(selector, preUserOpValidationHook3);
         msca.setPreUserOpValidationHook(selector, preUserOpValidationHook4);
         assertEq(msca.sizeOfPreUserOpValidationHooks(selector), 4);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
             "0x",
@@ -694,11 +693,11 @@ contract UpgradableMSCATest is TestUtils {
         address v2ImplAddr = address(implMSCA);
         emit Upgraded(v2ImplAddr);
         // call upgradeTo from proxy
-        msca.upgradeToAndCall(v2ImplAddr, "");
+        msca.upgradeTo(v2ImplAddr);
         vm.stopPrank();
 
-        vm.expectRevert(UUPSUpgradeable.UUPSUnauthorizedCallContext.selector);
-        implMSCA.upgradeToAndCall(v2ImplAddr, "");
+        vm.expectRevert(bytes("Function must be called through delegatecall"));
+        implMSCA.upgradeTo(v2ImplAddr);
     }
 
     function testEncodeAndHashPluginManifest() public {
@@ -766,7 +765,7 @@ contract UpgradableMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 100000000000, "0x"
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -813,7 +812,7 @@ contract UpgradableMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), recipientAddr, 10000000000000000, "0x"
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -828,7 +827,7 @@ contract UpgradableMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -865,7 +864,7 @@ contract UpgradableMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), liquidityPoolSpenderAddr, 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -880,7 +879,7 @@ contract UpgradableMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -904,8 +903,7 @@ contract UpgradableMSCATest is TestUtils {
         factory.createAccount(ownerAddr, salt, initializingData);
         (address senderAddr,) = factory.getAddress(ownerAddr, salt, initializingData);
         vm.deal(senderAddr, 1 ether);
-        // InvalidValidationFunctionId
-        vm.expectRevert(abi.encodeWithSelector(InvalidValidationFunctionId.selector, 0));
+        vm.expectRevert("ERC1155: transfer to non-ERC1155Receiver implementer");
         testERC1155.mint(senderAddr, 0, 2, "");
     }
 
@@ -963,7 +961,7 @@ contract UpgradableMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), address(testERC1155), 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -978,7 +976,7 @@ contract UpgradableMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -1018,7 +1016,7 @@ contract UpgradableMSCATest is TestUtils {
         bytes memory executeCallData = abi.encodeWithSelector(
             bytes4(keccak256("execute(address,uint256,bytes)")), address(testERC721), 0, transferCallData
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
             "0x",
@@ -1033,7 +1031,7 @@ contract UpgradableMSCATest is TestUtils {
 
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
@@ -1079,15 +1077,12 @@ contract UpgradableMSCATest is TestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testCreateAccountFromEP");
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         // only get address w/o deployment
-        address[] memory plugins = new address[](2);
-        bytes32[] memory manifestHashes = new bytes32[](2);
-        bytes[] memory pluginInstallData = new bytes[](2);
+        address[] memory plugins = new address[](1);
+        bytes32[] memory manifestHashes = new bytes32[](1);
+        bytes[] memory pluginInstallData = new bytes[](1);
         plugins[0] = address(singleOwnerPlugin);
         manifestHashes[0] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         pluginInstallData[0] = abi.encode(ownerAddr);
-        plugins[1] = address(defaultTokenCallbackPlugin);
-        manifestHashes[1] = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
-        pluginInstallData[1] = "";
         bytes memory initializingData = abi.encode(plugins, manifestHashes, pluginInstallData);
         (address sender,) = factory.getAddress(ownerAddr, salt, initializingData);
         assertTrue(sender.code.length == 0);
@@ -1100,7 +1095,7 @@ contract UpgradableMSCATest is TestUtils {
             abi.encodeCall(TestCircleMSCAFactory.createAccount, (ownerAddr, salt, initializingData));
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             sender,
             acctNonce,
             vm.toString(initCode),
@@ -1116,7 +1111,7 @@ contract UpgradableMSCATest is TestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);

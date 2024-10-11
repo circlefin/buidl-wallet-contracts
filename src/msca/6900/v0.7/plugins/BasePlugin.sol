@@ -22,7 +22,7 @@ import {NotImplemented} from "../../shared/common/Errors.sol";
 import "../common/PluginManifest.sol";
 import "../common/Structs.sol";
 import {IPlugin} from "../interfaces/IPlugin.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 /**
@@ -77,7 +77,7 @@ abstract contract BasePlugin is IPlugin, ERC165 {
     /// @param userOpHash The user operation hash.
     /// @return validationData Packed validation data for validAfter (6 bytes), validUntil (6 bytes), and authorizer (20
     /// bytes).
-    function preUserOpValidationHook(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function preUserOpValidationHook(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         virtual
         returns (uint256 validationData)
@@ -93,7 +93,7 @@ abstract contract BasePlugin is IPlugin, ERC165 {
     /// @param userOpHash The user operation hash.
     /// @return validationData Packed validation data for validAfter (6 bytes), validUntil (6 bytes), and authorizer (20
     /// bytes).
-    function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function userOpValidationFunction(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         virtual
         returns (uint256 validationData)

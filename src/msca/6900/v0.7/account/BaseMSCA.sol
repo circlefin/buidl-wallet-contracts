@@ -57,7 +57,7 @@ import {StandardExecutor} from "../managers/StandardExecutor.sol";
 
 import {WalletStorageInitializable} from "./WalletStorageInitializable.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
@@ -163,7 +163,7 @@ abstract contract BaseMSCA is
      * subclass doesn't need to override this method. Instead, it should override the specific internal validation
      * methods.
      */
-    function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
+    function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
         external
         virtual
         returns (uint256 validationData)
@@ -349,7 +349,7 @@ abstract contract BaseMSCA is
      * failure.
      *      Note that the validation code cannot use block.timestamp (or block.number) directly due to the storage rule.
      */
-    function _authenticateAndAuthorizeUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function _authenticateAndAuthorizeUserOp(UserOperation calldata userOp, bytes32 userOpHash)
         internal
         virtual
         returns (uint256 validationData)
@@ -464,7 +464,7 @@ abstract contract BaseMSCA is
 
     function _processPreUserOpValidationHooks(
         ExecutionDetail storage executionDetail,
-        PackedUserOperation calldata userOp,
+        UserOperation calldata userOp,
         bytes32 userOpHash
     ) internal virtual returns (ValidationData memory unpackedValidationData) {
         unpackedValidationData = ValidationData(0, 0xFFFFFFFFFFFF, address(0));

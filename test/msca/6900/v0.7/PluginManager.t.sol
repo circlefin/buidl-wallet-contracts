@@ -151,7 +151,7 @@ contract PluginManagerTest is TestUtils {
         bytes memory installPluginCallData = abi.encodeCall(
             IPluginManager.installPlugin, (address(testTokenPlugin), manifestHash, abi.encode(1000), dependencies)
         );
-        PackedUserOperation memory userOp = buildPartialUserOp(
+        UserOperation memory userOp = buildPartialUserOp(
             address(msca),
             0,
             "0x",
@@ -168,7 +168,7 @@ contract PluginManagerTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        UserOperation[] memory ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);
@@ -217,7 +217,7 @@ contract PluginManagerTest is TestUtils {
         // eoaPrivateKey from singleOwnerPlugin
         signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = signature;
-        ops = new PackedUserOperation[](1);
+        ops = new UserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, false);

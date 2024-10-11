@@ -40,7 +40,7 @@ import {IPlugin} from "../../../interfaces/IPlugin.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
 import {IAddressBookPlugin} from "./IAddressBookPlugin.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 import {
     AssociatedLinkedListSet,
@@ -155,7 +155,7 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function preUserOpValidationHook(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function preUserOpValidationHook(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         view
         override

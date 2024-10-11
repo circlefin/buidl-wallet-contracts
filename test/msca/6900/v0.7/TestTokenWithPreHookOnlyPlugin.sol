@@ -28,7 +28,7 @@ import "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
 import "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
 import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
 import "../../../util/TestLiquidityPool.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import "forge-std/src/console.sol";
 
 /**
@@ -137,7 +137,7 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function preUserOpValidationHook(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function preUserOpValidationHook(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         pure
         override
@@ -152,7 +152,7 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function userOpValidationFunction(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         pure
         override

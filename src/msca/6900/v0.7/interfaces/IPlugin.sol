@@ -20,7 +20,7 @@ pragma solidity 0.8.24;
 
 import "../common/PluginManifest.sol";
 import "../common/Structs.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 /**
  * @dev Implements https://eips.ethereum.org/EIPS/eip-6900. Plugins must implement this interface to support plugin
@@ -46,7 +46,7 @@ interface IPlugin {
     /// @param userOp The user operation.
     /// @param userOpHash The user operation hash.
     /// @return Packed validation data for validAfter (6 bytes), validUntil (6 bytes), and authorizer (20 bytes).
-    function preUserOpValidationHook(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function preUserOpValidationHook(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         returns (uint256);
 
@@ -56,7 +56,7 @@ interface IPlugin {
     /// @param userOp The user operation.
     /// @param userOpHash The user operation hash.
     /// @return Packed validation data for validAfter (6 bytes), validUntil (6 bytes), and authorizer (20 bytes).
-    function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
+    function userOpValidationFunction(uint8 functionId, UserOperation calldata userOp, bytes32 userOpHash)
         external
         returns (uint256);
 

@@ -68,3 +68,13 @@ struct OwnerData {
     uint256 publicKeyX; // 32 bytes if used
     uint256 publicKeyY; // 32 bytes if used
 }
+
+/// @notice Metadata of the ownership of an account.
+/// @param numOwners number of owners on the account
+/// @param thresholdWeight weight of signatures required to perform an action
+/// @param totalWeight total weight of signatures required to perform an action
+struct OwnershipMetadata {
+    uint256 numOwners;
+    uint256 thresholdWeight;
+    uint256 totalWeight;
+}
