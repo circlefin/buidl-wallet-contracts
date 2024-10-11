@@ -23,7 +23,8 @@ pragma solidity 0.8.24;
 import {
     EIP1271_INVALID_SIGNATURE,
     EIP1271_VALID_SIGNATURE,
-    EMPTY_MODULE_ENTITY
+    EMPTY_MODULE_ENTITY,
+    SIG_VALIDATION_SUCCEEDED
 } from "../../../../src/common/Constants.sol";
 
 import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
@@ -31,39 +32,40 @@ import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.so
 import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 import {
-    ManifestExecutionHook,
-    ManifestValidation,
-    PluginManifest
-} from "../../../../src/msca/6900/v0.8/common/PluginManifest.sol";
+    ExecutionManifest,
+    ManifestExecutionFunction,
+    ManifestExecutionHook
+} from "../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
 import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
-import {IAccountExecute} from "../../../../src/msca/6900/v0.8/interfaces/IAccountExecute.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+
+import {IExecutionHookModule} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionHookModule.sol";
+import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
+
+import {IValidationHookModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationModule.sol";
 import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
 
 import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
-    "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
+    "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {TestERC1155} from "../../../util/TestERC1155.sol";
 import {TestERC721} from "../../../util/TestERC721.sol";
 
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
-
-import {TestUserOpValidatorHook} from "../v0.8/TestUserOpValidatorHook.sol";
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
-import {TestUserOpValidator} from "./TestUserOpValidator.sol";
-import {TestUserOpValidatorHook} from "./TestUserOpValidatorHook.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
+import {Call, ValidationDataView} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
+
+import {HookConfigLib} from "../../../../src/msca/6900/v0.8/libs/HookConfigLib.sol";
+import {MockModule} from "./helpers/MockModule.sol";
+import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
-// We use TestCircleMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
+// We use UpgradableMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
 contract UpgradableMSCATest is AccountTestUtils {
     using ModuleEntityLib for bytes21;
     using ModuleEntityLib for ModuleEntity;
@@ -88,26 +90,26 @@ contract UpgradableMSCATest is AccountTestUtils {
         uint256 actualGasCost,
         uint256 actualGasUsed
     );
+    event ReceivedCall(bytes msgData);
 
-    error RuntimeValidationFailed(address plugin, uint32 entityId, bytes revertReason);
+    error RuntimeValidationFailed(address module, uint32 entityId, bytes revertReason);
 
     IEntryPoint private entryPoint = new EntryPoint();
-    PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
     address payable private beneficiary; // e.g. bundler
     TestERC1155 private testERC1155;
     TestERC721 private testERC721;
     TestLiquidityPool private testLiquidityPool;
-    TestCircleMSCAFactory private factory;
     address private factoryOwner;
     SingleSignerValidationModule private singleSignerValidationModule;
-    UpgradableMSCAFactory private mscaFactory;
+    UpgradableMSCAFactory private factory;
     ModuleEntity private ownerValidation;
     uint256 internal eoaPrivateKey2;
     address private ownerAddr2;
     SingleSignerValidationModule private singleSignerValidationModule2;
     ModuleEntity private owner2Validation;
+    bytes32 internal salt = bytes32(0);
 
     function setUp() public {
         factoryOwner = makeAddr("factoryOwner");
@@ -115,19 +117,18 @@ contract UpgradableMSCATest is AccountTestUtils {
         testERC1155 = new TestERC1155("getrich.com");
         testERC721 = new TestERC721("getrich", "$$$");
         testLiquidityPool = new TestLiquidityPool("getrich", "$$$");
-        factory = new TestCircleMSCAFactory(factoryOwner, entryPoint, pluginManager);
-        mscaFactory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint), address(pluginManager));
+        factory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint));
         singleSignerValidationModule = new SingleSignerValidationModule();
         singleSignerValidationModule2 = new SingleSignerValidationModule();
-        address[] memory _plugins = new address[](2);
-        _plugins[0] = address(singleSignerValidationModule);
-        _plugins[1] = address(singleSignerValidationModule2);
+        address[] memory _modules = new address[](2);
+        _modules[0] = address(singleSignerValidationModule);
+        _modules[1] = address(singleSignerValidationModule2);
         bool[] memory _permissions = new bool[](2);
         _permissions[0] = true;
         _permissions[1] = true;
         vm.startPrank(factoryOwner);
-        factory.setPlugins(_plugins, _permissions);
-        mscaFactory.setPlugins(_plugins, _permissions);
+        factory.setModules(_modules, _permissions);
+        factory.setModules(_modules, _permissions);
         vm.stopPrank();
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
         owner2Validation = ModuleEntityLib.pack(address(singleSignerValidationModule2), uint32(0));
@@ -135,7 +136,7 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     function testInvalidCalldataLength() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testInvalidCalldataLength");
-        UpgradableMSCA msca = new UpgradableMSCA(entryPoint, pluginManager);
+        UpgradableMSCA msca = new UpgradableMSCA(entryPoint);
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
@@ -162,7 +163,7 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     function testNotFoundFunctionSelector() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testNotFoundFunctionSelector");
-        UpgradableMSCA msca = new UpgradableMSCA(entryPoint, pluginManager);
+        UpgradableMSCA msca = new UpgradableMSCA(entryPoint);
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca),
             28,
@@ -188,7 +189,7 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     function testEmptyUserOpValidationFunction() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testEmptyUserOpValidationFunction");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
+        UpgradableMSCA msca = new UpgradableMSCA(entryPoint);
         // functionSelector: 0xb61d27f6
         // FunctionReference userOpValidator is not configured
         PackedUserOperation memory userOp = buildPartialUserOp(
@@ -216,372 +217,16 @@ contract UpgradableMSCATest is AccountTestUtils {
         vm.stopPrank();
     }
 
-    function testValidationPassButWithWrongTimeBounds() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidationPassButWithWrongTimeBounds");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        // wrong time bounds
-        ValidationData memory expectToPass = ValidationData(10, 9, address(0));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectToPass)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        bytes4 selector = bytes4(keccak256("WrongTimeBounds()"));
-        vm.expectRevert(abi.encodeWithSelector(selector));
-        _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        vm.stopPrank();
-    }
-
-    function testValidationPassWithoutHooks() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidationPassWithoutHooks");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        // uint48 validAfter;
-        // uint48 validUntil;
-        // address authorizer;
-        ValidationData memory expectToPass = ValidationData(1681493273, 1691493273, address(0));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectToPass)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        assertEq(validationData.validAfter, 1681493273);
-        assertEq(validationData.validUntil, 1691493273);
-        assertEq(validationData.authorizer, address(0));
-        vm.stopPrank();
-    }
-
-    function testValidationFailWithoutHooks() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidationFailWithoutHooks");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        // uint48 validAfter;
-        // uint48 validUntil;
-        // address authorizer;
-        ValidationData memory expectToPass = ValidationData(0, 1791493273, address(1));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectToPass)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        assertEq(validationData.validAfter, 0);
-        assertEq(validationData.validUntil, 1791493273);
-        assertEq(validationData.authorizer, address(1));
-        vm.stopPrank();
-    }
-
-    function testSkipRuntimeAlwaysAllow() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSkipRuntimeAlwaysAllow");
-        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
-        bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        TestCircleMSCA msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
-        bytes4 selector = bytes4(msca.upgradeToAndCall.selector);
-        // skip runtime validation
-        msca.setSkipRuntimeValidation(selector, true);
-        vm.startPrank(address(entryPoint));
-        TestCircleMSCA implMSCA = new TestCircleMSCA(IEntryPoint(vm.addr(123)), pluginManager);
-        address v2ImplAddr = address(implMSCA);
-        emit Upgraded(v2ImplAddr);
-        msca.upgradeToAndCall(v2ImplAddr, "");
-
-        // require runtime validation now, but would fail at singleSignerValidationModule.validateRuntime
-        msca.setSkipRuntimeValidation(selector, false);
-        vm.startPrank(vm.addr(1));
-        bytes memory revertReason = abi.encodeWithSelector(bytes4(keccak256("UnauthorizedCaller()")));
-        uint32 entityId = uint32(0);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                bytes4(keccak256("ExecFromPluginToSelectorNotPermitted(address,bytes4)")), vm.addr(1), selector
-            )
-        );
-        msca.upgradeToAndCall(v2ImplAddr, "");
-        vm.stopPrank();
-    }
-
-    function testValidationWhenHookFails() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidationWhenHookFails");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        // uint48 validAfter;
-        // uint48 validUntil;
-        // address authorizer;
-        ValidationData memory expectValidatorToPass = ValidationData(1681493273, 1691493273, address(0));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectValidatorToPass)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-
-        ValidationData memory expectValidatorHookToFail = ValidationData(1781493273, 1791493273, address(1));
-        ModuleEntity preUserOpValidationHook =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToFail)), 3);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        // this will be caught up in entryPoint
-        assertEq(validationData.validAfter, 1781493273);
-        assertEq(validationData.validUntil, 1691493273);
-        assertEq(validationData.authorizer, address(1));
-        vm.stopPrank();
-    }
-
-    function testValidationWithInvalidTimeBounds() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidationWithInvalidTimeBounds");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        ValidationData memory expectValidatorToPass = ValidationData(1681493273, 1691493273, address(0));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectValidatorToPass)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-
-        ValidationData memory expectValidatorHookToPass = ValidationData(1781493273, 1791493273, address(0));
-        ModuleEntity preUserOpValidationHook =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 3);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        // this will be caught up in entryPoint
-        assertEq(validationData.validAfter, 1781493273);
-        assertEq(validationData.validUntil, 1691493273);
-        // the time bounds interception doesn't make sense
-        assertEq(validationData.authorizer, address(1));
-        vm.stopPrank();
-    }
-
-    function testValidatorFailsButHookPasses() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testValidatorFailsButHookPasses");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        // uint48 validAfter;
-        // uint48 validUntil;
-        // address authorizer;
-        ValidationData memory expectValidatorToFail = ValidationData(0, 1691493273, address(1));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectValidatorToFail)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-
-        ValidationData memory expectValidatorHookToPass = ValidationData(1, 1691493274, address(0));
-        ModuleEntity preUserOpValidationHook =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 3);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        assertEq(validationData.validAfter, 1);
-        assertEq(validationData.validUntil, 1691493273);
-        assertEq(validationData.authorizer, address(1));
-        vm.stopPrank();
-    }
-
-    function testOneHookPassesButTheOtherHookFails() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testOneHookPassesButTheOtherHookFails");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 functionSelector = bytes4(0xb61d27f6);
-        // uint48 validAfter;
-        // uint48 validUntil;
-        // address authorizer;
-        ValidationData memory expectValidatorToFail = ValidationData(0, 1691493273, address(1));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectValidatorToFail)), 3);
-        msca.associateSelectorToValidation(functionSelector, vm.addr(1), validatorFunc);
-
-        ValidationData memory expectValidatorHookToPass = ValidationData(1, 3, address(0));
-        ModuleEntity preUserOpValidationHook1 =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 3);
-
-        ValidationData memory expectValidatorHookToFail = ValidationData(2, 4, address(1));
-        ModuleEntity preUserOpValidationHook2 =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToFail)), 3);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook1);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook2);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), validatorFunc, signature, false);
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        assertEq(validationData.validAfter, 2);
-        assertEq(validationData.validUntil, 3);
-        assertEq(validationData.authorizer, address(1));
-        vm.stopPrank();
-    }
-
-    function testInterceptWhenAllValidationsPass() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testInterceptWhenAllValidationsPass");
-        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // 0xb61d27f6
-        bytes4 selector = bytes4(0xb61d27f6);
-        // uint48 validAfter;
-        // uint48 validUntil;
-        // address authorizer;
-        ValidationData memory expectValidatorToFail = ValidationData(0, 1691493273, address(0));
-        ModuleEntity validatorFunc = ModuleEntityLib.pack(address(new TestUserOpValidator(expectValidatorToFail)), 7);
-        msca.associateSelectorToValidation(selector, vm.addr(1), validatorFunc);
-
-        ValidationData memory expectValidatorHookToPass = ValidationData(1, 20, address(0));
-        ModuleEntity preUserOpValidationHook1 =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 3);
-
-        expectValidatorHookToPass = ValidationData(2, 21, address(0));
-        ModuleEntity preUserOpValidationHook2 =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 4);
-
-        expectValidatorHookToPass = ValidationData(5, 30, address(0));
-        ModuleEntity preUserOpValidationHook3 =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 5);
-
-        expectValidatorHookToPass = ValidationData(7, 19, address(0));
-        ModuleEntity preUserOpValidationHook4 =
-            ModuleEntityLib.pack(address(new TestUserOpValidatorHook(expectValidatorHookToPass)), 6);
-
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook1);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook2);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook3);
-        msca.setPreValidationHook(validatorFunc, preUserOpValidationHook4);
-        assertEq(msca.sizeOfPreValidationHooks(validatorFunc), 4);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        userOp.signature = encodeSignature(
-            new PreValidationHookData[](0), validatorFunc, signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp), false
-        );
-        ValidationData memory validationData = _unpackValidationData(msca.validateUserOp(userOp, userOpHash, 0));
-        assertEq(validationData.validAfter, 7);
-        assertEq(validationData.validUntil, 19);
-        assertEq(validationData.authorizer, address(0));
-        vm.stopPrank();
-    }
-
     function testUpgradeMSCA() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testUpgradeMSCA");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        TestCircleMSCA msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
 
         vm.startPrank(address(entryPoint));
-        TestCircleMSCA implMSCA = new TestCircleMSCA(IEntryPoint(vm.addr(123)), pluginManager);
+        UpgradableMSCA implMSCA = new UpgradableMSCA(IEntryPoint(vm.addr(123)));
         address v2ImplAddr = address(implMSCA);
         emit Upgraded(v2ImplAddr);
         // call upgradeTo from proxy
@@ -592,8 +237,8 @@ contract UpgradableMSCATest is AccountTestUtils {
         implMSCA.upgradeToAndCall(v2ImplAddr, "");
     }
 
-    function testEncodeAndHashPluginManifest() public pure {
-        PluginManifest memory manifest;
+    function testEncodeAndHashExecutionManifest() public pure {
+        ExecutionManifest memory manifest;
         bytes4[] memory dependencyInterfaceIds = new bytes4[](1);
         dependencyInterfaceIds[0] = bytes4(0x12345678);
         string[] memory guardingPermissions = new string[](1);
@@ -602,39 +247,32 @@ contract UpgradableMSCATest is AccountTestUtils {
         executionFunctions[0] = 0x12345678;
         bytes4[] memory functionSelectors = new bytes4[](1);
         functionSelectors[0] = bytes4(0x12345678);
-        manifest.validationFunctions = new ManifestValidation[](1);
-        manifest.validationFunctions[0] = ManifestValidation({
-            entityId: uint32(0),
-            isGlobal: true,
-            isSignatureValidation: true,
-            selectors: functionSelectors
-        });
         ManifestExecutionHook[] memory executionHooks = new ManifestExecutionHook[](1);
         executionHooks[0] = ManifestExecutionHook(bytes4(0x12345678), 0, true, true);
         manifest.executionHooks = executionHooks;
-        assertEq(abi.encode(manifest).length, 640);
+        assertEq(abi.encode(manifest).length, 352);
         assertEq(keccak256(abi.encode(manifest)).length, 32);
     }
 
-    function testSendAndReceiveNativeTokenWithoutAnyACLPlugin() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    function testSendAndReceiveNativeTokenWithoutAnyACLModule() public {
         (address randomSenderSeedAddr, uint256 senderPrivateKey) =
-            makeAddrAndKey("testSendAndReceiveNativeTokenWithoutAnyACLPlugin_sender");
+            makeAddrAndKey("testSendAndReceiveNativeTokenWithoutAnyACLModule_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData = abi.encode(
             validationConfig, new bytes4[](0), abi.encode(uint32(0), randomSenderSeedAddr), bytes(""), bytes("")
         );
-        TestCircleMSCA sender = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+        UpgradableMSCA sender = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
 
         address senderAddr = address(sender);
         bytes[] memory empty = new bytes[](0);
         vm.startPrank(senderAddr);
-        // remove ownership plugin
-        sender.uninstallValidation(ownerValidation, abi.encode(uint32(0)), abi.encode(empty), abi.encode(empty));
+        // remove ownership module
+        sender.uninstallValidation(ownerValidation, abi.encode(uint32(0)), empty);
         vm.stopPrank();
 
-        (address recipientAddr,) = factory.getAddressWithValidation(vm.addr(1), salt, initializingData);
+        (address recipientAddr,) =
+            factory.getAddressWithValidation(addressToBytes32(vm.addr(1)), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
 
         uint256 acctNonce = entryPoint.getNonce(senderAddr, 0);
@@ -660,7 +298,7 @@ contract UpgradableMSCATest is AccountTestUtils {
         vm.startPrank(address(entryPoint));
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.UserOpValidationFunctionMissing.selector,
+                BaseMSCA.ValidationFunctionMissing.selector,
                 bytes4(keccak256("execute(address,uint256,bytes)")),
                 ownerValidation
             )
@@ -672,16 +310,16 @@ contract UpgradableMSCATest is AccountTestUtils {
     }
 
     function testSendAndReceiveNativeTokenWithSingleSignerValidationModule() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) =
             makeAddrAndKey("testSendAndReceiveNativeTokenWithSingleSignerValidationModule_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        factory.createAccountWithValidation(ownerAddr, salt, initializingData);
-        (address senderAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
-        (address recipientAddr,) = factory.getAddressWithValidation(vm.addr(1), salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        (address senderAddr,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        (address recipientAddr,) =
+            factory.getAddressWithValidation(addressToBytes32(vm.addr(1)), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
 
         uint256 acctNonce = entryPoint.getNonce(senderAddr, 0);
@@ -716,16 +354,16 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     // should be able to send & receive ERC20 token even w/o token callback handler
     function testSendAndReceiveERC20TokenWithoutDefaultCallbackHandler() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC20TokenWithoutDefaultCallbackHandler_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        factory.createAccountWithValidation(ownerAddr, salt, initializingData);
-        (address senderAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        (address senderAddr,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         // recipient account doesn't have the token callback
-        (address recipientAddr,) = factory.getAddressWithValidation(vm.addr(1), salt, initializingData);
+        (address recipientAddr,) =
+            factory.getAddressWithValidation(addressToBytes32(vm.addr(1)), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
         testLiquidityPool.mint(senderAddr, 2000000);
 
@@ -764,14 +402,13 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     // should be able to receive ERC1155 token with token callback enshrined
     function testSendAndReceiveERC1155TokenNatively() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC1155TokenNatively_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        factory.createAccountWithValidation(ownerAddr, salt, initializingData);
-        (address senderAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        (address senderAddr,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
         testERC1155.mint(senderAddr, 0, 2, "");
         assertEq(testERC1155.balanceOf(senderAddr, 0), 2);
@@ -779,14 +416,13 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     // should not be able to receive ERC721 token with token callback enshrined
     function testSendAndReceiveERC721TokenNatively() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC721TokenNatively_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        factory.createAccountWithValidation(ownerAddr, salt, initializingData);
-        (address senderAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        (address senderAddr,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
         testERC721.safeMint(senderAddr, 0);
         assertEq(testERC721.balanceOf(senderAddr), 1);
@@ -794,16 +430,16 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     // should be able to send/receive ERC1155 token with token callback handler
     function testSendAndReceiveERC1155TokenWithDefaultCallbackHandler() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC1155TokenWithDefaultCallbackHandler_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        TestCircleMSCA msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         address senderAddr = address(msca);
         // recipient account has the token callback installed
-        TestCircleMSCA recipient = factory.createAccountWithValidation(vm.addr(1), salt, initializingData);
+        UpgradableMSCA recipient =
+            factory.createAccountWithValidation(addressToBytes32(vm.addr(1)), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
         testERC1155.mint(senderAddr, 0, 2, "");
         address recipientAddr = address(recipient);
@@ -848,16 +484,16 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     // should be able to send/receive ERC721 token with token callback handler
     function testSendAndReceiveERC721TokenWithDefaultCallbackHandler() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testSendAndReceiveERC721TokenWithDefaultCallbackHandler_sender");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        factory.createAccountWithValidation(ownerAddr, salt, initializingData);
-        (address senderAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        (address senderAddr,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         // recipient account has the token callback installed
-        TestCircleMSCA recipient = factory.createAccountWithValidation(vm.addr(1), salt, initializingData);
+        UpgradableMSCA recipient =
+            factory.createAccountWithValidation(addressToBytes32(vm.addr(1)), salt, initializingData);
         vm.deal(senderAddr, 1 ether);
         testERC721.safeMint(senderAddr, 0);
         address recipientAddr = address(recipient);
@@ -897,13 +533,12 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     // should be able to depositTo/withdrawDepositTo/getDeposit
     function testDepositAndWithdrawWithEP() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testDepositAndWithdrawWithEP");
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        TestCircleMSCA sender = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA sender = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
 
         vm.deal(address(sender), 1 ether);
         vm.startPrank(address(sender));
@@ -926,21 +561,22 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     function testCreateAccountFromEP() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testCreateAccountFromEP");
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
         // only get address w/o deployment
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        (address sender,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        (address sender,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertTrue(sender.code.length == 0);
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(sender, 0);
         // start with balance
         vm.deal(sender, 100 ether);
-        bytes memory executeCallData = abi.encodeCall(IStandardExecutor.execute, (address(0), 0, ""));
-        bytes memory createAccountCall =
-            abi.encodeCall(TestCircleMSCAFactory.createAccountWithValidation, (ownerAddr, salt, initializingData));
+        bytes memory executeCallData = abi.encodeCall(IModularAccount.execute, (address(0), 0, ""));
+        bytes memory createAccountCall = abi.encodeCall(
+            UpgradableMSCAFactory.createAccountWithValidation, (addressToBytes32(ownerAddr), salt, initializingData)
+        );
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
         PackedUserOperation memory userOp = buildPartialUserOp(
@@ -971,34 +607,139 @@ contract UpgradableMSCATest is AccountTestUtils {
         vm.stopPrank();
     }
 
-    function testIsValidSignatureNew() public {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    function testIsValidSignature() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testIsValidSignature");
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ExecutionManifest memory execManifest;
+        MockModule mockModule = new MockModule(
+            execManifest, SIG_VALIDATION_SUCCEEDED, true, true, bytes(""), true, SIG_VALIDATION_SUCCEEDED, true
+        );
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes[] memory hooks = new bytes[](1);
+        hooks[0] = abi.encodePacked(HookConfigLib.packValidationHook(address(mockModule), uint32(0)), "");
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        TestCircleMSCA msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), hooks);
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         // raw message hash
-        bytes32 message = keccak256("circle internet");
-        bytes32 wrappedMessage = singleSignerValidationModule.getReplaySafeMessageHash(address(msca), message);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(eoaPrivateKey, wrappedMessage);
+        bytes memory rawMessage = abi.encodePacked("circle internet");
+        bytes32 messageHash = keccak256(rawMessage);
+        bytes32 replaySafeMessageHash =
+            singleSignerValidationModule.getReplaySafeMessageHash(address(msca), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(eoaPrivateKey, replaySafeMessageHash);
+        // valid signature
+        bytes memory signature =
+            encode1271Signature(new PreValidationHookData[](0), ownerValidation, abi.encodePacked(r, s, v));
+        assertEq(msca.isValidSignature(messageHash, signature), bytes4(EIP1271_VALID_SIGNATURE));
 
-        bytes memory signature = abi.encodePacked(r, s, v);
-        signature = abi.encodePacked(ownerValidation, signature);
-        assertEq(IERC1271(address(msca)).isValidSignature(message, signature), bytes4(EIP1271_VALID_SIGNATURE));
+        // valid signature with pre hook
+        PreValidationHookData[] memory preValidationHookData = new PreValidationHookData[](1);
+        // FLAG_TO_PASS == 0
+        preValidationHookData[0] = PreValidationHookData({index: 0, hookData: abi.encode(uint8(0))});
+        signature = encode1271Signature(preValidationHookData, ownerValidation, abi.encodePacked(r, s, v));
+        assertEq(msca.isValidSignature(messageHash, signature), bytes4(EIP1271_VALID_SIGNATURE));
 
         // invalid signature
-        signature = abi.encodePacked(address(singleSignerValidationModule), uint32(0), r, s, uint32(0));
-        assertEq(IERC1271(address(msca)).isValidSignature(message, signature), bytes4(EIP1271_INVALID_SIGNATURE));
+        signature =
+            encode1271Signature(new PreValidationHookData[](0), ownerValidation, abi.encodePacked(r, s, uint32(0)));
+        assertEq(msca.isValidSignature(messageHash, signature), bytes4(EIP1271_INVALID_SIGNATURE));
 
-        // invalid validation plugin
-        signature = abi.encodePacked(address(0), uint32(0), r, s, v);
+        // invalid validation module
+        signature = encode1271Signature(
+            new PreValidationHookData[](0), ModuleEntityLib.pack(address(0), uint32(0)), abi.encodePacked(r, s, v)
+        );
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.InvalidSignatureValidation.selector, ModuleEntityLib.pack(address(0), uint32(0))
             )
         );
-        IERC1271(address(msca)).isValidSignature(message, signature);
+        msca.isValidSignature(messageHash, signature);
+
+        // valid signature with pre hook fail entity id
+        preValidationHookData = new PreValidationHookData[](1);
+        // FLAG_TO_PASS == 0, so this is going to revert
+        preValidationHookData[0] = PreValidationHookData({index: 0, hookData: abi.encode(uint8(1))});
+        signature = encode1271Signature(preValidationHookData, ownerValidation, abi.encodePacked(r, s, v));
+        vm.expectRevert(abi.encodeWithSelector(MockModule.PreSignatureValidationHookFailed.selector));
+        msca.isValidSignature(messageHash, signature);
+    }
+
+    ///
+    /// isSignatureValidation
+    ///
+    function testFalseSignatureValidationFlag() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testFalseSignatureValidationFlag");
+        // isSignatureValidation == false
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, false, true);
+        bytes[] memory hooks = new bytes[](0);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), hooks);
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        // raw message hash
+        bytes memory rawMessage = abi.encodePacked("circle internet");
+        bytes32 messageHash = keccak256(rawMessage);
+        bytes32 replaySafeMessageHash =
+            singleSignerValidationModule.getReplaySafeMessageHash(address(msca), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(eoaPrivateKey, replaySafeMessageHash);
+        // valid signature but with false isSignatureValidation
+        bytes memory signature =
+            encode1271Signature(new PreValidationHookData[](0), ownerValidation, abi.encodePacked(r, s, v));
+        vm.expectRevert(abi.encodeWithSelector(BaseMSCA.InvalidSignatureValidation.selector, ownerValidation));
+        msca.isValidSignature(messageHash, signature);
+    }
+
+    ///
+    /// isUserOpValidation
+    ///
+    function testFalseUserOpValidationFlag() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testFalseUserOpValidationFlag");
+        // isUserOpValidation == false
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, false);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        // nonce key is 0
+        uint256 acctNonce = entryPoint.getNonce(address(msca), 0);
+        // start with balance
+        vm.deal(address(msca), 1 ether);
+        address recipient = makeAddr("testFalseSignatureValidationFlag_recipient");
+        PackedUserOperation memory userOp = buildPartialUserOp(
+            address(msca),
+            acctNonce,
+            "0x",
+            vm.toString(abi.encodeCall(IModularAccount.execute, (recipient, 1 wei, ""))),
+            83353000,
+            10286500,
+            0,
+            1,
+            1,
+            "0x"
+        );
+
+        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
+        userOp.signature = encodeSignature(new PreValidationHookData[](0), ownerValidation, signature, true);
+
+        PackedUserOperation[] memory ops = new PackedUserOperation[](1);
+        ops[0] = userOp;
+        vm.startPrank(address(entryPoint));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IEntryPoint.FailedOpWithRevert.selector,
+                0,
+                "AA23 reverted",
+                abi.encodeWithSelector(BaseMSCA.InvalidUserOpValidation.selector, ownerValidation)
+            )
+        );
+        entryPoint.handleOps(ops, beneficiary);
+        assertEq(recipient.balance, 0 wei);
+        vm.stopPrank();
+
+        // runtime call should work
+        vm.startPrank(ownerAddr);
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.execute, (recipient, 1 wei, "")),
+            encodeSignature(new PreValidationHookData[](0), ownerValidation, "", true)
+        );
+        assertEq(recipient.balance, 1 wei);
+        vm.stopPrank();
     }
 
     ///
@@ -1025,15 +766,15 @@ contract UpgradableMSCATest is AccountTestUtils {
                 abi.encodeWithSignature("UnauthorizedCaller()")
             )
         );
-        msca.executeWithAuthorization(
-            abi.encodeCall(IStandardExecutor.execute, (address(0), 0, "")),
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.execute, (address(0), 0, "")),
             encodeSignature(new PreValidationHookData[](0), owner2Validation, "", true)
         );
         vm.stopPrank();
 
         vm.startPrank(ownerAddr2);
-        msca.executeWithAuthorization(
-            abi.encodeCall(IStandardExecutor.execute, (address(0), 0, "")),
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.execute, (address(0), 0, "")),
             encodeSignature(new PreValidationHookData[](0), owner2Validation, "", true)
         );
         vm.stopPrank();
@@ -1048,7 +789,7 @@ contract UpgradableMSCATest is AccountTestUtils {
             address(msca),
             0,
             "0x",
-            vm.toString(abi.encodeCall(IStandardExecutor.execute, (address(0), 0, ""))),
+            vm.toString(abi.encodeCall(IModularAccount.execute, (address(0), 0, ""))),
             83353,
             102865,
             45484,
@@ -1080,19 +821,20 @@ contract UpgradableMSCATest is AccountTestUtils {
     ///
     function testGlobalValidationViaUserOp() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testGlobalValidationViaUserOp");
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
         // only get address w/o deployment
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        (address msca,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        (address msca,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertTrue(msca.code.length == 0);
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(msca, 0);
         // start with balance
         vm.deal(msca, 2 ether);
-        bytes memory createAccountCall =
-            abi.encodeCall(TestCircleMSCAFactory.createAccountWithValidation, (ownerAddr, salt, initializingData));
+        bytes memory createAccountCall = abi.encodeCall(
+            UpgradableMSCAFactory.createAccountWithValidation, (addressToBytes32(ownerAddr), salt, initializingData)
+        );
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
         address recipient = makeAddr("testGlobalValidationViaUserOp_recipient");
@@ -1100,7 +842,7 @@ contract UpgradableMSCATest is AccountTestUtils {
             address(msca),
             acctNonce,
             vm.toString(initCode),
-            vm.toString(abi.encodeCall(IStandardExecutor.execute, (recipient, 1 wei, ""))),
+            vm.toString(abi.encodeCall(IModularAccount.execute, (recipient, 1 wei, ""))),
             83353000,
             10286500,
             0,
@@ -1110,7 +852,6 @@ contract UpgradableMSCATest is AccountTestUtils {
         );
 
         // Generate signature
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         userOp.signature = encodeSignature(new PreValidationHookData[](0), ownerValidation, signature, true);
 
@@ -1124,20 +865,20 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     function testGlobalValidationViaRuntime() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testGlobalValidationViaRuntime");
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
         // only get address w/o deployment
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        (address mscaAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        (address mscaAddr,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertTrue(mscaAddr.code.length == 0);
         // start with balance
         vm.deal(mscaAddr, 2 ether);
-        TestCircleMSCA msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         address recipient = makeAddr("testGlobalValidationViaRuntime_recipient");
         vm.startPrank(ownerAddr);
-        msca.executeWithAuthorization(
-            abi.encodeCall(IStandardExecutor.execute, (recipient, 1 wei, "")),
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.execute, (recipient, 1 wei, "")),
             encodeSignature(new PreValidationHookData[](0), ownerValidation, "", true)
         );
         vm.stopPrank();
@@ -1149,21 +890,22 @@ contract UpgradableMSCATest is AccountTestUtils {
     ///
     function testExecuteUserOp() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testExecuteUserOp");
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
         // only get address w/o deployment
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
 
-        (address msca,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+        (address msca,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertTrue(msca.code.length == 0);
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(msca, 0);
         // start with balance
         vm.deal(msca, 2 ether);
-        bytes memory createAccountCall =
-            abi.encodeCall(TestCircleMSCAFactory.createAccountWithValidation, (ownerAddr, salt, initializingData));
+        bytes memory createAccountCall = abi.encodeCall(
+            UpgradableMSCAFactory.createAccountWithValidation, (addressToBytes32(ownerAddr), salt, initializingData)
+        );
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
         address recipient = makeAddr("testExecuteUserOp_recipient");
@@ -1175,7 +917,7 @@ contract UpgradableMSCATest is AccountTestUtils {
             vm.toString(
                 abi.encodePacked(
                     IAccountExecute.executeUserOp.selector,
-                    abi.encodeCall(IStandardExecutor.execute, (recipient, 1 wei, ""))
+                    abi.encodeCall(IModularAccount.execute, (recipient, 1 wei, ""))
                 )
             ),
             83353000,
@@ -1187,7 +929,6 @@ contract UpgradableMSCATest is AccountTestUtils {
         );
 
         // Generate signature
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
         // global validation
         userOp.signature = encodeSignature(new PreValidationHookData[](0), ownerValidation, signature, true);
@@ -1200,28 +941,248 @@ contract UpgradableMSCATest is AccountTestUtils {
         vm.stopPrank();
     }
 
-    function _installMultipleOwnerValidations() internal returns (TestCircleMSCA msca) {
-        bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+    ///
+    /// replace module
+    ///
+    function testReplaceExecutionModule() public {
+        uint32 entityId = 10;
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("test_upgradeExecutionModule");
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), entityId);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+
+        ExecutionManifest memory executionManifest;
+        ManifestExecutionFunction[] memory executionFunctions = new ManifestExecutionFunction[](1);
+        executionFunctions[0] = ManifestExecutionFunction({
+            executionSelector: MockModule.testFoo.selector,
+            skipRuntimeValidation: true,
+            allowGlobalValidation: true
+        });
+        executionManifest.executionFunctions = executionFunctions;
+        ManifestExecutionHook[] memory executionHooks = new ManifestExecutionHook[](1);
+        executionHooks[0] = ManifestExecutionHook({
+            executionSelector: MockModule.testFoo.selector,
+            entityId: entityId,
+            isPreHook: true,
+            isPostHook: true
+        });
+        executionManifest.executionHooks = executionHooks;
+
+        MockModule moduleV1 = new MockModule(
+            executionManifest, SIG_VALIDATION_SUCCEEDED, true, true, bytes(""), true, SIG_VALIDATION_SUCCEEDED, true
+        );
+        MockModule moduleV2 = new MockModule(
+            executionManifest, SIG_VALIDATION_SUCCEEDED, true, true, bytes(""), true, SIG_VALIDATION_SUCCEEDED, true
+        );
+        vm.startPrank(address(entryPoint));
+        msca.installExecution(address(moduleV1), moduleV1.executionManifest(), "");
+
+        // verify installed
+        vm.expectEmit(true, true, true, true);
+        bytes memory callData = abi.encodePacked(MockModule.testFoo.selector);
+        emit ReceivedCall(
+            abi.encodeCall(IExecutionHookModule.preExecutionHook, (entityId, address(entryPoint), 0, callData))
+        );
+        emit ReceivedCall(callData);
+        emit ReceivedCall(abi.encodeCall(IExecutionHookModule.postExecutionHook, (entityId, bytes(""))));
+        MockModule(address(msca)).testFoo();
+
+        // upgrade module by batching uninstall existing module + install new module calls
+        vm.startPrank(address(msca));
+        Call[] memory calls = new Call[](2);
+        calls[0] = Call({
+            target: address(msca),
+            value: 0,
+            data: abi.encodeCall(IModularAccount.uninstallExecution, (address(moduleV1), moduleV1.executionManifest(), ""))
+        });
+        calls[1] = Call({
+            target: address(msca),
+            value: 0,
+            data: abi.encodeCall(IModularAccount.installExecution, (address(moduleV2), moduleV2.executionManifest(), ""))
+        });
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(msca.executeBatch, (calls)),
+            encodeSignature(new PreValidationHookData[](0), ownerValidation, "", true)
+        );
+
+        // verify upgraded
+        assertEq(msca.getExecutionData(MockModule.testFoo.selector).module, address(moduleV2));
+        vm.expectEmit(true, true, true, true);
+        emit ReceivedCall(abi.encodeCall(IExecutionHookModule.preExecutionHook, (entityId, address(msca), 0, callData)));
+        emit ReceivedCall(abi.encodePacked(MockModule.testFoo.selector));
+        emit ReceivedCall(abi.encodeCall(IExecutionHookModule.postExecutionHook, (entityId, bytes(""))));
+        MockModule(address(msca)).testFoo();
+        vm.stopPrank();
+    }
+
+    function testReplaceValidationModule() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("test_replaceValidationModule");
+        SingleSignerValidationModule validationV1 = singleSignerValidationModule;
+        SingleSignerValidationModule validationV2 = singleSignerValidationModule2;
+        uint32 validationEntityIdV1 = 10;
+        uint32 validationEntityIdV2 = 11;
+        ModuleEntity moduleEntityV1 = ModuleEntityLib.pack(address(validationV1), validationEntityIdV1);
+        ModuleEntity moduleEntityV2 = ModuleEntityLib.pack(address(validationV2), validationEntityIdV2);
+
+        MockModule mockPreValAndExecutionHookModule = new MockModule(
+            ExecutionManifest({
+                executionFunctions: new ManifestExecutionFunction[](0),
+                executionHooks: new ManifestExecutionHook[](0),
+                interfaceIds: new bytes4[](0)
+            }),
+            SIG_VALIDATION_SUCCEEDED,
+            true,
+            true,
+            bytes(""),
+            true,
+            SIG_VALIDATION_SUCCEEDED,
+            true
+        );
+        // setup a validation with pre validation and execution hooks
+        bytes[] memory hooksForValidationV1 = new bytes[](2);
+        hooksForValidationV1[0] = abi.encodePacked(
+            HookConfigLib.packValidationHook(address(mockPreValAndExecutionHookModule), validationEntityIdV1)
+        );
+        hooksForValidationV1[1] = abi.encodePacked(
+            HookConfigLib.packExecHook(address(mockPreValAndExecutionHookModule), validationEntityIdV1, true, true)
+        );
+        ValidationConfig validationConfig = ValidationConfigLib.pack(moduleEntityV1, true, true, true);
+        bytes memory initializingData = abi.encode(
+            validationConfig, new bytes4[](0), abi.encode(validationEntityIdV1, ownerAddr), hooksForValidationV1
+        );
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        vm.deal(address(msca), 10 ether);
+        address target = vm.addr(123);
+        uint256 amount = 1 ether;
+
+        vm.startPrank(address(msca));
+        bytes memory callData = abi.encodeCall(IModularAccount.execute, (target, amount, bytes("")));
+        vm.expectEmit(true, true, true, true);
+        emit ReceivedCall(
+            abi.encodeCall(
+                IValidationHookModule.preRuntimeValidationHook,
+                (validationEntityIdV1, address(msca), 0, callData, bytes(""))
+            )
+        );
+        emit ReceivedCall(
+            abi.encodeCall(
+                IValidationModule.validateRuntime,
+                (address(msca), validationEntityIdV1, address(msca), 0, callData, bytes(""))
+            )
+        );
+        emit ReceivedCall(
+            abi.encodeCall(IExecutionHookModule.preExecutionHook, (validationEntityIdV1, address(msca), 0, callData))
+        );
+        emit ReceivedCall(abi.encodeCall(IExecutionHookModule.postExecutionHook, (validationEntityIdV1, bytes(""))));
+        msca.executeWithRuntimeValidation(
+            callData, encodeSignature(new PreValidationHookData[](0), moduleEntityV1, "", true)
+        );
+        assertEq(target.balance, amount);
+
+        // upgrade module by batching uninstall + install calls
+        bytes[] memory hooksForValidationV2 = new bytes[](2);
+        hooksForValidationV2[0] = abi.encodePacked(
+            HookConfigLib.packValidationHook(address(mockPreValAndExecutionHookModule), validationEntityIdV2)
+        );
+        hooksForValidationV2[1] = abi.encodePacked(
+            HookConfigLib.packExecHook(address(mockPreValAndExecutionHookModule), validationEntityIdV2, true, true)
+        );
+
+        Call[] memory calls = new Call[](2);
+        calls[0] = Call({
+            target: address(msca),
+            value: 0,
+            data: abi.encodeCall(
+                IModularAccount.uninstallValidation, (moduleEntityV1, abi.encode(moduleEntityV1), new bytes[](0))
+            )
+        });
+        calls[1] = Call({
+            target: address(msca),
+            value: 0,
+            data: abi.encodeCall(
+                IModularAccount.installValidation,
+                (
+                    ValidationConfigLib.pack(moduleEntityV2, true, true, true),
+                    new bytes4[](0),
+                    abi.encode(validationEntityIdV2, ownerAddr),
+                    hooksForValidationV2
+                )
+            )
+        });
+        // should use the existing validation function
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(msca.executeBatch, (calls)),
+            encodeSignature(new PreValidationHookData[](0), moduleEntityV1, "", true)
+        );
+
+        // old validation should fail
+        vm.expectRevert(
+            abi.encodePacked(
+                BaseMSCA.ValidationFunctionMissing.selector,
+                abi.encode(IModularAccount.execute.selector, moduleEntityV1)
+            )
+        );
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.execute, (target, amount, "")),
+            encodeSignature(new PreValidationHookData[](0), moduleEntityV1, "", true)
+        );
+
+        // new validation should work
+        vm.expectEmit(true, true, true, true);
+        emit ReceivedCall(
+            abi.encodeCall(
+                IValidationHookModule.preRuntimeValidationHook,
+                (validationEntityIdV2, address(msca), 0, callData, bytes(""))
+            )
+        );
+        emit ReceivedCall(
+            abi.encodeCall(
+                IValidationModule.validateRuntime,
+                (address(msca), validationEntityIdV2, address(msca), 0, callData, bytes(""))
+            )
+        );
+        emit ReceivedCall(
+            abi.encodeCall(IExecutionHookModule.preExecutionHook, (validationEntityIdV2, address(msca), 0, callData))
+        );
+        emit ReceivedCall(abi.encodeCall(IExecutionHookModule.postExecutionHook, (validationEntityIdV2, bytes(""))));
+        msca.executeWithRuntimeValidation(
+            callData, encodeSignature(new PreValidationHookData[](0), moduleEntityV2, "", true)
+        );
+        assertEq(target.balance, 2 * amount);
+        vm.stopPrank();
+    }
+
+    function testAccountId() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testAccountId");
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        assertEq(msca.accountId(), "circle.msca.2.0.0");
+    }
+
+    function _installMultipleOwnerValidations() internal returns (UpgradableMSCA msca) {
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
         vm.startPrank(ownerAddr);
-        msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+        msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
 
         owner2Validation = ModuleEntityLib.pack(address(singleSignerValidationModule2), uint32(0));
-        validationConfig = ValidationConfigLib.pack(owner2Validation, true, true);
+        validationConfig = ValidationConfigLib.pack(owner2Validation, true, true, true);
         vm.startPrank(address(msca));
-        msca.installValidation(
-            validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr2), bytes(""), bytes("")
-        );
+        msca.installValidation(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr2), new bytes[](0));
         vm.stopPrank();
 
         vm.startPrank(address(entryPoint));
-        bytes4[] memory selectors = msca.getSelectors(ownerValidation);
-        assertEq(selectors.length, 0);
-        selectors = msca.getSelectors(owner2Validation);
-        assertEq(selectors.length, 0);
+        ValidationDataView memory validationData = msca.getValidationData(ownerValidation);
+        assertEq(validationData.selectors.length, 0);
+        validationData = msca.getValidationData(owner2Validation);
+        assertEq(validationData.selectors.length, 0);
         vm.stopPrank();
         return msca;
     }

@@ -25,11 +25,29 @@ pragma solidity 0.8.24;
 // 0x________________________________________________0000000000000000 // unused
 type ModuleEntity is bytes24;
 
-// Validation config is a packed representation of a validation function and flags for its configuration.
+// ValidationConfig is a packed representation of a validation function and flags for its configuration.
 // Layout:
 // 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA________________________ // Address
 // 0x________________________________________BBBBBBBB________________ // Entity ID
-// 0x________________________________________________CC______________ // isGlobal
-// 0x__________________________________________________DD____________ // isSignatureValidation
-// 0x____________________________________________________000000000000 // unused
-type ValidationConfig is bytes26;
+// 0x________________________________________________CC______________ // Validation flags
+// 0x__________________________________________________00000000000000 // unused
+//
+// Validation flags layout:
+// 0b00000___ // unused
+// 0b_____A__ // isGlobal
+// 0b______B_ // isSignatureValidation
+// 0b_______C // isUserOpValidation
+type ValidationConfig is bytes25;
+
+// HookConfig is a packed representation of a hook function and flags for its configuration.
+// Layout:
+// 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA________________________ // Address
+// 0x________________________________________BBBBBBBB________________ // Entity ID
+// 0x________________________________________________CC______________ // Hook Flags
+//
+// Hook flags layout:
+// 0b00000___ // unused
+// 0b_____A__ // hasPre (exec only)
+// 0b______B_ // hasPost (exec only)
+// 0b_______C // hook type (0 for exec, 1 for validation)
+type HookConfig is bytes25;

@@ -35,7 +35,6 @@ import {
     SelectorPermission
 } from "../../../common/PluginManifest.sol";
 import {BaseWeightedMultisigPlugin} from "./BaseWeightedMultisigPlugin.sol";
-import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
 import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
 
 import {
@@ -51,13 +50,15 @@ import {OwnerData, PublicKey, WebAuthnSigDynamicPart} from "../../../../../../co
 import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
 import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
 import {WebAuthnLib} from "../../../../../../libs/WebAuthnLib.sol";
+
+import {BaseERC712CompliantModule} from "../../../../shared/erc712/BaseERC712CompliantModule.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /// @title Weighted Multisig Plugin That Supports Additional Webauthn Authentication
 /// @author Circle
 /// @notice This plugin adds a weighted threshold ownership scheme to a ERC6900 smart contract account.
-contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
+contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC712CompliantModule {
     using ECDSA for bytes32;
     using AssociatedLinkedListSetLib for AssociatedLinkedListSet;
     using PublicKeyLib for PublicKey[];
@@ -65,11 +66,8 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
     using AddressBytesLib for address;
 
     string internal constant _NAME = "Weighted Multisig Webauthn Plugin";
-    bytes32 private constant _HASHED_NAME = keccak256(bytes(_NAME));
-    bytes32 private constant _HASHED_VERSION = keccak256(bytes(PLUGIN_VERSION_1));
-    bytes32 private immutable _SALT = bytes32(bytes20(address(this)));
     bytes32 private constant _MULTISIG_PLUGIN_TYPEHASH =
-        keccak256("CircleWeightedWebauthnMultisigMessage(bytes message)");
+        keccak256("CircleWeightedWebauthnMultisigMessage(bytes32 hash)");
 
     constructor(address entryPoint) BaseWeightedMultisigPlugin(entryPoint) {}
 
@@ -118,36 +116,10 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
 
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 digest, bytes memory signature) external view override returns (bytes4) {
-        bytes32 wrappedDigest = this.getMessageHash(msg.sender, abi.encode(digest));
+        bytes32 wrappedDigest = getReplaySafeMessageHash(msg.sender, digest);
         (bool success,) = checkNSignatures(wrappedDigest, wrappedDigest, msg.sender, signature);
 
         return success ? EIP1271_VALID_SIGNATURE : EIP1271_INVALID_SIGNATURE;
-    }
-
-    /// @inheritdoc IERC712CompliantPlugin
-    function eip712Domain()
-        external
-        view
-        override
-        returns (
-            bytes1 fields,
-            string memory name,
-            string memory version,
-            uint256 chainId,
-            address verifyingContract,
-            bytes32 salt,
-            uint256[] memory extensions
-        )
-    {
-        return (
-            hex"1f", // 11111 indicate salt field is also used
-            _NAME,
-            PLUGIN_VERSION_1,
-            block.chainid,
-            msg.sender,
-            _SALT,
-            new uint256[](0)
-        );
     }
 
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -186,12 +158,11 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
     function pluginManifest() external pure virtual override returns (PluginManifest memory) {
         PluginManifest memory manifest;
 
-        manifest.executionFunctions = new bytes4[](5);
+        manifest.executionFunctions = new bytes4[](4);
         manifest.executionFunctions[0] = this.addOwners.selector;
         manifest.executionFunctions[1] = this.removeOwners.selector;
         manifest.executionFunctions[2] = this.updateMultisigWeights.selector;
-        manifest.executionFunctions[3] = this.eip712Domain.selector;
-        manifest.executionFunctions[4] = this.isValidSignature.selector;
+        manifest.executionFunctions[3] = this.isValidSignature.selector;
 
         ManifestFunction memory ownerUserOpValidationFunction = ManifestFunction({
             functionType: ManifestAssociatedFunctionType.SELF,
@@ -258,7 +229,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
             associatedFunction: alwaysAllowFunction
         });
         manifest.runtimeValidationFunctions[1] = ManifestAssociatedFunction({
-            executionSelector: this.eip712Domain.selector,
+            executionSelector: this.getReplaySafeMessageHash.selector,
             associatedFunction: alwaysAllowFunction
         });
         manifest.runtimeValidationFunctions[2] = ManifestAssociatedFunction({
@@ -327,16 +298,6 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
     // ┃   Plugin only view functions     ┃
     // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-
-    function _getPluginTypeHash() internal pure override returns (bytes32) {
-        return _MULTISIG_PLUGIN_TYPEHASH;
-    }
-    /// @dev Returns the domain separator
-    /// @param account account to encode in domain separator
-
-    function _domainSeparator(address account) internal view override returns (bytes32) {
-        return keccak256(abi.encode(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION, block.chainid, account, _SALT));
-    }
 
     /// @inheritdoc IWeightedMultisigPlugin
     function checkNSignatures(bytes32 actualDigest, bytes32 minimalDigest, address account, bytes memory signatures)
@@ -543,5 +504,15 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin {
             revert InvalidNumSigsOnActualDigest(numSigsOnActualDigest);
         }
         return (success, firstFailure);
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleTypeHash() internal pure override returns (bytes32) {
+        return _MULTISIG_PLUGIN_TYPEHASH;
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleIdHash() internal pure override returns (bytes32) {
+        return keccak256(abi.encodePacked(_NAME, PLUGIN_VERSION_1));
     }
 }

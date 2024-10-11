@@ -21,19 +21,19 @@ pragma solidity 0.8.24;
 import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 import {Call} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
 import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {IAccountExecute} from "../../../../src/msca/6900/v0.8/interfaces/IAccountExecute.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
 import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
 import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
-    "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
-import {FooBarPlugin} from "./FooBarPlugin.sol";
+    "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
+import {FooBarModule} from "./FooBarModule.sol";
 
-import {TestCircleMSCA} from "./TestCircleMSCA.sol";
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
+import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+
+import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
@@ -51,12 +51,11 @@ contract SelfCallRuleTest is AccountTestUtils {
     );
 
     IEntryPoint private entryPoint = new EntryPoint();
-    PluginManager private pluginManager = new PluginManager();
     SingleSignerValidationModule private singleSignerValidationModule;
-    FooBarPlugin private fooBarPlugin;
+    FooBarModule private fooBarModule;
     address private factoryOwner;
-    TestCircleMSCAFactory private factory;
-    TestCircleMSCA private msca;
+    UpgradableMSCAFactory private factory;
+    UpgradableMSCA private msca;
     uint256 internal ownerPrivateKey;
     address private ownerAddr;
     bytes private initializingData;
@@ -68,17 +67,17 @@ contract SelfCallRuleTest is AccountTestUtils {
         factoryOwner = makeAddr("factoryOwner");
         beneficiary = payable(address(makeAddr("bundler")));
         singleSignerValidationModule = new SingleSignerValidationModule();
-        fooBarPlugin = new FooBarPlugin();
-        factory = new TestCircleMSCAFactory(factoryOwner, entryPoint, pluginManager);
+        fooBarModule = new FooBarModule();
+        factory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint));
 
-        address[] memory plugins = new address[](2);
-        plugins[0] = address(singleSignerValidationModule);
-        plugins[1] = address(fooBarPlugin);
+        address[] memory modules = new address[](2);
+        modules[0] = address(singleSignerValidationModule);
+        modules[1] = address(fooBarModule);
         bool[] memory permissions = new bool[](2);
         permissions[0] = true;
         permissions[1] = true;
         vm.startPrank(factoryOwner);
-        factory.setPlugins(plugins, permissions);
+        factory.setModules(modules, permissions);
         vm.stopPrank();
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
     }
@@ -93,7 +92,7 @@ contract SelfCallRuleTest is AccountTestUtils {
         _installValidationAndExecutionForMSCA();
         vm.deal(address(msca), 10 ether);
         // bar doesn't allow global validation
-        bytes memory userOpCallData = abi.encodeCall(FooBarPlugin.bar, ());
+        bytes memory userOpCallData = abi.encodeCall(FooBarModule.bar, ());
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -111,7 +110,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.UserOpValidationFunctionMissing.selector, fooBarPlugin.bar.selector, ownerValidation
+                    BaseMSCA.ValidationFunctionMissing.selector, fooBarModule.bar.selector, ownerValidation
                 )
             )
         );
@@ -120,7 +119,7 @@ contract SelfCallRuleTest is AccountTestUtils {
 
         // via executeUserOp
         // actual selector will be extracted
-        userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, abi.encodeCall(FooBarPlugin.bar, ()));
+        userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, abi.encodeCall(FooBarModule.bar, ()));
         userOp = buildPartialUserOp(
             address(msca), 1, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -137,9 +136,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.UserOpValidationFunctionMissing.selector,
-                    IAccountExecute.executeUserOp.selector,
-                    ownerValidation
+                    BaseMSCA.ValidationFunctionMissing.selector, IAccountExecute.executeUserOp.selector, ownerValidation
                 )
             )
         );
@@ -148,7 +145,7 @@ contract SelfCallRuleTest is AccountTestUtils {
 
         // via execute
         userOpCallData =
-            abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())));
+            abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())));
         userOp = buildPartialUserOp(
             address(msca), 2, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -165,9 +162,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.UserOpValidationFunctionMissing.selector,
-                    IStandardExecutor.execute.selector,
-                    ownerValidation
+                    BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector, ownerValidation
                 )
             )
         );
@@ -176,8 +171,8 @@ contract SelfCallRuleTest is AccountTestUtils {
 
         // via executeBatch
         Call[] memory calls = new Call[](1);
-        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ()));
-        userOpCallData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarModule.bar, ()));
+        userOpCallData = abi.encodeCall(IModularAccount.executeBatch, calls);
         userOp = buildPartialUserOp(
             address(msca), 3, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -194,9 +189,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.UserOpValidationFunctionMissing.selector,
-                    IStandardExecutor.executeBatch.selector,
-                    ownerValidation
+                    BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.executeBatch.selector, ownerValidation
                 )
             )
         );
@@ -217,19 +210,20 @@ contract SelfCallRuleTest is AccountTestUtils {
         // install a customized validation that enables validation for selectors
         vm.startPrank(address(msca));
         ModuleEntity barValidation =
-            ModuleEntityLib.pack({addr: address(fooBarPlugin), entityId: uint32(FooBarPlugin.EntityId.VALIDATION)});
+            ModuleEntityLib.pack({addr: address(fooBarModule), entityId: uint32(FooBarModule.EntityId.VALIDATION)});
         bytes4[] memory selectors = new bytes4[](4);
-        selectors[0] = FooBarPlugin.bar.selector;
+        selectors[0] = FooBarModule.bar.selector;
         selectors[1] = IAccountExecute.executeUserOp.selector;
-        selectors[2] = IStandardExecutor.execute.selector;
-        selectors[3] = IStandardExecutor.executeBatch.selector;
+        selectors[2] = IModularAccount.execute.selector;
+        selectors[3] = IModularAccount.executeBatch.selector;
+
         msca.installValidation(
-            ValidationConfigLib.pack(barValidation, false, false), selectors, bytes(""), bytes(""), bytes("")
+            ValidationConfigLib.pack(barValidation, false, false, true), selectors, bytes(""), new bytes[](0)
         );
         vm.stopPrank();
 
         // direct call would work due to per selector validation and not self-call
-        bytes memory userOpCallData = abi.encodeCall(FooBarPlugin.bar, ());
+        bytes memory userOpCallData = abi.encodeCall(FooBarModule.bar, ());
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -246,7 +240,7 @@ contract SelfCallRuleTest is AccountTestUtils {
         vm.stopPrank();
 
         // via executeUserOp, not self call
-        userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, abi.encodeCall(FooBarPlugin.bar, ()));
+        userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, abi.encodeCall(FooBarModule.bar, ()));
         userOp = buildPartialUserOp(
             address(msca), 1, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -264,7 +258,7 @@ contract SelfCallRuleTest is AccountTestUtils {
 
         // via execute, self call
         userOpCallData =
-            abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())));
+            abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())));
         userOp = buildPartialUserOp(
             address(msca), 2, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
@@ -286,8 +280,8 @@ contract SelfCallRuleTest is AccountTestUtils {
 
         // via executeBatch, non self call
         Call[] memory calls = new Call[](1);
-        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ()));
-        userOpCallData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarModule.bar, ()));
+        userOpCallData = abi.encodeCall(IModularAccount.executeBatch, calls);
         userOp = buildPartialUserOp(
             address(msca),
             entryPoint.getNonce(address(msca), 0),
@@ -324,19 +318,19 @@ contract SelfCallRuleTest is AccountTestUtils {
         // install a customized validation that enables validation for selector
         vm.startPrank(address(msca));
         ModuleEntity barValidation =
-            ModuleEntityLib.pack({addr: address(fooBarPlugin), entityId: uint32(FooBarPlugin.EntityId.VALIDATION)});
+            ModuleEntityLib.pack({addr: address(fooBarModule), entityId: uint32(FooBarModule.EntityId.VALIDATION)});
         bytes4[] memory selectors = new bytes4[](3);
-        selectors[0] = IStandardExecutor.execute.selector;
-        selectors[1] = IStandardExecutor.executeBatch.selector;
-        selectors[2] = FooBarPlugin.bar.selector;
+        selectors[0] = IModularAccount.execute.selector;
+        selectors[1] = IModularAccount.executeBatch.selector;
+        selectors[2] = FooBarModule.bar.selector;
         msca.installValidation(
-            ValidationConfigLib.pack(barValidation, false, false), selectors, bytes(""), bytes(""), bytes("")
+            ValidationConfigLib.pack(barValidation, false, false, true), selectors, bytes(""), new bytes[](0)
         );
         vm.stopPrank();
 
         // executeUserOp(execute(bar()))
         bytes memory userOpCallData =
-            abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())));
+            abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())));
         userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, userOpCallData);
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(userOpCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
@@ -359,8 +353,8 @@ contract SelfCallRuleTest is AccountTestUtils {
 
         // executeUserOp(executeBatch(bar()))
         Call[] memory calls = new Call[](1);
-        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ()));
-        userOpCallData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarModule.bar, ()));
+        userOpCallData = abi.encodeCall(IModularAccount.executeBatch, calls);
         userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, userOpCallData);
         userOp = buildPartialUserOp(
             address(msca),
@@ -390,9 +384,9 @@ contract SelfCallRuleTest is AccountTestUtils {
         calls[0] = Call(
             address(msca),
             0,
-            abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())))
+            abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())))
         );
-        userOpCallData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        userOpCallData = abi.encodeCall(IModularAccount.executeBatch, calls);
         userOpCallData = abi.encodePacked(IAccountExecute.executeUserOp.selector, userOpCallData);
         userOp = buildPartialUserOp(
             address(msca),
@@ -431,7 +425,7 @@ contract SelfCallRuleTest is AccountTestUtils {
         _installValidationAndExecutionForMSCA();
         vm.deal(address(msca), 10 ether);
         // bar doesn't allow global validation
-        bytes memory callData = abi.encodeCall(FooBarPlugin.bar, ());
+        bytes memory callData = abi.encodeCall(FooBarModule.bar, ());
         // signature is the data for ownerValidation
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](0);
         // global validation function
@@ -439,40 +433,38 @@ contract SelfCallRuleTest is AccountTestUtils {
         vm.startPrank(ownerAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.RuntimeValidationFunctionMissing.selector, FooBarPlugin.bar.selector, ownerValidation
+                BaseMSCA.ValidationFunctionMissing.selector, FooBarModule.bar.selector, ownerValidation
             )
         );
-        msca.executeWithAuthorization(callData, authorizationData);
+        msca.executeWithRuntimeValidation(callData, authorizationData);
         vm.stopPrank();
 
         // execute(bar())
-        callData = abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())));
+        callData = abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())));
         // global validation function
         authorizationData = encodeSignature(validationHookData, ownerValidation, "", true);
         vm.startPrank(ownerAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.RuntimeValidationFunctionMissing.selector, IStandardExecutor.execute.selector, ownerValidation
+                BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector, ownerValidation
             )
         );
-        msca.executeWithAuthorization(callData, authorizationData);
+        msca.executeWithRuntimeValidation(callData, authorizationData);
         vm.stopPrank();
 
         // executeBatch(bar())
         Call[] memory calls = new Call[](1);
-        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ()));
-        callData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarModule.bar, ()));
+        callData = abi.encodeCall(IModularAccount.executeBatch, calls);
         // global validation function
         authorizationData = encodeSignature(validationHookData, ownerValidation, "", true);
         vm.startPrank(ownerAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.RuntimeValidationFunctionMissing.selector,
-                IStandardExecutor.executeBatch.selector,
-                ownerValidation
+                BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.executeBatch.selector, ownerValidation
             )
         );
-        msca.executeWithAuthorization(callData, authorizationData);
+        msca.executeWithRuntimeValidation(callData, authorizationData);
         vm.stopPrank();
     }
 
@@ -488,43 +480,43 @@ contract SelfCallRuleTest is AccountTestUtils {
         // install a customized validation that enables validation for selectors
         vm.startPrank(address(msca));
         ModuleEntity barValidation =
-            ModuleEntityLib.pack({addr: address(fooBarPlugin), entityId: uint32(FooBarPlugin.EntityId.VALIDATION)});
+            ModuleEntityLib.pack({addr: address(fooBarModule), entityId: uint32(FooBarModule.EntityId.VALIDATION)});
         bytes4[] memory selectors = new bytes4[](3);
-        selectors[0] = FooBarPlugin.bar.selector;
-        selectors[1] = IStandardExecutor.execute.selector;
-        selectors[2] = IStandardExecutor.executeBatch.selector;
+        selectors[0] = FooBarModule.bar.selector;
+        selectors[1] = IModularAccount.execute.selector;
+        selectors[2] = IModularAccount.executeBatch.selector;
         msca.installValidation(
-            ValidationConfigLib.pack(barValidation, false, false), selectors, bytes(""), bytes(""), bytes("")
+            ValidationConfigLib.pack(barValidation, false, false, false), selectors, bytes(""), new bytes[](0)
         );
         vm.stopPrank();
 
-        bytes memory callData = abi.encodeCall(FooBarPlugin.bar, ());
+        bytes memory callData = abi.encodeCall(FooBarModule.bar, ());
         // signature is the data for ownerValidation
         PreValidationHookData[] memory validationHookData = new PreValidationHookData[](0);
         // customized validation function
         bytes memory authorizationData = encodeSignature(validationHookData, barValidation, "", false);
         vm.startPrank(ownerAddr);
-        bytes memory result = msca.executeWithAuthorization(callData, authorizationData);
+        bytes memory result = msca.executeWithRuntimeValidation(callData, authorizationData);
         assertEq(result, abi.encode(keccak256("bar")));
         vm.stopPrank();
 
         // execute(bar()), self call
-        callData = abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())));
+        callData = abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())));
         // customized validation function
         authorizationData = encodeSignature(validationHookData, barValidation, "", false);
         vm.startPrank(ownerAddr);
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("SelfCallRecursionDepthExceeded()"))));
-        msca.executeWithAuthorization(callData, authorizationData);
+        msca.executeWithRuntimeValidation(callData, authorizationData);
         vm.stopPrank();
 
         // executeBatch(bar())
         Call[] memory calls = new Call[](1);
-        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ()));
-        callData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        calls[0] = Call(address(msca), 0, abi.encodeCall(FooBarModule.bar, ()));
+        callData = abi.encodeCall(IModularAccount.executeBatch, calls);
         // customized validation function
         authorizationData = encodeSignature(validationHookData, barValidation, "", false);
         vm.startPrank(ownerAddr);
-        result = msca.executeWithAuthorization(callData, authorizationData);
+        result = msca.executeWithRuntimeValidation(callData, authorizationData);
         bytes[] memory resultArr = abi.decode(result, (bytes[]));
         assertEq(resultArr[0], abi.encode(keccak256("bar")));
         vm.stopPrank();
@@ -534,26 +526,26 @@ contract SelfCallRuleTest is AccountTestUtils {
         calls[0] = Call(
             address(msca),
             0,
-            abi.encodeCall(IStandardExecutor.execute, (address(msca), 0, abi.encodeCall(FooBarPlugin.bar, ())))
+            abi.encodeCall(IModularAccount.execute, (address(msca), 0, abi.encodeCall(FooBarModule.bar, ())))
         );
-        callData = abi.encodeCall(IStandardExecutor.executeBatch, calls);
+        callData = abi.encodeCall(IModularAccount.executeBatch, calls);
         // customized validation function
         authorizationData = encodeSignature(validationHookData, barValidation, "", false);
         vm.startPrank(ownerAddr);
         vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("SelfCallRecursionDepthExceeded()"))));
-        msca.executeWithAuthorization(callData, authorizationData);
+        msca.executeWithRuntimeValidation(callData, authorizationData);
         vm.stopPrank();
     }
 
     function _installValidationAndExecutionForMSCA() internal {
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, false, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, false, true, true);
         initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        msca = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
 
         // install foo bar execution
         vm.startPrank(address(msca));
-        msca.installPlugin(address(fooBarPlugin), bytes(""));
+        msca.installExecution(address(fooBarModule), fooBarModule.executionManifest(), bytes(""));
         vm.stopPrank();
     }
 }

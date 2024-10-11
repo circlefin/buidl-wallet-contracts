@@ -20,14 +20,14 @@ pragma solidity 0.8.24;
 
 import {DefaultCallbackHandler} from "../../../../callback/DefaultCallbackHandler.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
-import {InvalidInitializationInput} from "../../shared/common/Errors.sol";
 
 import {ValidationConfig} from "../common/Types.sol";
-import {PluginManager} from "../managers/PluginManager.sol";
 import {BaseMSCA} from "./BaseMSCA.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import {IModularAccount} from "../interfaces/IModularAccount.sol";
+import {ValidationConfigLib} from "../libs/thirdparty/ValidationConfigLib.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -36,59 +36,39 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
  * @dev Leverage {ERC1967Proxy} brought by UUPS proxies, when this contract is set as the implementation behind such a
  * proxy.
  * The {_authorizeUpgrade} function is overridden here so more granular ACLs to the upgrade mechanism should be enforced
- * by plugins.
+ * by modules.
  */
 contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
     using ExecutionUtils for address;
+    using ValidationConfigLib for ValidationConfig;
+
+    // a unique identifier in the format "vendor.account.semver" for the account implementation
+    string public constant ACCOUNT_ID = "circle.msca.2.0.0";
 
     event UpgradableMSCAInitialized(address indexed account, address indexed entryPointAddress);
 
-    constructor(IEntryPoint _newEntryPoint, PluginManager _newPluginManager)
-        BaseMSCA(_newEntryPoint, _newPluginManager)
-    {
+    constructor(IEntryPoint _newEntryPoint) BaseMSCA(_newEntryPoint) {
         // lock the implementation contract so it can only be called from proxies
         _disableWalletStorageInitializers();
     }
 
-    /// @notice Initializes the account with a set of plugins.
-    /// @param plugins The plugins to install
-    /// @param pluginInstallData The plugin init data of the plugins to install, please pass in empty bytes if you don't
-    /// need to init
-    function initializeUpgradableMSCA(address[] memory plugins, bytes[] memory pluginInstallData)
-        external
-        walletStorageInitializer
-    {
-        uint256 length = plugins.length;
-        if (length != pluginInstallData.length) {
-            revert InvalidInitializationInput();
-        }
-        for (uint256 i = 0; i < length; ++i) {
-            // call install directly to bypass validateNativeFunction modifier
-            bytes memory data = abi.encodeCall(PluginManager.installPlugin, (plugins[i], pluginInstallData[i]));
-            address(pluginManager).delegateCall(data);
-            emit PluginInstalled(plugins[i]);
-        }
+    /// @notice Initializes the account with a validation function.
+    /// @dev This function is only callable once. It is expected to be called by the factory that deploys the account.
+    ///      It can be overridden by subcontracts to add more initialization logic.
+    function initializeWithValidation(
+        ValidationConfig validationConfig,
+        bytes4[] calldata selectors,
+        bytes calldata installData,
+        bytes[] calldata hooks
+    ) external virtual walletStorageInitializer {
+        _installValidation(validationConfig, selectors, installData, hooks);
+        emit ValidationInstalled(validationConfig.module(), validationConfig.entityId());
         emit UpgradableMSCAInitialized(address(this), address(ENTRY_POINT));
     }
 
-    /// @notice Initializes the account with a validation function added to the default pool.
-    /// TODO: remove and merge with regular initialization, after we figure out a better install/uninstall workflow
-    /// with user install configs.
-    /// @dev This function is only callable once, and only by the EntryPoint.
-    function initializeWithValidation(
-        ValidationConfig validationConfig,
-        bytes4[] memory selectors,
-        bytes calldata installData,
-        bytes calldata preValidationHooks,
-        bytes calldata permissionHooks
-    ) external walletStorageInitializer {
-        bytes memory data = abi.encodeCall(
-            PluginManager.installValidation,
-            (validationConfig, selectors, installData, preValidationHooks, permissionHooks)
-        );
-        address(pluginManager).delegateCall(data);
-        emit ValidationInstalled(validationConfig, selectors);
-        emit UpgradableMSCAInitialized(address(this), address(ENTRY_POINT));
+    /// @inheritdoc IModularAccount
+    function accountId() external pure override returns (string memory) {
+        return ACCOUNT_ID;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -116,7 +96,8 @@ contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
 
     /**
      * @dev The function is overridden here so more granular ACLs to the upgrade mechanism should be enforced by
-     * plugins.
+     * modules.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 }

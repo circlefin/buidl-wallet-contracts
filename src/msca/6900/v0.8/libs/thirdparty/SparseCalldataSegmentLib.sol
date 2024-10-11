@@ -18,14 +18,21 @@
  */
 pragma solidity 0.8.24;
 
-// TODO: remove this till SparseCalldataSegmentLib is moved to modular account lib
+import {RESERVED_VALIDATION_DATA_INDEX} from "../../common/Constants.sol";
+
+// TODO: remove this when SparseCalldataSegmentLib is moved to modular account lib
 // https://github.com/erc6900/modular-account-libs/issues/2
 /// @title Sparse Calldata Segment Library
-/// @notice Forked from 6900 library for working with sparsely-packed calldata segments, identified with an index.
+/// @notice Inspired by 6900 reference implementation for working with sparsely-packed calldata segments, identified
+/// with an index.
 /// @dev The first byte of each segment is the index of the segment.
 /// To prevent accidental stack-to-deep errors, the body and index of the segment are extracted separately, rather
 /// than inline as part of the tuple returned by `getNextSegment`.
 library SparseCalldataSegmentLib {
+    error NonCanonicalEncoding();
+    error SegmentOutOfOrder();
+    error ValidationSignatureSegmentMissing();
+
     /// @notice Splits out a segment of calldata, sparsely-packed.
     /// The expected format is:
     /// [uint32(len(segment0)), segment0, uint32(len(segment1)), segment1, ... uint32(len(segmentN)), segmentN]
@@ -66,5 +73,51 @@ library SparseCalldataSegmentLib {
     /// @return The body of the segment.
     function getBody(bytes calldata segment) internal pure returns (bytes calldata) {
         return segment[1:];
+    }
+
+    /// @notice If the index of the next segment in the source equals the provided index, return the next body and
+    /// advance the source by one segment.
+    /// @dev Reverts if the index of the next segment is less than the provided index, or if the extracted segment
+    /// has length 0.
+    /// @param source The calldata to extract the segment from.
+    /// @param index The index of the segment to extract.
+    /// @return A tuple containing the extracted segment's body, or an empty buffer if the index is not found, and
+    /// the remaining calldata.
+    function advanceSegmentIfAtIndex(bytes calldata source, uint8 index)
+        internal
+        pure
+        returns (bytes memory, bytes calldata)
+    {
+        // the index of the next segment in the source
+        uint8 nextIndex = uint8(source[4]);
+        if (nextIndex < index) {
+            revert SegmentOutOfOrder();
+        }
+        if (nextIndex == index) {
+            (bytes calldata segment, bytes calldata remainder) = getNextSegment(source);
+            segment = getBody(segment);
+            if (segment.length == 0) {
+                revert NonCanonicalEncoding();
+            }
+            return (segment, remainder);
+        }
+        return ("", source);
+    }
+
+    /// @notice Extracts the final segment from the calldata.
+    /// @dev The final segment must have an index equal to `RESERVED_VALIDATION_DATA_INDEX`.
+    /// Reverts if the final segment is not found or if there is remaining calldata after the final segment.
+    /// @param source The calldata to extract the final segment from.
+    /// @return The body of the final segment.
+    function getFinalSegment(bytes calldata source) internal pure returns (bytes calldata) {
+        (bytes calldata segment, bytes calldata remainder) = getNextSegment(source);
+        // a single byte index caps the total number of pre-validation hooks at 255
+        if (getIndex(segment) != RESERVED_VALIDATION_DATA_INDEX) {
+            revert ValidationSignatureSegmentMissing();
+        }
+        if (remainder.length != 0) {
+            revert NonCanonicalEncoding();
+        }
+        return getBody(segment);
     }
 }

@@ -18,75 +18,75 @@
  */
 pragma solidity 0.8.24;
 
-import {IAccountLoupe} from "../interfaces/IAccountLoupe.sol";
+import {IExecutionHookModule} from "../interfaces/IExecutionHookModule.sol";
+import {IModularAccountView} from "../interfaces/IModularAccountView.sol";
+import {IModule} from "../interfaces/IModule.sol";
 
-import {IExecutionHook} from "../interfaces/IExecutionHook.sol";
-import {IPlugin} from "../interfaces/IPlugin.sol";
-import {IPluginManager} from "../interfaces/IPluginManager.sol";
+import {IModularAccount} from "../interfaces/IModularAccount.sol";
 
-import {IStandardExecutor} from "../interfaces/IStandardExecutor.sol";
-import {IValidation} from "../interfaces/IValidation.sol";
-import {IValidationHook} from "../interfaces/IValidationHook.sol";
+import {IValidationHookModule} from "../interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "../interfaces/IValidationModule.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import {IERC777Recipient} from "@openzeppelin/contracts/interfaces/IERC777Recipient.sol";
-import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {IExecutionModule} from "../interfaces/IExecutionModule.sol";
+
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 library SelectorRegistryLib {
-    bytes4 internal constant INITIALIZE_UPGRADABLE_MSCA =
-        bytes4(keccak256("initializeUpgradableMSCA(address[],bytes32[],bytes[])"));
-    bytes4 internal constant INITIALIZE_SINGLE_OWNER_MSCA = bytes4(keccak256("initializeSingleOwnerMSCA(address)"));
-    bytes4 internal constant TRANSFER_NATIVE_OWNERSHIP = bytes4(keccak256("transferNativeOwnership(address)"));
-    bytes4 internal constant RENOUNCE_NATIVE_OWNERSHIP = bytes4(keccak256("renounceNativeOwnership()"));
-    bytes4 internal constant GET_NATIVE_OWNER = bytes4(keccak256("getNativeOwner()"));
-    bytes4 internal constant VALIDATE_USER_OP = bytes4(keccak256("validateUserOp(UserOperation,bytes32,uint256)"));
-    bytes4 internal constant GET_ENTRYPOINT = bytes4(keccak256("getEntryPoint()"));
-    bytes4 internal constant GET_NONCE = bytes4(keccak256("getNonce()"));
+    /**
+     * @dev Check if the selector is native execution function that allows global validation.
+     * @param selector the function selector.
+     */
+    function _isGlobalValidationAllowedNativeExecutionFunction(bytes4 selector) internal pure returns (bool) {
+        return selector == IModularAccount.execute.selector || selector == IModularAccount.executeBatch.selector
+            || selector == IModularAccount.installExecution.selector
+            || selector == IModularAccount.uninstallExecution.selector
+            || selector == UUPSUpgradeable.upgradeToAndCall.selector;
+    }
+
+    /**
+     * @dev Check if the selector is native execution function.
+     * @param selector the function selector.
+     */
+    function _isNativeExecutionFunction(bytes4 selector) internal pure returns (bool) {
+        return _isGlobalValidationAllowedNativeExecutionFunction(selector)
+            || selector == IModularAccount.installValidation.selector
+            || selector == IModularAccount.uninstallValidation.selector;
+    }
 
     /**
      * @dev Check if the selector is for native function.
      * @param selector the function selector.
      */
-    function _isNativeFunctionSelector(bytes4 selector) internal pure returns (bool) {
-        return selector == IStandardExecutor.execute.selector || selector == IStandardExecutor.executeBatch.selector
-            || selector == IStandardExecutor.executeWithAuthorization.selector
-            || selector == IPluginManager.installPlugin.selector || selector == IPluginManager.uninstallPlugin.selector
-            || selector == IPluginManager.installValidation.selector
-            || selector == IPluginManager.uninstallValidation.selector
-            || selector == UUPSUpgradeable.upgradeToAndCall.selector || selector == UUPSUpgradeable.proxiableUUID.selector
+    function _isNativeFunction(bytes4 selector) internal pure returns (bool) {
+        return _isNativeExecutionFunction(selector) || selector == IModularAccount.executeWithRuntimeValidation.selector
+            || selector == IModularAccount.accountId.selector || selector == UUPSUpgradeable.proxiableUUID.selector
         // check against IERC165 methods
         || selector == IERC165.supportsInterface.selector
-        // check against IAccountLoupe methods
-        || selector == IAccountLoupe.getExecutionData.selector || selector == IAccountLoupe.getExecutionHooks.selector
-            || selector == IAccountLoupe.getSelectors.selector || selector == IAccountLoupe.getPreValidationHooks.selector
-            || selector == IAccountLoupe.getPermissionHooks.selector
-            || selector == IAccountLoupe.getInstalledPlugins.selector || selector == VALIDATE_USER_OP
-            || selector == GET_ENTRYPOINT || selector == GET_NONCE || selector == INITIALIZE_UPGRADABLE_MSCA
-            || selector == INITIALIZE_SINGLE_OWNER_MSCA || selector == TRANSFER_NATIVE_OWNERSHIP
-            || selector == RENOUNCE_NATIVE_OWNERSHIP || selector == GET_NATIVE_OWNER
-            || selector == IERC1155Receiver.onERC1155Received.selector
-            || selector == IERC1155Receiver.onERC1155BatchReceived.selector
-            || selector == IERC721Receiver.onERC721Received.selector || selector == IERC777Recipient.tokensReceived.selector;
+        // check against IModularAccountView methods
+        || selector == IModularAccountView.getExecutionData.selector
+            || selector == IModularAccountView.getValidationData.selector || selector == IAccount.validateUserOp.selector;
     }
 
-    function _isErc4337FunctionSelector(bytes4 selector) internal pure returns (bool) {
+    function _isErc4337Function(bytes4 selector) internal pure returns (bool) {
         return selector == IAggregator.validateSignatures.selector
             || selector == IAggregator.validateUserOpSignature.selector
             || selector == IAggregator.aggregateSignatures.selector
             || selector == IPaymaster.validatePaymasterUserOp.selector || selector == IPaymaster.postOp.selector;
     }
 
-    function _isIPluginFunctionSelector(bytes4 selector) internal pure returns (bool) {
-        return selector == IPlugin.onInstall.selector || selector == IPlugin.onUninstall.selector
-            || selector == IValidationHook.preUserOpValidationHook.selector
-            || selector == IValidation.validateUserOp.selector
-            || selector == IValidationHook.preRuntimeValidationHook.selector
-            || selector == IValidation.validateRuntime.selector || selector == IExecutionHook.preExecutionHook.selector
-            || selector == IExecutionHook.postExecutionHook.selector || selector == IPlugin.pluginManifest.selector
-            || selector == IPlugin.pluginMetadata.selector;
+    function _isIModuleFunction(bytes4 selector) internal pure returns (bool) {
+        return selector == IModule.onInstall.selector || selector == IModule.onUninstall.selector
+            || selector == IModule.moduleId.selector || selector == IValidationHookModule.preUserOpValidationHook.selector
+            || selector == IValidationModule.validateUserOp.selector
+            || selector == IValidationModule.validateRuntime.selector
+            || selector == IValidationModule.validateSignature.selector
+            || selector == IValidationHookModule.preRuntimeValidationHook.selector
+            || selector == IExecutionHookModule.preExecutionHook.selector
+            || selector == IExecutionHookModule.postExecutionHook.selector
+            || selector == IExecutionModule.executionManifest.selector;
     }
 }

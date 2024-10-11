@@ -18,18 +18,19 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/account/v1/factory/ECDSAAccountFactory.sol";
+import {ECDSAAccountFactory} from "../src/account/v1/factory/ECDSAAccountFactory.sol";
 
-import "./util/TestERC1155.sol";
-import "./util/TestERC721.sol";
-import "./util/TestLiquidityPool.sol";
-import "./util/TestUtils.sol";
+import {ECDSAAccount} from "../src/account/v1/ECDSAAccount.sol";
+import {TestERC1155} from "./util/TestERC1155.sol";
+import {TestERC721} from "./util/TestERC721.sol";
+import {TestLiquidityPool} from "./util/TestLiquidityPool.sol";
+import {TestUtils} from "./util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
-import "forge-std/src/console.sol";
+import {console} from "forge-std/src/console.sol";
 
 contract ECDSAAccountAndFactoryTest is TestUtils {
     // erc721
@@ -620,23 +621,10 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
     function testIsValidSignature() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testIsValidSignature");
         ECDSAAccount proxy = ecdsaAccountFactory.createAccount(ownerAddr);
-        PackedUserOperation memory userOp = buildPartialUserOp(
-            address(proxy),
-            28,
-            "0x",
-            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
-            83353,
-            102865,
-            45484,
-            516219199704,
-            1130000000,
-            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
-        );
-
-        vm.startPrank(address(entryPoint));
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
-        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
-        bytes4 magicValue = proxy.isValidSignature(userOpHash, signature);
+        bytes32 hash = bytes32(keccak256("testIsValidSignature"));
+        bytes32 replaySafeHash = proxy.getReplaySafeMessageHash(hash);
+        bytes memory signature = signMessage(vm, eoaPrivateKey, replaySafeHash);
+        bytes4 magicValue = proxy.isValidSignature(hash, signature);
         assertEq(magicValue, bytes4(0x1626ba7e));
         vm.stopPrank();
     }

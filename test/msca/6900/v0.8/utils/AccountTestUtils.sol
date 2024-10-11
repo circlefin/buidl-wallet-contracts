@@ -58,6 +58,23 @@ contract AccountTestUtils is TestUtils {
         return signature;
     }
 
+    // @notice Helper function forked from 6900 to encode a signature, according to the per-hook and per-validation data
+    // format.
+    function encode1271Signature(
+        PreValidationHookData[] memory preValidationHookData,
+        ModuleEntity validationFunction,
+        bytes memory validationData
+    ) internal pure returns (bytes memory signature) {
+        signature = abi.encodePacked(validationFunction);
+        for (uint256 i = 0; i < preValidationHookData.length; ++i) {
+            signature = abi.encodePacked(
+                signature, packSparseDataWithIndex(preValidationHookData[i].index, preValidationHookData[i].hookData)
+            );
+        }
+        signature = abi.encodePacked(signature, packSparseDataWithIndex(RESERVED_VALIDATION_DATA_INDEX, validationData));
+        return signature;
+    }
+
     // @notice Helper function forked from 6900 to pack validation data with an index, according to the sparse calldata
     // segment spec.
     function packSparseDataWithIndex(uint8 index, bytes memory callData) internal pure returns (bytes memory) {

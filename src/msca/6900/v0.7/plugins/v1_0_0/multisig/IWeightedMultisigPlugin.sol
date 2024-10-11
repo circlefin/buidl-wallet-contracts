@@ -18,15 +18,14 @@
  */
 pragma solidity 0.8.24;
 
-import {OwnerData, PublicKey} from "../../../../../../common/CommonStructs.sol";
-import {IERC712CompliantPlugin} from "./IERC712CompliantPlugin.sol";
+import {OwnerData, OwnershipMetadata, PublicKey} from "../../../../../../common/CommonStructs.sol";
 
 /// @title Weighted Multisig Plugin Interface
 /// @author Circle
 /// @notice This plugin adds a weighted threshold ownership scheme to a ERC6900 smart contract account.
 /// @notice The design takes inspiration from Alchemy's [Equally Weighted Multisig
 /// Plugin](https://github.com/alchemyplatform/multisig-plugin).
-interface IWeightedMultisigPlugin is IERC712CompliantPlugin {
+interface IWeightedMultisigPlugin {
     /// @notice This event is emitted when owners of the account are added.
     /// @param account account plugin is installed on
     /// @param owners list of owners added
@@ -179,9 +178,13 @@ interface IWeightedMultisigPlugin is IERC712CompliantPlugin {
     /// @param account The account to get the owners of.
     /// @return ownerAddresses owners of the account
     /// @return ownersData data of each respective owner
-    /// @return thresholdWeight threshold weight required to perform an action
+    /// @return ownershipMetadata ownership metadata
     function ownershipInfoOf(address account)
         external
         view
-        returns (bytes30[] calldata ownerAddresses, OwnerData[] calldata ownersData, uint256 thresholdWeight);
+        returns (
+            bytes30[] calldata ownerAddresses,
+            OwnerData[] calldata ownersData,
+            OwnershipMetadata memory ownershipMetadata
+        );
 }

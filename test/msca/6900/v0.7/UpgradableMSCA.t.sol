@@ -1079,15 +1079,12 @@ contract UpgradableMSCATest is TestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testCreateAccountFromEP");
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         // only get address w/o deployment
-        address[] memory plugins = new address[](2);
-        bytes32[] memory manifestHashes = new bytes32[](2);
-        bytes[] memory pluginInstallData = new bytes[](2);
+        address[] memory plugins = new address[](1);
+        bytes32[] memory manifestHashes = new bytes32[](1);
+        bytes[] memory pluginInstallData = new bytes[](1);
         plugins[0] = address(singleOwnerPlugin);
         manifestHashes[0] = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         pluginInstallData[0] = abi.encode(ownerAddr);
-        plugins[1] = address(defaultTokenCallbackPlugin);
-        manifestHashes[1] = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
-        pluginInstallData[1] = "";
         bytes memory initializingData = abi.encode(plugins, manifestHashes, pluginInstallData);
         (address sender,) = factory.getAddress(ownerAddr, salt, initializingData);
         assertTrue(sender.code.length == 0);

@@ -18,21 +18,26 @@
  */
 pragma solidity 0.8.24;
 
+import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
+import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "../../../../src/msca/6900/v0.8/common/Constants.sol";
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
+import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
 import {TestUtils} from "../../../util/TestUtils.sol";
 
-import {FooBarPlugin} from "./FooBarPlugin.sol";
-import {TestPermittedCallPlugin} from "./TestPermittedCallPlugin.sol";
+import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+import {SingleSignerValidationModule} from
+    "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
+import {FooBarModule} from "./FooBarModule.sol";
+import {TestPermittedCallModule} from "./TestPermittedCallModule.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract PermittedCallTest is TestUtils {
     IEntryPoint private entryPoint = new EntryPoint();
-    PluginManager private pluginManager = new PluginManager();
-    FooBarPlugin private fooBarPlugin;
-    TestPermittedCallPlugin private permittedCallPlugin;
+    FooBarModule private fooBarModule;
+    TestPermittedCallModule private permittedCallModule;
     address private factoryOwner;
     UpgradableMSCAFactory private factory;
     UpgradableMSCA private msca;
@@ -40,48 +45,75 @@ contract PermittedCallTest is TestUtils {
     address private ownerAddr;
     bytes private initializingData;
     bytes32 private salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    ValidationConfig private validationConfig;
 
-    error ExecFromPluginToSelectorNotPermitted(address plugin, bytes4 selector);
+    error ExecFromModuleToSelectorNotPermitted(address module, bytes4 selector);
 
     function setUp() public {
         factoryOwner = makeAddr("factoryOwner");
 
-        fooBarPlugin = new FooBarPlugin();
-        permittedCallPlugin = new TestPermittedCallPlugin();
-        factory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint), address(pluginManager));
+        fooBarModule = new FooBarModule();
+        permittedCallModule = new TestPermittedCallModule();
+        SingleSignerValidationModule singleSignerValidationModule = new SingleSignerValidationModule();
+        factory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint));
 
-        address[] memory plugins = new address[](2);
-        plugins[0] = address(fooBarPlugin);
-        plugins[1] = address(permittedCallPlugin);
-        bool[] memory permissions = new bool[](2);
+        address[] memory modules = new address[](3);
+        modules[0] = address(fooBarModule);
+        modules[1] = address(permittedCallModule);
+        modules[2] = address(singleSignerValidationModule);
+        bool[] memory permissions = new bool[](3);
         permissions[0] = true;
         permissions[1] = true;
+        permissions[2] = true;
         vm.startPrank(factoryOwner);
-        factory.setPlugins(plugins, permissions);
+        factory.setModules(modules, permissions);
         vm.stopPrank();
 
-        bytes[] memory pluginInstallData = new bytes[](2);
-        pluginInstallData[0] = "";
-        pluginInstallData[1] = "";
-        initializingData = abi.encode(plugins, pluginInstallData);
+        ModuleEntity ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
+        validationConfig = ValidationConfigLib.pack(ownerValidation, false, true, true);
     }
 
     function testAllowedPermittedCall() public {
         (ownerAddr, ownerPrivateKey) = makeAddrAndKey("testAllowedPermittedCall");
-        msca = factory.createAccount(addressToBytes32(ownerAddr), salt, initializingData);
-        bytes memory result = TestPermittedCallPlugin(address(msca)).permittedCallAllowed();
+        initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        _installExecutions();
+
+        bytes memory result = TestPermittedCallModule(address(msca)).permittedCallAllowed();
         bytes32 actual = abi.decode(result, (bytes32));
         assertEq(actual, keccak256("foo"));
     }
 
     function testNotAllowedPermittedCall() public {
         (ownerAddr, ownerPrivateKey) = makeAddrAndKey("testNotAllowedPermittedCall");
-        msca = factory.createAccount(addressToBytes32(ownerAddr), salt, initializingData);
+        initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        _installExecutions();
+
         vm.expectRevert(
             abi.encodeWithSelector(
-                ExecFromPluginToSelectorNotPermitted.selector, address(permittedCallPlugin), FooBarPlugin.bar.selector
+                BaseMSCA.ValidationFunctionMissing.selector,
+                FooBarModule.bar.selector,
+                ModuleEntityLib.pack(address(permittedCallModule), DIRECT_CALL_VALIDATION_ENTITY_ID)
             )
         );
-        TestPermittedCallPlugin(address(msca)).permittedCallNotAllowed();
+        TestPermittedCallModule(address(msca)).permittedCallNotAllowed();
+    }
+
+    function _installExecutions() internal {
+        vm.startPrank(address(entryPoint));
+        msca.installExecution({
+            module: address(permittedCallModule),
+            manifest: permittedCallModule.executionManifest(),
+            moduleInstallData: ""
+        });
+        msca.installExecution({
+            module: address(fooBarModule),
+            manifest: fooBarModule.executionManifest(),
+            moduleInstallData: ""
+        });
+        vm.stopPrank();
     }
 }

@@ -19,7 +19,7 @@
 pragma solidity 0.8.24;
 
 import {Bytes32DLL, Bytes4DLL} from "../../shared/common/Structs.sol";
-import {ModuleEntity} from "./Types.sol";
+import {HookConfig, ModuleEntity} from "./Types.sol";
 
 // Standard executor
 struct Call {
@@ -31,21 +31,6 @@ struct Call {
     bytes data;
 }
 
-// Account loupe
-// @notice Config for an execution function, given a selector
-struct ExecutionFunctionConfig {
-    address plugin;
-    ModuleEntity validationFunction;
-}
-
-/// @notice Pre and post hooks for a given selector.
-/// @dev It's possible for one of either `preExecHook` or `postExecHook` to be empty.
-struct ExecutionHook {
-    ModuleEntity hookFunction;
-    bool isPreHook;
-    bool isPostHook;
-}
-
 struct PostExecHookToRun {
     bytes preExecHookReturnData;
     ModuleEntity postExecHook;
@@ -54,19 +39,21 @@ struct PostExecHookToRun {
 struct ValidationDetail {
     // Whether or not this validation can be used as a global validation function.
     bool isGlobal;
-    // Whether or not this validation is a signature validator.
+    // Whether or not this validation is allowed to validate ERC-1271 signatures.
     bool isSignatureValidation;
-    // The pre validation hooks associated with this validation function.
-    ModuleEntity[] preValidationHooks;
-    // Permission hooks for this validation function.
-    Bytes32DLL permissionHooks;
+    // Whether or not this validation is allowed to validate ERC-4337 user operations.
+    bool isUserOpValidation;
+    // The validation hooks for this validation function.
+    HookConfig[] validationHooks;
+    // Execution hooks to run with this validation function.
+    Bytes32DLL executionHooks;
     // The set of selectors that may be validated by this validation function.
     Bytes4DLL selectors;
 }
 
 // execution detail associated with selector
 struct ExecutionDetail {
-    address plugin; // plugin address that implements the execution function, for native functions, the value should be
+    address module; // module address that implements the execution function, for native functions, the value should be
         // address(0)
     // Whether or not the function needs runtime validation, or can be called by anyone.
     // Note that even if this is set to true, user op validation will still be required, otherwise anyone could
@@ -75,4 +62,36 @@ struct ExecutionDetail {
     // Whether or not a global validation function may be used to validate this function.
     bool allowGlobalValidation;
     Bytes32DLL executionHooks;
+}
+
+// Represents data associated with a specific function selector.
+struct ExecutionDataView {
+    // The module that implements this execution function.
+    // If this is a native function, the address must remain address(0).
+    address module;
+    // Whether or not the function needs runtime validation, or can be called by anyone. The function can still be
+    // state changing if this flag is set to true.
+    // Note that even if this is set to true, user op validation will still be required, otherwise anyone could
+    // drain the account of native tokens by wasting gas.
+    bool skipRuntimeValidation;
+    // Whether or not a global validation function may be used to validate this function.
+    bool allowGlobalValidation;
+    // The execution hooks for this function selector.
+    HookConfig[] executionHooks;
+}
+
+// Represents data associated with a specific validation function.
+struct ValidationDataView {
+    // Whether or not this validation can be used as a global validation function.
+    bool isGlobal;
+    // Whether or not this validation is a ERC-1271 signature validation function.
+    bool isSignatureValidation;
+    // Whether or not this validation function is a user operation validation function.
+    bool isUserOpValidation;
+    // The validation hooks for this validation function.
+    HookConfig[] validationHooks;
+    // Execution hooks to run with this validation function.
+    HookConfig[] executionHooks;
+    // The set of selectors that may be validated by this validation function.
+    bytes4[] selectors;
 }

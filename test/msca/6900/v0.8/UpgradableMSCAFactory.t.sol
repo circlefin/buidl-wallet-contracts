@@ -19,20 +19,16 @@
 pragma solidity 0.8.24;
 
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
-
 import {ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-
 import {ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
-import {IStandardExecutor} from "../../../../src/msca/6900/v0.8/interfaces/IStandardExecutor.sol";
+import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
 import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
 import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
-import {PluginManager} from "../../../../src/msca/6900/v0.8/managers/PluginManager.sol";
 import {SingleSignerValidationModule} from
-    "../../../../src/msca/6900/v0.8/plugins/v1_0_0/validation/SingleSignerValidationModule.sol";
+    "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
 
-import {TestCircleMSCAFactory} from "../v0.8/TestCircleMSCAFactory.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -43,7 +39,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 contract UpgradableMSCAFactoryTest is AccountTestUtils {
     using ModuleEntityLib for ModuleEntity;
 
-    event AccountCreated(address indexed proxy, address sender, bytes32 salt);
+    event AccountCreated(address indexed proxy, bytes32 sender, bytes32 salt);
     event UpgradableMSCAInitialized(address indexed account, address indexed entryPointAddress);
     event SignerTransferred(
         address indexed account, uint32 indexed entityId, address indexed newSigner, address previousSigner
@@ -57,14 +53,13 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         uint256 actualGasCost,
         uint256 actualGasUsed
     );
-    event ValidationInstalled(ValidationConfig validationConfig, bytes4[] selectors);
+    event ValidationInstalled(address indexed module, uint32 indexed entityId);
 
     IEntryPoint private entryPoint = new EntryPoint();
-    PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
     // deprecate and replace with UpgradableMSCAFactory
-    TestCircleMSCAFactory private factory;
+    UpgradableMSCAFactory private factory;
     SingleSignerValidationModule private singleSignerValidationModule;
     TestLiquidityPool private testLiquidityPool;
     address payable private beneficiary; // e.g. bundler
@@ -73,16 +68,16 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
 
     function setUp() public {
         factoryOwner = makeAddr("factoryOwner");
-        factory = new TestCircleMSCAFactory(factoryOwner, entryPoint, pluginManager);
+        factory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint));
         beneficiary = payable(address(makeAddr("bundler")));
         testLiquidityPool = new TestLiquidityPool("getrich", "$$$");
         singleSignerValidationModule = new SingleSignerValidationModule();
-        address[] memory _plugins = new address[](1);
-        _plugins[0] = address(singleSignerValidationModule);
+        address[] memory _modules = new address[](1);
+        _modules[0] = address(singleSignerValidationModule);
         bool[] memory _permissions = new bool[](1);
         _permissions[0] = true;
         vm.startPrank(factoryOwner);
-        factory.setPlugins(_plugins, _permissions);
+        factory.setModules(_modules, _permissions);
         vm.stopPrank();
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
     }
@@ -91,12 +86,12 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         SingleSignerValidationModule maliciousModule = new SingleSignerValidationModule();
         ownerValidation = ModuleEntityLib.pack(address(maliciousModule), uint32(0));
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        bytes4 errorSelector = bytes4(keccak256("PluginIsNotAllowed(address)"));
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        bytes4 errorSelector = bytes4(keccak256("ModuleIsNotAllowed(address)"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector, address(maliciousModule)));
-        factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
     }
 
     function testGetAddressAndCreateMSCA() public {
@@ -104,29 +99,32 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testGetAddressAndCreateMSCA");
         vm.startPrank(ownerAddr);
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        (address counterfactualAddr,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        (address counterfactualAddr,) =
+            factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         // emit OwnershipTransferred
         vm.expectEmit(true, true, true, true);
         emit SignerTransferred(counterfactualAddr, uint32(0), ownerAddr, address(0));
-        // emit PluginInstalled first
+        // emit ModuleInstalled first
         vm.expectEmit(true, false, false, true);
-        emit ValidationInstalled(validationConfig, new bytes4[](0));
+        emit ValidationInstalled(ownerValidation.module(), uint32(0));
         // emit UpgradableMSCAInitialized
         vm.expectEmit(true, true, false, false);
         emit UpgradableMSCAInitialized(counterfactualAddr, address(entryPoint));
         // emit AccountCreated
         vm.expectEmit(true, true, false, false);
-        emit AccountCreated(counterfactualAddr, ownerAddr, salt);
-        UpgradableMSCA accountCreated = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+        emit AccountCreated(counterfactualAddr, addressToBytes32(ownerAddr), salt);
+        UpgradableMSCA accountCreated =
+            factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertEq(address(accountCreated.ENTRY_POINT()), address(entryPoint));
-        assertEq(singleSignerValidationModule.mscaSigners(uint32(0), address(accountCreated)), ownerAddr);
+        assertEq(singleSignerValidationModule.signers(uint32(0), address(accountCreated)), ownerAddr);
         // verify the address does not change
         assertEq(address(accountCreated), counterfactualAddr);
         // deploy again
-        UpgradableMSCA accountCreatedAgain = factory.createAccountWithValidation(ownerAddr, salt, initializingData);
+        UpgradableMSCA accountCreatedAgain =
+            factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         // verify the address does not change
         assertEq(address(accountCreatedAgain), counterfactualAddr);
         vm.stopPrank();
@@ -137,10 +135,10 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testDeployMSCAWith1stOutboundUserOp");
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         // only get address w/o deployment
-        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), bytes(""), bytes(""));
-        (address sender,) = factory.getAddressWithValidation(ownerAddr, salt, initializingData);
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        (address sender,) = factory.getAddressWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertTrue(sender.code.length == 0);
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(sender, 0);
@@ -152,9 +150,10 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         address liquidityPoolSpenderAddr = address(testLiquidityPool);
         bytes memory tokenTransferCallData = abi.encodeCall(testLiquidityPool.transfer, (recipient, 1000000));
         bytes memory executeCallData =
-            abi.encodeCall(IStandardExecutor.execute, (liquidityPoolSpenderAddr, 0, tokenTransferCallData));
-        bytes memory createAccountCall =
-            abi.encodeCall(TestCircleMSCAFactory.createAccountWithValidation, (ownerAddr, salt, initializingData));
+            abi.encodeCall(IModularAccount.execute, (liquidityPoolSpenderAddr, 0, tokenTransferCallData));
+        bytes memory createAccountCall = abi.encodeCall(
+            UpgradableMSCAFactory.createAccountWithValidation, (addressToBytes32(ownerAddr), salt, initializingData)
+        );
         address factoryAddr = address(factory);
         bytes memory initCode = abi.encodePacked(factoryAddr, createAccountCall);
         PackedUserOperation memory userOp = buildPartialUserOp(
@@ -189,8 +188,7 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
     }
 
     function testStakeAndUnstakeWithEP() public {
-        UpgradableMSCAFactory newFactory =
-            new UpgradableMSCAFactory(factoryOwner, address(entryPoint), address(pluginManager));
+        UpgradableMSCAFactory newFactory = new UpgradableMSCAFactory(factoryOwner, address(entryPoint));
         vm.deal(factoryOwner, 1 ether);
         address payable stakeWithdrawalAddr = payable(vm.addr(1));
         vm.startPrank(factoryOwner);
@@ -218,11 +216,11 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         newFactory.transferOwnership(address(0x1));
 
         vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, randomAddr));
-        address[] memory _plugins = new address[](1);
-        _plugins[0] = address(singleSignerValidationModule);
+        address[] memory _modules = new address[](1);
+        _modules[0] = address(singleSignerValidationModule);
         bool[] memory _permissions = new bool[](1);
         _permissions[0] = true;
-        newFactory.setPlugins(_plugins, _permissions);
+        newFactory.setModules(_modules, _permissions);
         vm.stopPrank();
 
         // transfer owner to address(1)
@@ -240,17 +238,17 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
 
     function testEncodeAndDecodeFactoryWithValidPaddedInput() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testEncodeAndDecodeFactoryWithValidPaddedInput");
-        address[] memory plugins = new address[](1);
-        bytes[] memory pluginInstallData = new bytes[](1);
-        plugins[0] = address(singleSignerValidationModule);
-        pluginInstallData[0] = abi.encode(uint32(0), ownerAddr);
-        bytes memory result = abi.encode(plugins, pluginInstallData);
-        address[] memory expectedPlugins = new address[](1);
-        bytes[] memory expectedPluginInstallData = new bytes[](1);
-        (expectedPlugins, expectedPluginInstallData) = abi.decode(result, (address[], bytes[]));
-        assertEq(plugins, expectedPlugins);
-        for (uint256 i = 0; i < pluginInstallData.length; i++) {
-            assertEq(pluginInstallData[i], expectedPluginInstallData[i]);
+        address[] memory modules = new address[](1);
+        bytes[] memory moduleInstallData = new bytes[](1);
+        modules[0] = address(singleSignerValidationModule);
+        moduleInstallData[0] = abi.encode(uint32(0), ownerAddr);
+        bytes memory result = abi.encode(modules, moduleInstallData);
+        address[] memory expectedModules = new address[](1);
+        bytes[] memory expectedModuleInstallData = new bytes[](1);
+        (expectedModules, expectedModuleInstallData) = abi.decode(result, (address[], bytes[]));
+        assertEq(modules, expectedModules);
+        for (uint256 i = 0; i < moduleInstallData.length; i++) {
+            assertEq(moduleInstallData[i], expectedModuleInstallData[i]);
         }
     }
 
