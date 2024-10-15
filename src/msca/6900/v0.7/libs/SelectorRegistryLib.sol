@@ -48,7 +48,8 @@ library SelectorRegistryLib {
     function _isNativeFunctionSelector(bytes4 selector) internal pure returns (bool) {
         return selector == IStandardExecutor.execute.selector || selector == IStandardExecutor.executeBatch.selector
             || selector == IPluginManager.installPlugin.selector || selector == IPluginManager.uninstallPlugin.selector
-            || selector == UUPSUpgradeable.upgradeToAndCall.selector || selector == UUPSUpgradeable.proxiableUUID.selector
+            || selector == UUPSUpgradeable.upgradeTo.selector || selector == UUPSUpgradeable.upgradeToAndCall.selector
+            || selector == UUPSUpgradeable.proxiableUUID.selector
         // check against IERC165 methods
         || selector == IERC165.supportsInterface.selector
         // check against IPluginExecutor methods

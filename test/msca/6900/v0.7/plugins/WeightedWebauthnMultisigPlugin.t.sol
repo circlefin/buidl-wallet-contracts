@@ -270,14 +270,15 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
     function test_pluginManifest() public {
         PluginManifest memory manifest = plugin.pluginManifest();
-        // 4 execution functions (addOwners, removeOwners, updateMultisigWeights, isValidSignature)
-        assertEq(4, manifest.executionFunctions.length);
+        // 4 execution functions (addOwners, removeOwners, updateMultisigWeights, isValidSignature,
+        // getReplaySafeMessageHash)
+        assertEq(5, manifest.executionFunctions.length);
 
-        // 7 native + 1 plugin exec func
-        assertEq(8, manifest.userOpValidationFunctions.length);
+        // 8 native + 1 plugin exec func
+        assertEq(9, manifest.userOpValidationFunctions.length);
 
-        // 10 runtime validations (isValidSignature, eip712Domain, 8 disabled functions)
-        assertEq(10, manifest.runtimeValidationFunctions.length);
+        // 11 runtime validations (isValidSignature, getReplaySafeMessageHash, 9 disabled functions)
+        assertEq(11, manifest.runtimeValidationFunctions.length);
     }
 
     function test_pluginMetadata() public {

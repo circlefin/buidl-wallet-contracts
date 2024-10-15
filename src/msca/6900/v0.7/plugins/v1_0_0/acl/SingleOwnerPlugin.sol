@@ -145,11 +145,12 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC7
     /// @inheritdoc BasePlugin
     function pluginManifest() external pure override returns (PluginManifest memory) {
         PluginManifest memory manifest;
-        manifest.executionFunctions = new bytes4[](4);
+        manifest.executionFunctions = new bytes4[](5);
         manifest.executionFunctions[0] = this.transferOwnership.selector;
         manifest.executionFunctions[1] = this.getOwner.selector;
         manifest.executionFunctions[2] = this.getOwnerOf.selector;
         manifest.executionFunctions[3] = this.isValidSignature.selector;
+        manifest.executionFunctions[4] = this.getReplaySafeMessageHash.selector;
 
         ManifestFunction memory userOpValidationAssociatedFunction =
             ManifestFunction(ManifestAssociatedFunctionType.SELF, uint8(FunctionId.USER_OP_VALIDATION_OWNER), 0);
@@ -177,7 +178,7 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC7
         ManifestFunction memory runtimeAlwaysAllowAssociatedFunction =
             ManifestFunction(ManifestAssociatedFunctionType.RUNTIME_VALIDATION_ALWAYS_ALLOW, 0, 0);
         // the following direct function calls (from EOA/SC) should be gated by the runtimeValidationAssociatedFunction
-        manifest.runtimeValidationFunctions = new ManifestAssociatedFunction[](10);
+        manifest.runtimeValidationFunctions = new ManifestAssociatedFunction[](11);
         // plugin functions
         manifest.runtimeValidationFunctions[0] =
             ManifestAssociatedFunction(this.transferOwnership.selector, runtimeValidationAssociatedFunction);
@@ -201,6 +202,8 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC7
             ManifestAssociatedFunction(this.getOwnerOf.selector, runtimeAlwaysAllowAssociatedFunction);
         manifest.runtimeValidationFunctions[9] =
             ManifestAssociatedFunction(this.isValidSignature.selector, runtimeAlwaysAllowAssociatedFunction);
+        manifest.runtimeValidationFunctions[10] =
+            ManifestAssociatedFunction(this.getReplaySafeMessageHash.selector, runtimeAlwaysAllowAssociatedFunction);
         manifest.interfaceIds = new bytes4[](2);
         manifest.interfaceIds[0] = type(IERC1271).interfaceId;
         manifest.interfaceIds[1] = type(ISingleOwnerPlugin).interfaceId;

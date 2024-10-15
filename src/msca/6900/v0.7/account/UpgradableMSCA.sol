@@ -73,6 +73,11 @@ contract UpgradableMSCA is BaseMSCA, UUPSUpgradeable {
     }
 
     /// @inheritdoc UUPSUpgradeable
+    function upgradeTo(address newImplementation) public override onlyProxy validateNativeFunction {
+        super.upgradeTo(newImplementation);
+    }
+
+    /// @inheritdoc UUPSUpgradeable
     function upgradeToAndCall(address newImplementation, bytes memory data)
         public
         payable
