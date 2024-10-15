@@ -158,11 +158,12 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     function pluginManifest() external pure virtual override returns (PluginManifest memory) {
         PluginManifest memory manifest;
 
-        manifest.executionFunctions = new bytes4[](4);
+        manifest.executionFunctions = new bytes4[](5);
         manifest.executionFunctions[0] = this.addOwners.selector;
         manifest.executionFunctions[1] = this.removeOwners.selector;
         manifest.executionFunctions[2] = this.updateMultisigWeights.selector;
         manifest.executionFunctions[3] = this.isValidSignature.selector;
+        manifest.executionFunctions[4] = this.getReplaySafeMessageHash.selector;
 
         ManifestFunction memory ownerUserOpValidationFunction = ManifestFunction({
             functionType: ManifestAssociatedFunctionType.SELF,
@@ -171,9 +172,9 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         });
 
         // Update native functions to use userOpValidationFunction provided by this plugin
-        // The view functions `isValidSignature` and `eip712Domain` are excluded from being assigned a user
+        // The view functions `isValidSignature` and `getReplaySafeMessageHash` are excluded from being assigned a user
         // operation validation function since they should only be called via the runtime path.
-        manifest.userOpValidationFunctions = new ManifestAssociatedFunction[](8);
+        manifest.userOpValidationFunctions = new ManifestAssociatedFunction[](9);
         manifest.userOpValidationFunctions[0] = ManifestAssociatedFunction({
             executionSelector: this.addOwners.selector,
             associatedFunction: ownerUserOpValidationFunction
@@ -210,6 +211,10 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             executionSelector: UUPSUpgradeable.upgradeToAndCall.selector,
             associatedFunction: ownerUserOpValidationFunction
         });
+        manifest.userOpValidationFunctions[8] = ManifestAssociatedFunction({
+            executionSelector: UUPSUpgradeable.upgradeTo.selector,
+            associatedFunction: ownerUserOpValidationFunction
+        });
 
         ManifestFunction memory alwaysAllowFunction = ManifestFunction({
             functionType: ManifestAssociatedFunctionType.RUNTIME_VALIDATION_ALWAYS_ALLOW,
@@ -222,7 +227,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             functionId: 0,
             dependencyIndex: 0 // Unused.
         });
-        manifest.runtimeValidationFunctions = new ManifestAssociatedFunction[](10);
+        manifest.runtimeValidationFunctions = new ManifestAssociatedFunction[](11);
 
         manifest.runtimeValidationFunctions[0] = ManifestAssociatedFunction({
             executionSelector: this.isValidSignature.selector,
@@ -262,6 +267,10 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         });
         manifest.runtimeValidationFunctions[9] = ManifestAssociatedFunction({
             executionSelector: UUPSUpgradeable.upgradeToAndCall.selector,
+            associatedFunction: alwaysRevertFunction
+        });
+        manifest.runtimeValidationFunctions[10] = ManifestAssociatedFunction({
+            executionSelector: UUPSUpgradeable.upgradeTo.selector,
             associatedFunction: alwaysRevertFunction
         });
 
