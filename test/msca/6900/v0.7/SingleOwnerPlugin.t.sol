@@ -312,6 +312,11 @@ contract SingleOwnerPluginTest is TestUtils {
 
         // verify supportedInterfaces
         assertEq(bytes32(msca1.getSupportedInterface(type(IERC1271).interfaceId)), bytes32(uint256(1)));
+
+        executionDetail = msca1.getExecutionDetail(singleOwnerPlugin.getReplaySafeMessageHash.selector);
+        assertEq(executionDetail.plugin, singleOwnerPluginAddr);
+        assertEq(executionDetail.userOpValidationFunction.pack(), EMPTY_FUNCTION_REFERENCE);
+        assertEq(executionDetail.runtimeValidationFunction.pack(), RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE);
     }
 
     function testTransferOwnership() public {

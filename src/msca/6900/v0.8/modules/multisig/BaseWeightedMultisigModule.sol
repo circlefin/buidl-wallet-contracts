@@ -259,51 +259,8 @@ abstract contract BaseWeightedMultisigModule is IWeightedMultisigModule, BaseMul
         OwnerData[] memory newOwnersData,
         uint256 newThresholdWeight
     ) internal {
-        uint256 ownersToUpdateLen = ownersToUpdate.length;
-        uint256 weightsToUpdateLen = newOwnersData.length;
-
-        // If ownersToUpdate and newWeights are differing lengths, revert.
-        // (If both are 0, just update threshold)
-        if (ownersToUpdateLen != weightsToUpdateLen) {
-            revert OwnersWeightsMismatch();
-        }
-
-        uint256 totalWeightAdditions = 0;
-        uint256 totalWeightReductions = 0;
-
-        if (ownersToUpdateLen > 0) {
-            for (uint256 i = 0; i < ownersToUpdateLen; ++i) {
-                // confirm the owner has a nonzero weight, else revert
-                uint256 _ownerCurrentWeight = ownerDataPerAccount[ownersToUpdate[i]][msg.sender].weight;
-                uint256 _newWeight = newOwnersData[i].weight;
-                if (_ownerCurrentWeight == 0) {
-                    // setting owner weights for uninitialized owners via setMultisigWeights() is not allowed. Owners
-                    // must be added via addOwners().
-                    revert InvalidOwner(ownersToUpdate[i]);
-                }
-                if (_ownerCurrentWeight < _newWeight) {
-                    _setOwnerWeight(ownersToUpdate[i], newOwnersData[i].weight);
-                    totalWeightAdditions += (_newWeight - _ownerCurrentWeight);
-                } else if (_ownerCurrentWeight > _newWeight) {
-                    _setOwnerWeight(ownersToUpdate[i], newOwnersData[i].weight);
-                    totalWeightReductions += (_ownerCurrentWeight - _newWeight);
-                }
-            }
-        }
-
-        // 2. Update metadata
-        OwnershipMetadata storage metadata = _ownerMetadata[msg.sender];
-        uint256 _initialTotalWeight = metadata.totalWeight;
-        uint256 _newTotalWeight = _initialTotalWeight + totalWeightAdditions - totalWeightReductions;
-        metadata.totalWeight = _newTotalWeight;
-
-        _validateAndOptionallySetThresholdWeight(newThresholdWeight, _newTotalWeight, metadata);
-
-        // 3. Emit events
-        // (updateMultisigWeights permits updating threshold without updating individual owner weights.)
-        if (ownersToUpdateLen > 0) {
-            emit OwnersUpdated(msg.sender, ownersToUpdate, newOwnersData);
-        }
+        (ownersToUpdate, newOwnersData, newThresholdWeight);
+        revert NotImplemented(msg.sig, 0);
     }
 
     /// @notice Adds owners, or reverts if any owner cannot be added.

@@ -158,11 +158,12 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     function pluginManifest() external pure virtual override returns (PluginManifest memory) {
         PluginManifest memory manifest;
 
-        manifest.executionFunctions = new bytes4[](4);
+        manifest.executionFunctions = new bytes4[](5);
         manifest.executionFunctions[0] = this.addOwners.selector;
         manifest.executionFunctions[1] = this.removeOwners.selector;
         manifest.executionFunctions[2] = this.updateMultisigWeights.selector;
         manifest.executionFunctions[3] = this.isValidSignature.selector;
+        manifest.executionFunctions[4] = this.getReplaySafeMessageHash.selector;
 
         ManifestFunction memory ownerUserOpValidationFunction = ManifestFunction({
             functionType: ManifestAssociatedFunctionType.SELF,
@@ -171,7 +172,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         });
 
         // Update native functions to use userOpValidationFunction provided by this plugin
-        // The view functions `isValidSignature` and `eip712Domain` are excluded from being assigned a user
+        // The view functions `isValidSignature` and `getReplaySafeMessageHash` are excluded from being assigned a user
         // operation validation function since they should only be called via the runtime path.
         manifest.userOpValidationFunctions = new ManifestAssociatedFunction[](8);
         manifest.userOpValidationFunctions[0] = ManifestAssociatedFunction({
