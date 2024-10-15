@@ -1,6 +1,6 @@
 {
   "name": "buidl-wallet-contracts",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "buidl-wallet-contracts",
   "scripts": {
     "clean": "rm -rf cache artifacts typechain-types",
