@@ -24,8 +24,7 @@ import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerMSCAFactoryScript is Script {
     address internal constant PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
-    address payable internal constant EXPECTED_FACTORY_ADDRESS =
-        payable(SINGLE_OWNER_MSCA_FACTORY_ADDRESS);
+    address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(SINGLE_OWNER_MSCA_FACTORY_ADDRESS);
 
     function run() public {
         address entryPoint = ENTRY_POINT;
