@@ -2,7 +2,7 @@ name: Continuous Integration
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, entry-point-v0.6]
 
 jobs:
   lint_and_test:
