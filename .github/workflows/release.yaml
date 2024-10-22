@@ -2,9 +2,9 @@ name: PR Lint and Release
 
 on:
   pull_request:
-    branches: [master]
+    branches: [master, entry-point-v0.6]
   push:
-    branches: [master]
+    branches: [master, entry-point-v0.6]
 
 jobs:
   pr_lint_and_release:
