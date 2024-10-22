@@ -19,24 +19,25 @@
 pragma solidity 0.8.24;
 
 import {SingleOwnerMSCAFactory} from "../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {ENTRY_POINT, PLUGIN_MANAGER_ADDRESS, SINGLE_OWNER_MSCA_FACTORY_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerMSCAFactoryScript is Script {
-    address internal constant PLUGIN_MANAGER = 0xc751A2bFA2A4a5b27E94ad735534c16a0999d871;
-    address payable internal constant EXPECTED_FACTORY_ADDRESS =
-        payable(address(0x1a1f5310eD7fF0B84Cef7E6d7D0f94Cc16D23013));
+    address internal constant PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
+    address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(SINGLE_OWNER_MSCA_FACTORY_ADDRESS);
 
     function run() public {
-        address entryPoint = vm.envAddress("ENTRY_POINT");
+        address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
         SingleOwnerMSCAFactory factory;
         if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
             factory = new SingleOwnerMSCAFactory{salt: 0}(entryPoint, PLUGIN_MANAGER);
+            console.log("New single owner MSCA factory address: %s", address(factory));
         } else {
             factory = SingleOwnerMSCAFactory(EXPECTED_FACTORY_ADDRESS);
+            console.log("Found existing single owner MSCA factory at expected address: %s", address(factory));
         }
-        console.log("Factory address: %s", address(factory));
         console.log("Account implementation address: %s", address(factory.accountImplementation()));
         vm.stopBroadcast();
     }
