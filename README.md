@@ -81,7 +81,7 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
       * Sponsor paymaster `env $(grep -v '^#' .env) npx hardhat verify --network goerli --constructor-args script/sponsor_paymaster_constructor_args.js STABLECOIN_PAYMASTER_ADDRESS`
       * Fallback: If the verification commands do not work for contracts deployed through the hardhat deployment scripts, you can still verify manually through etherscan's UI by submitting the standard input json. 
       
-        You can find this file under `deployments/polygon/solcInputs` (you can try different blockchain but I'm unsure of results). Then submit the file that you think is the one for the contract your trying to verify. It's a bit of guessing, but you can look at the source code to try and figure it out. You may also need to verify the proxies manually through etherscan after having verified the implementation.
+        You can find this file under `deployments/polygon/solcInputs` (you can try different blockchains but I'm unsure of results). Then submit the file that you think is the one for the contract you're trying to verify. It's a bit of guessing, but you can look at the source code to try and figure it out. You may also need to verify the proxies manually through etherscan after having verified the implementation.
 #### MSCA
   1. Set up `DEPLOYER_PRIVATE_KEY`, `RPC_URL` and `ETHERSCAN_API_KEY` in .env
   2. Run `source .env`
@@ -96,13 +96,13 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
     
   4. Include the relevant logs from the `broadcast` folder in your commit.
 
-        Tip: if you did multiple runs, search the appropriate block explorer for the tx hash corresponding the desired contract's deployment, and then search the logs for the transaction hash.
+        Tip: if you did multiple runs, search the appropriate block explorer for the tx hash corresponding to the desired contract's deployment, and then search the logs for the transaction hash.
 
         Tip: logs are organized by chain ID in the lower levels in the `broadcast` folder. Use <https://chainlist.org/> to lookup IDs of common chains.
 
-  5. Create or update the corresponding file in the `script/cmd` folder using the creation bytecode of the contract from the logs. See the below "Chain Expansion" section for details on how to format of the files in the `script/cmd` folder.
+  5. Create or update the corresponding file in the `script/cmd` folder using the creation bytecode of the contract from the logs. See the below "Chain Expansion" section for details on how to format the files in the `script/cmd` folder.
   6. Verify in block explorer like etherscan using standard input json
-       * Create the standard input json: run the beoow command
+       * Create the standard input json: run the below command
        
           ```shell
           forge verify-contract <contract_address> <relative_path_to_source:classname> --show-standard-json-input > <script/verify/<filename>
@@ -127,7 +127,7 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
 
 ### Deployment Metadata
 
-The below contract deployment are based on abi and bytecode to ensure the same address across all EVM-compatible chains. The abi and bytecode for each of the contracts is available at the below locations. These files were generated from first deployments, will all fields except `abi` and `bytecode` removed.
+The below contract deployment are based on abi and bytecode to ensure the same address across all EVM-compatible chains. The abi and bytecode for each of the contracts are available at the locations below. These files were generated from first deployments, will all fields except `abi` and `bytecode` removed.
 
 | Contract Name | Location |
 |:------------------------:|:------------------------:|
