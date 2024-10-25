@@ -24,16 +24,11 @@ import {UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract StakeUpgradableMSCAFactory is Script {
-    address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
+    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
+    address NEW_OWNER = vm.envAddress("MSCA_FACTORY_PERMANENT_OWNER_ADDRESS");
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
-
-        // Configure stake (using minimums from https://docs.alchemy.com/docs/bundler-services#minimum-stake)
-        // uint256 stakeValue = 10 ether; // For MATIC Amoy (make sure to verify this value if you switch chains)
-        // uint256 stakeValue = 100 ether; // For MATIC
-        uint256 stakeValue = 0.1 ether; // For ETH (testnets and mainnets)
-        uint32 unstakeDelaySec = 1 * 24 * 60 * 60; // 1 day
 
         // Ensure factory has been deployed
         if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
@@ -45,7 +40,7 @@ contract StakeUpgradableMSCAFactory is Script {
 
         // Set plugins for factory
         vm.startBroadcast(key);
-        factory.addStake{value: stakeValue}(unstakeDelaySec);
+        factory.transferOwnership(NEW_OWNER);
         vm.stopBroadcast();
     }
 }
