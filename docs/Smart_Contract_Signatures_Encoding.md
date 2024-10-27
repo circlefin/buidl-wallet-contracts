@@ -15,7 +15,7 @@ Contract signature (EIP-1271).
 
 ### Constant part
 
-{32-bytes signature verifier} -  padded address of the contract that implements the EIP-1271 interface to verify the signature
+{32-bytes signature verifier} -  zero-padded address of the contract that implements the EIP-1271 interface to verify the signature
 
 {32-bytes data position} - position of the start of the signature data (offset relative to the beginning of the signature data)
 
