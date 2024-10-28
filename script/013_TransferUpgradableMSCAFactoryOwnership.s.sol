@@ -24,8 +24,8 @@ import {UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract StakeUpgradableMSCAFactory is Script {
-    address payable EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
-    address NEW_OWNER = vm.envAddress("MSCA_FACTORY_PERMANENT_OWNER_ADDRESS");
+    address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
+    address internal newOwner = vm.envAddress("MSCA_FACTORY_PERMANENT_OWNER_ADDRESS");
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
@@ -40,7 +40,7 @@ contract StakeUpgradableMSCAFactory is Script {
 
         // Set plugins for factory
         vm.startBroadcast(key);
-        factory.transferOwnership(NEW_OWNER);
+        factory.transferOwnership(newOwner);
         vm.stopBroadcast();
     }
 }
