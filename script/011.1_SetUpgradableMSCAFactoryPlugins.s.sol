@@ -45,7 +45,6 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
         plugins[0] = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
         plugins[1] = WEIGHTED_MULTISIG_PLUGIN_ADDRESS;
         plugins[2] = DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS;
-        // plugins[3] = SINGLE_OWNER_PLUGIN_ADDRESS;
 
         for (uint256 i = 0; i < numPlugins; i++) {
             pluginPermissions[i] = true;

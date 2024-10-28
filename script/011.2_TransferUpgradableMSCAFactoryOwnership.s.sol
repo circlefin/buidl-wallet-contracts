@@ -23,7 +23,7 @@ import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableM
 import {UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./000_ContractAddress.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract StakeUpgradableMSCAFactory is Script {
+contract TransferUpgradableMSCAFactoryOwnership is Script {
     address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
     address internal newOwner = vm.envAddress("MSCA_FACTORY_PERMANENT_OWNER_ADDRESS");
 
