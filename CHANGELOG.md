@@ -1,5 +1,49 @@
 # Changelog
 
+## [2.0.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v1.0.0...v2.0.0) (2024-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* breaking change`)
+* Revert unaudited token receiver changes ([#8](https://github.com/circlefin/buidl-wallet-contracts/issues/8))
+
+### `feat
+
+* breaking change`) ([4eccfa7](https://github.com/circlefin/buidl-wallet-contracts/commit/4eccfa7734ffd9236d73af6f2cd5992ed7bebd19))
+
+
+### Features
+
+* Deployed and Verified SponsorPaymaster on Mainnet ([#25](https://github.com/circlefin/buidl-wallet-contracts/issues/25)) ([768eeb7](https://github.com/circlefin/buidl-wallet-contracts/commit/768eeb746138c536588b30d49050625bbc7e5528))
+* Latest audited EP0.7 BW MSCA contract scripts and deployments ([#33](https://github.com/circlefin/buidl-wallet-contracts/issues/33)) ([6dc7606](https://github.com/circlefin/buidl-wallet-contracts/commit/6dc7606de1921b1f102f3fdafd0569f1302601b8))
+* Latest audited EP0.7 multisig plugin deployment ([#30](https://github.com/circlefin/buidl-wallet-contracts/issues/30)) ([30a6015](https://github.com/circlefin/buidl-wallet-contracts/commit/30a6015dfa1444f4459657f41da2f4d9d46c61ab))
+* latest audited ep0.7 single owner plugin deployment ([#35](https://github.com/circlefin/buidl-wallet-contracts/issues/35)) ([4eccfa7](https://github.com/circlefin/buidl-wallet-contracts/commit/4eccfa7734ffd9236d73af6f2cd5992ed7bebd19))
+* sync v0.8 accounts to recent 6900 spec ([#20](https://github.com/circlefin/buidl-wallet-contracts/issues/20)) ([e1e2eee](https://github.com/circlefin/buidl-wallet-contracts/commit/e1e2eeea51f72cfe676356d7b05c3cce3c42a9de))
+
+
+### Bug Fixes
+
+* Revert unaudited token receiver changes ([#8](https://github.com/circlefin/buidl-wallet-contracts/issues/8)) ([2549e72](https://github.com/circlefin/buidl-wallet-contracts/commit/2549e726144a87807bcc3a29628093c33d18ee10))
+
+
+### Documentation
+
+* document SingleOwnerMSCAFactory std-json-input ([#10](https://github.com/circlefin/buidl-wallet-contracts/issues/10)) ([31398de](https://github.com/circlefin/buidl-wallet-contracts/commit/31398deb3b3af7c35f3521c5ff2d10b092b2b65b))
+
+
+### Miscellaneous Chores
+
+* fix typos ([bf15fa9](https://github.com/circlefin/buidl-wallet-contracts/commit/bf15fa9b8a87327dbe43d77fabe925f42f9bc06d))
+* fix typos ([#28](https://github.com/circlefin/buidl-wallet-contracts/issues/28)) ([bf15fa9](https://github.com/circlefin/buidl-wallet-contracts/commit/bf15fa9b8a87327dbe43d77fabe925f42f9bc06d))
+* install new view func for convenience ([#22](https://github.com/circlefin/buidl-wallet-contracts/issues/22)) ([2a17ad5](https://github.com/circlefin/buidl-wallet-contracts/commit/2a17ad5fb15313425188f4235b9568c94e1bfc7e))
+* update deps ([#14](https://github.com/circlefin/buidl-wallet-contracts/issues/14)) ([f5575d0](https://github.com/circlefin/buidl-wallet-contracts/commit/f5575d0886bdaa49bd1100f2a06261d6060490df))
+
+
+### Code Refactoring
+
+* deployment scripts and commands ([#12](https://github.com/circlefin/buidl-wallet-contracts/issues/12)) ([7388395](https://github.com/circlefin/buidl-wallet-contracts/commit/7388395fac2ac8bcd19af9a1caaac5df3c4813f2))
+
 ## 1.0.0 (2024-09-27)
 
 
