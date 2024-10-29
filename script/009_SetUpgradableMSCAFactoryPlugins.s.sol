@@ -59,7 +59,7 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
         // Set plugins for factory
         vm.startBroadcast(key);
         for (uint256 i = 0; i < numPlugins; i++) {
-            console.log("Checking if plugin number", i, "is allowed:", factory.isPluginAllowed(plugins[0]));
+            console.log("Checking if plugin number", plugins[i], "is allowed:", factory.isPluginAllowed(plugins[i]));
         }
         vm.stopBroadcast();
     }

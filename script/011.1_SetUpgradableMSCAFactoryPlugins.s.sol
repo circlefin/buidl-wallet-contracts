@@ -23,7 +23,6 @@ import {UpgradableMSCAFactory} from "../src/msca/6900/v0.7/factories/UpgradableM
 import {
     COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS,
     DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS,
-    SINGLE_OWNER_PLUGIN_ADDRESS,
     UPGRADABLE_MSCA_FACTORY_ADDRESS,
     WEIGHTED_MULTISIG_PLUGIN_ADDRESS
 } from "./000_ContractAddress.sol";
@@ -39,14 +38,13 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         // Initialize setPlugins exec call data
-        uint256 numPlugins = 4;
+        uint256 numPlugins = 3;
         address[] memory plugins = new address[](numPlugins);
         bool[] memory pluginPermissions = new bool[](numPlugins);
 
-        plugins[0] = SINGLE_OWNER_PLUGIN_ADDRESS;
-        plugins[1] = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
-        plugins[2] = WEIGHTED_MULTISIG_PLUGIN_ADDRESS;
-        plugins[3] = DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS;
+        plugins[0] = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
+        plugins[1] = WEIGHTED_MULTISIG_PLUGIN_ADDRESS;
+        plugins[2] = DEFAULT_TOKEN_CALLBACK_PLUGIN_ADDRESS;
 
         for (uint256 i = 0; i < numPlugins; i++) {
             pluginPermissions[i] = true;
@@ -64,7 +62,7 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
         vm.startBroadcast(key);
         factory.setPlugins(plugins, pluginPermissions);
         for (uint256 i = 0; i < numPlugins; i++) {
-            console.log("Checking if plugin number", i, "is allowed:", factory.isPluginAllowed(plugins[0]));
+            console.log("Checking if plugin", plugins[i], "is allowed:", factory.isPluginAllowed(plugins[i]));
         }
         vm.stopBroadcast();
     }

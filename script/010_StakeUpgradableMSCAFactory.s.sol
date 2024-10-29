@@ -30,7 +30,9 @@ contract StakeUpgradableMSCAFactory is Script {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         // Configure stake (using minimums from https://docs.alchemy.com/docs/bundler-services#minimum-stake)
-        uint256 stakeValue = 10 ether; // For MATIC Amoy (make sure to verify this value if you switch chains)
+        // uint256 stakeValue = 10 ether; // For Polygon Amoy (make sure to verify this value if you switch chains)
+        // uint256 stakeValue = 100 ether; // For Polygon
+        uint256 stakeValue = 0.1 ether; // For ETH (testnets and mainnets)
         uint32 unstakeDelaySec = 1 * 24 * 60 * 60; // 1 day
 
         // Ensure factory has been deployed
