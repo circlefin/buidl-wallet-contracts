@@ -123,6 +123,15 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
             # Example
             cast abi-encode "constructor(address,address,uint256)" "0x0166EA90E565476f13c6a0D25ED2C35599E58785" "0x0000000071727De22E5E9d8BAf0edAc6f37da032" 18
             ```
+
+            Make sure to save this output under `script/verify/<ContractName>/abiEncodedConstructorArgs`.
+            
+            Tip: if your contract's constructor arguments have complicated types, you can get this value instead by `console.log`ing the output of `abi.encode(arg1, arg2, ...)` in Solidity.
+
+         * For account factory contracts, you may also need to manually verify the proxy contract. To do this, you will first need to create an account using the account factory, and follow the above strategy. After verifying one account, all subsequent proxies should be automatically detected.
+
+            Tip: analyze the account creation function on the factory (e.g. `createAccount` for `SingleOwnerMSCAFactory`) to deduce the constructor arguments for the proxy deployment when trying to verify it on a block explorer.
+
          * Click verify and publish
 
 ### Deployment Metadata
