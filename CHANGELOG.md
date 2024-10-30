@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.0.0...v2.0.1) (2024-10-30)
+
+
+### Documentation
+
+* Add verification instructions for proxy accounts ([#38](https://github.com/circlefin/buidl-wallet-contracts/issues/38)) ([d395e5e](https://github.com/circlefin/buidl-wallet-contracts/commit/d395e5e86f41764a6ce953719c1fc489fd992ecb))
+
 ## [2.0.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v1.0.0...v2.0.0) (2024-10-29)
 
 
