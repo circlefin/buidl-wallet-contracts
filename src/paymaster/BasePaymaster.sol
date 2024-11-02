@@ -33,8 +33,8 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
  * The deposit (for paying gas fees) is separate from the stake (which is locked).
  * Note that this signature is NOT a replacement for the account-specific signature:
  * - the paymaster checks a signature to agree to pay for gas.
- * - the account checks a signature prove identity and account ownership.
- * Since this contract is upgradable, we do not allow use either selfdestruct or delegatecall to prevent a malicious
+ * - the account checks a signature to prove identity and account ownership.
+ * Since this contract is upgradable, we do not allow the use of either selfdestruct or delegatecall to prevent a malicious
  * actor from
  * destroying the logic contract.
  */
