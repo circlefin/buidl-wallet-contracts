@@ -21,7 +21,7 @@ pragma solidity 0.8.24;
 // solhint-disable no-inline-assembly
 
 /**
- * Utility functions helpful when making different kinds of contract calls in Solidity.
+ * Utility functions are helpful when making different kinds of contract calls in Solidity.
  * For inline assembly, please refer to https://docs.soliditylang.org/en/latest/assembly.html
  * For opcodes, please refer to https://ethereum.org/en/developers/docs/evm/opcodes/ and https://www.evm.codes/
  */
