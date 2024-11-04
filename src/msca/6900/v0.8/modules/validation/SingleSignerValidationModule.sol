@@ -25,9 +25,10 @@ import {
     SIG_VALIDATION_SUCCEEDED
 } from "../../../../../common/Constants.sol";
 import {UnauthorizedCaller} from "../../../shared/common/Errors.sol";
-import {IModule} from "../../interfaces/IModule.sol";
-import {IValidationModule} from "../../interfaces/IValidationModule.sol";
+
 import {BaseModule} from "../BaseModule.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 import {BaseERC712CompliantModule} from "../../../shared/erc712/BaseERC712CompliantModule.sol";
 import {ISingleSignerValidationModule} from "./ISingleSignerValidationModule.sol";

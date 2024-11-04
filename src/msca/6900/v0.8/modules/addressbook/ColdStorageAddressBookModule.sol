@@ -21,14 +21,19 @@ pragma solidity 0.8.24;
 import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCEEDED} from "../../../../../common/Constants.sol";
 import {CastLib} from "../../../../../libs/CastLib.sol";
 import {RecipientAddressLib} from "../../../../../libs/RecipientAddressLib.sol";
-import {Unsupported} from "../../../shared/common/Errors.sol";
-import {ExecutionManifest, ManifestExecutionFunction} from "../../common/ModuleManifest.sol";
+import {SignatureInflation, Unsupported} from "../../../shared/common/Errors.sol";
+
 import {Call} from "../../common/Structs.sol";
-import {IModule} from "../../interfaces/IModule.sol";
-import {IValidationHookModule} from "../../interfaces/IValidationHookModule.sol";
+
 import {BaseModule} from "../BaseModule.sol";
 import {IAddressBookModule} from "./IAddressBookModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {
+    ExecutionManifest,
+    ManifestExecutionFunction
+} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
 
 import {
     AssociatedLinkedListSet,
@@ -143,6 +148,10 @@ contract ColdStorageAddressBookModule is IAddressBookModule, BaseModule {
         override
         returns (uint256 validationData)
     {
+        // TODO: add tests when we revamp this WIP module soon
+        if (userOp.signature.length > 0) {
+            revert SignatureInflation();
+        }
         (userOpHash);
         if (entityId == uint32(EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK)) {
             // This functionality is exclusively compatible with the IStandardExecutor.execute as delineated in the
@@ -214,7 +223,7 @@ contract ColdStorageAddressBookModule is IAddressBookModule, BaseModule {
 
     function preSignatureValidationHook(uint32 entityId, address sender, bytes32 hash, bytes calldata signature)
         external
-        view
+        pure
         override
     {
         (entityId, sender, hash, signature);

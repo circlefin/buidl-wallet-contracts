@@ -28,6 +28,9 @@ import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator
 import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import {IERC777Recipient} from "@openzeppelin/contracts/interfaces/IERC777Recipient.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 library SelectorRegistryLib {
@@ -61,7 +64,10 @@ library SelectorRegistryLib {
             || selector == IAccountLoupe.getInstalledPlugins.selector || selector == VALIDATE_USER_OP
             || selector == GET_ENTRYPOINT || selector == GET_NONCE || selector == INITIALIZE_UPGRADABLE_MSCA
             || selector == INITIALIZE_SINGLE_OWNER_MSCA || selector == TRANSFER_NATIVE_OWNERSHIP
-            || selector == RENOUNCE_NATIVE_OWNERSHIP || selector == GET_NATIVE_OWNER;
+            || selector == RENOUNCE_NATIVE_OWNERSHIP || selector == GET_NATIVE_OWNER
+            || selector == IERC1155Receiver.onERC1155Received.selector
+            || selector == IERC1155Receiver.onERC1155BatchReceived.selector
+            || selector == IERC721Receiver.onERC721Received.selector || selector == IERC777Recipient.tokensReceived.selector;
     }
 
     function _isErc4337FunctionSelector(bytes4 selector) internal pure returns (bool) {

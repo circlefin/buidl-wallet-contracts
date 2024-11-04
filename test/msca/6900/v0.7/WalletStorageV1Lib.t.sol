@@ -44,7 +44,7 @@ contract WalletStorageV1LibTest is TestUtils {
         beneficiary = payable(address(makeAddr("bundler")));
     }
 
-    function testWalletStorageSlot() public {
+    function testWalletStorageSlot() public pure {
         bytes32 hash = keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v1.storage"))) - 1));
         assertEq(hash, 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8);
     }
@@ -188,28 +188,30 @@ contract WalletStorageV1LibTest is TestUtils {
 
     function testBulkGetPlugins() public {
         // try out different limits, even bigger than totalPlugins
+        // we can't set the limit too high for unoptimized runs such as forge coverage
         for (uint256 limit = 1; limit <= 10; limit++) {
             // 4 plugins
             bulkAddAndGetPlugins(new TestCircleMSCA(entryPoint, pluginManager), 4, limit);
         }
-        for (uint256 limit = 1; limit <= 55; limit++) {
+        for (uint256 limit = 1; limit <= 25; limit++) {
             bulkAddAndGetPlugins(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
-        for (uint256 limit = 1; limit <= 56; limit++) {
+        for (uint256 limit = 1; limit <= 26; limit++) {
             bulkAddAndGetPlugins(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
     }
 
     function testBulkGetPreUserOpValidationHooks() public {
         // try out different limits, even bigger than totalHooks
+        // we can't set the limit too high for unoptimized runs such as forge coverage
         for (uint256 limit = 1; limit <= 10; limit++) {
             // 4 plugins
             bulkAddAndGetPreUserOpValidationHooks(new TestCircleMSCA(entryPoint, pluginManager), 4, limit);
         }
-        for (uint256 limit = 1; limit <= 55; limit++) {
+        for (uint256 limit = 1; limit <= 25; limit++) {
             bulkAddAndGetPreUserOpValidationHooks(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
-        for (uint256 limit = 1; limit <= 56; limit++) {
+        for (uint256 limit = 1; limit <= 26; limit++) {
             bulkAddAndGetPreUserOpValidationHooks(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
     }
@@ -221,7 +223,7 @@ contract WalletStorageV1LibTest is TestUtils {
         bulkGetPlugins(msca, totalPlugins, limit);
     }
 
-    function bulkGetPlugins(TestCircleMSCA msca, uint256 totalPlugins, uint256 limit) private {
+    function bulkGetPlugins(TestCircleMSCA msca, uint256 totalPlugins, uint256 limit) private view {
         address[] memory results = new address[](totalPlugins);
         address start = address(0x0);
         uint256 count = 0;
@@ -254,6 +256,7 @@ contract WalletStorageV1LibTest is TestUtils {
 
     function bulkGetPreUserOpValidationHooks(TestCircleMSCA msca, bytes4 selector, uint256 totalHooks, uint256 limit)
         private
+        view
     {
         FunctionReference[] memory results = new FunctionReference[](totalHooks);
         FunctionReference memory start = SENTINEL_BYTES21.unpack();

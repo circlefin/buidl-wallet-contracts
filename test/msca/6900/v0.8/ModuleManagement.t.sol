@@ -19,17 +19,17 @@
 pragma solidity 0.8.24;
 
 import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
-import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "../../../../src/msca/6900/v0.8/common/Constants.sol";
-import {ExecutionManifest} from "../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
-import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "@erc6900/reference-implementation/helpers/Constants.sol";
+import {ExecutionManifest} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-import {IModule} from "../../../../src/msca/6900/v0.8/interfaces/IModule.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
 
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {TestTokenModule} from "./TestTokenModule.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
@@ -40,10 +40,13 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 
-import {ExecutionDataView, ValidationDataView} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
-import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
-import {HookConfigLib} from "../../../../src/msca/6900/v0.8/libs/HookConfigLib.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {
+    ExecutionDataView, ValidationDataView
+} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
+
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {HookConfigLib} from "@erc6900/reference-implementation/libraries/HookConfigLib.sol";
 import {console} from "forge-std/src/console.sol";
 
 /// Tests for install/uninstall
@@ -127,7 +130,7 @@ contract ModuleManagementTest is AccountTestUtils {
         vm.startPrank(address(1));
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector,
+                BaseMSCA.InvalidValidationFunction.selector,
                 IModularAccount.installExecution.selector,
                 ModuleEntityLib.pack(address(1), DIRECT_CALL_VALIDATION_ENTITY_ID)
             )
@@ -148,16 +151,7 @@ contract ModuleManagementTest is AccountTestUtils {
             (address(testTokenModule), testTokenModule.executionManifest(), abi.encode(1000))
         );
         PackedUserOperation memory userOp = buildPartialUserOp(
-            address(msca),
-            0,
-            "0x",
-            vm.toString(installModuleCallData),
-            10053353,
-            103353,
-            45484,
-            516219199704,
-            1130000000,
-            "0x"
+            address(msca), 0, "0x", vm.toString(installModuleCallData), 1000000, 1000000, 0, 1, 1, "0x"
         ); // no paymaster
 
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);

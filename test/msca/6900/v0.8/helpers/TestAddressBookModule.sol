@@ -23,14 +23,16 @@ import {CastLib} from "../../../../../src/libs/CastLib.sol";
 
 import {RecipientAddressLib} from "../../../../../src/libs/RecipientAddressLib.sol";
 import {Unsupported} from "../../../../../src/msca/6900/shared/common/Errors.sol";
-import {
-    ExecutionManifest, ManifestExecutionFunction
-} from "../../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
-import {IModule} from "../../../../../src/msca/6900/v0.8/interfaces/IModule.sol";
-import {IValidationHookModule} from "../../../../../src/msca/6900/v0.8/interfaces/IValidationHookModule.sol";
+
 import {BaseModule} from "../../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
 import {IAddressBookModule} from "../../../../../src/msca/6900/v0.8/modules/addressbook/IAddressBookModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {
+    ExecutionManifest,
+    ManifestExecutionFunction
+} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
@@ -124,8 +126,6 @@ contract TestAddressBookModule is IAddressBookModule, BaseModule {
             // It is incompatible with alternate execution functions, owing to the specific decoding logic employed
             // here.
             // calldata length has already been checked in caller
-            (address target, uint256 targetValue, bytes memory targetData) =
-                abi.decode(userOp.callData[4:], (address, uint256, bytes));
             // the caller is expected to pack the hook function data in userOp.signature
             address recipient = address(bytes20(userOp.signature));
             if (!_isRecipientAllowed(recipient)) {
@@ -146,14 +146,12 @@ contract TestAddressBookModule is IAddressBookModule, BaseModule {
         bytes calldata data,
         bytes calldata authorization
     ) external view override {
-        (value);
+        (data, value);
         if (entityId == uint32(EntityId.PRE_VALIDATION_HOOK_EXECUTE_ADDRESS_BOOK)) {
             // This functionality is exclusively compatible with the IStandardExecutor.execute as delineated in the
             // moduleManifest.
             // It is incompatible with alternate execution functions, owing to the specific decoding logic employed
             // here.
-            (address target, uint256 targetValue, bytes memory targetData) =
-                abi.decode(data[4:], (address, uint256, bytes));
             address recipient = address(bytes20(authorization));
             if (!_isRecipientAllowed(recipient)) {
                 revert UnauthorizedRecipient(sender, recipient);
@@ -192,7 +190,7 @@ contract TestAddressBookModule is IAddressBookModule, BaseModule {
 
     function preSignatureValidationHook(uint32 entityId, address sender, bytes32 hash, bytes calldata signature)
         external
-        view
+        pure
         override
     {
         (entityId, sender, hash, signature);

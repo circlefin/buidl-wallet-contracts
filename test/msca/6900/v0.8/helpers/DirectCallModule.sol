@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
-import {IExecutionHookModule} from "../../../../../src/msca/6900/v0.8/interfaces/IExecutionHookModule.sol";
-import {IModularAccount} from "../../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
 import {BaseModule} from "../../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
+import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 /// @notice Inspired by 6900 reference implementation with some modifications

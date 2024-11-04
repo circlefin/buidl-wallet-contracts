@@ -4,7 +4,7 @@ Weighted Multisig Module is an ERC6900-compatible weighted multisig ownership mo
 
 ## Core Functionalities
 
-Weighted Multisig Module is a module that provides validation functions for a weighted multisig ownership scheme. **Multisig validation only works in the user operation context.**
+Weighted Multisig Module is an module that provides validation functions for a weighted multisig ownership scheme. **Multisig validation only works in the user operation context.**
 
 Its core features include:
 1. Weighted multisig user operation validation on native account functions (`installModule`, `uninstallModule`, `execute`, `executeBatch`, `upgradeToAndCall`).

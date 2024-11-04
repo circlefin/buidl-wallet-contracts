@@ -25,7 +25,7 @@ import {SetValue} from "@modular-account-libs/libraries/Constants.sol";
 contract SetValueLibTest is TestUtils {
     SetValueLibCaller private setValueLibCaller = new SetValueLibCaller();
 
-    function testFuzz_toBytes30Array(SetValue[] memory values) public {
+    function testFuzz_toBytes30Array(SetValue[] memory values) public view {
         bytes30[] memory res = setValueLibCaller.toBytes30Array(values);
         uint256 len = res.length;
         for (uint256 i = 0; i < len; ++i) {

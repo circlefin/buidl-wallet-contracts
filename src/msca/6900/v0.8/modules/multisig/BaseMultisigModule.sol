@@ -28,9 +28,10 @@ import {
 } from "../../../../../common/Constants.sol";
 
 import {NotImplementedFunction} from "../../../shared/common/Errors.sol";
-import {IValidationModule} from "../../interfaces/IValidationModule.sol";
+
 import {BaseModule} from "../BaseModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 import {
     AssociatedLinkedListSet,
     AssociatedLinkedListSetLib
@@ -128,7 +129,7 @@ abstract contract BaseMultisigModule is IValidationModule, BaseModule {
         uint256 value,
         bytes calldata data,
         bytes calldata authorization
-    ) external view override {
+    ) external pure override {
         // TODO: implement this - the signatures can be put in the validationData field of the runtime validation
         // function
         (account, sender, value, data, authorization);

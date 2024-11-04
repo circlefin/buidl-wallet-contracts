@@ -24,7 +24,7 @@ import {AddressBytesLibCaller} from "./AddressBytesLibCaller.sol";
 contract AddressBytesLibTest is TestUtils {
     AddressBytesLibCaller private addressBytesLibCaller = new AddressBytesLibCaller();
 
-    function testFuzz_toBytes30(address addr) public {
+    function testFuzz_toBytes30(address addr) public view {
         assertEq(addressBytesLibCaller.toBytes30(addr), leftPadWithZeros(addr));
     }
 

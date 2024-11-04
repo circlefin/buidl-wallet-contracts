@@ -55,6 +55,13 @@ interface IWeightedMultisigPlugin {
     error OwnersWeightsMismatch();
     error ThresholdWeightExceedsTotalWeight(uint256 thresholdWeight, uint256 totalWeight);
 
+    struct CheckNSignatureInput {
+        bytes32 actualDigest;
+        bytes32 minimalDigest;
+        address account;
+        bytes signatures;
+    }
+
     /// @notice Add owners and their associated weights for the account, and optionally update threshold weight required
     /// to perform an action.
     /// @dev Constraints:
@@ -141,19 +148,19 @@ interface IWeightedMultisigPlugin {
     function getOwnerId(PublicKey memory pubKeyOwnerToCheck) external pure returns (bytes30);
 
     /// @notice Check if the signatures are valid for the account.
-    /// @param actualDigest Digest of user op with all fields filled in.
-    /// At least one signature must cover the actualDigest, with a v value >= 32,
-    /// if it differs from the minimal digest.
-    /// @param minimalDigest Digest of user op with minimal required fields set:
+    /// @param input has minimalDigest Digest of user op with minimal required fields set:
     /// (address sender, uint256 nonce, bytes initCode, bytes callData), and remaining
     /// fields set to default values.
-    /// @param account The account to check the signatures for.
-    /// @param signatures The signatures to check.
+    /// actualDigest Digest of user op with all fields filled in.
+    /// At least one signature must cover the actualDigest, with a v value >= 32,
+    /// if it differs from the minimal digest.
+    /// account The account to check the signatures for.
+    /// signatures The signatures to check.
     /// @return success True if the signatures are valid.
     /// @return firstFailure first failure, if failed is true.
     /// (Note: if all signatures are individually valid but do not satisfy the
     /// multisig, firstFailure will be set to the last signature's index.)
-    function checkNSignatures(bytes32 actualDigest, bytes32 minimalDigest, address account, bytes memory signatures)
+    function checkNSignatures(CheckNSignatureInput memory input)
         external
         view
         returns (bool success, uint256 firstFailure);

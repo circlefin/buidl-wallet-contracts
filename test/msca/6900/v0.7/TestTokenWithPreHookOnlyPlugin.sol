@@ -143,6 +143,7 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.PRE_USER_OP_VALIDATION_HOOK_PASS1)) {
             return SIG_VALIDATION_SUCCEEDED;
         } else if (functionId == uint8(FunctionId.PRE_USER_OP_VALIDATION_HOOK_PASS2)) {
@@ -158,6 +159,7 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.USER_OP_VALIDATION)) {
             return SIG_VALIDATION_SUCCEEDED;
         }
@@ -170,6 +172,7 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.PRE_RUNTIME_VALIDATION_HOOK_PASS1)) {
             return;
         } else if (functionId == uint8(FunctionId.PRE_RUNTIME_VALIDATION_HOOK_PASS2)) {
@@ -184,6 +187,7 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.RUNTIME_VALIDATION)) {
             return;
         }
@@ -193,10 +197,11 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
     /// @inheritdoc BasePlugin
     function preExecutionHook(uint8 functionId, address sender, uint256 value, bytes calldata data)
         external
-        view
+        pure
         override
         returns (bytes memory context)
     {
+        (value);
         console.logString("preExecutionHook data:");
         console.logBytes(data);
         if (functionId == uint8(FunctionId.PRE_EXECUTION_HOOK)) {

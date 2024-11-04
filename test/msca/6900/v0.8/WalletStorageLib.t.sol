@@ -22,7 +22,7 @@ import {TestUtils} from "../../../util/TestUtils.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract WalletStorageLibTest is TestUtils {
-    function testWalletStorageSlot() public {
+    function testWalletStorageSlot() public pure {
         bytes32 hash = keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v0_8.storage"))) - 1));
         console.logString("hash: ");
         console.logBytes32(hash);

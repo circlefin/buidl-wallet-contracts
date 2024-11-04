@@ -21,23 +21,22 @@ pragma solidity 0.8.24;
 import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 
-import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "../../../../src/msca/6900/v0.8/common/Constants.sol";
-import {Call} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
-import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
+import {Call, IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-import {HookConfigLib} from "../../../../src/msca/6900/v0.8/libs/HookConfigLib.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
+import {HookConfigLib} from "@erc6900/reference-implementation/libraries/HookConfigLib.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 import {DirectCallModule} from "./helpers/DirectCallModule.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "@erc6900/reference-implementation/helpers/Constants.sol";
 
 /// @notice Inspired by 6900 reference implementation with some modifications
 contract DirectCallsFromModuleTest is AccountTestUtils {
@@ -103,7 +102,7 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
     function testFailDirectCallModuleNotInstalled() public {
         vm.startPrank(address(directCallModule));
         vm.expectRevert(
-            abi.encodeWithSelector(BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector)
+            abi.encodeWithSelector(BaseMSCA.InvalidValidationFunction.selector, IModularAccount.execute.selector)
         );
         msca.execute(address(0), 0, "");
         vm.stopPrank();
@@ -117,7 +116,7 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
         Call[] memory calls = new Call[](0);
         vm.startPrank(address(directCallModule));
         vm.expectRevert(
-            abi.encodeWithSelector(BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.executeBatch.selector)
+            abi.encodeWithSelector(BaseMSCA.InvalidValidationFunction.selector, IModularAccount.executeBatch.selector)
         );
         msca.executeBatch(calls);
         vm.stopPrank();
@@ -131,7 +130,7 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
         vm.startPrank(address(directCallModule));
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector, directCallModuleEntity
+                BaseMSCA.InvalidValidationFunction.selector, IModularAccount.execute.selector, directCallModuleEntity
             )
         );
         msca.execute(address(0), 0, "");
@@ -183,7 +182,7 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
         vm.startPrank(address(directCallModule));
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector, directCallModuleEntity
+                BaseMSCA.InvalidValidationFunction.selector, IModularAccount.execute.selector, directCallModuleEntity
             )
         );
         msca.execute(address(0), 0, "");
@@ -233,7 +232,8 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
     function _uninstallDirectCallValidation() internal {
         vm.startPrank(address(entryPoint));
         vm.expectEmit(true, true, true, true);
-        emit ValidationUninstalled(directCallModuleEntity.module(), DIRECT_CALL_VALIDATION_ENTITY_ID, true);
+        (address moduleAddr,) = directCallModuleEntity.unpack();
+        emit ValidationUninstalled(moduleAddr, DIRECT_CALL_VALIDATION_ENTITY_ID, true);
         msca.uninstallValidation(directCallModuleEntity, bytes(""), new bytes[](1));
     }
 }

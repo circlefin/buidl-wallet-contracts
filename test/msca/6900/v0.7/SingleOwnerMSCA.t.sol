@@ -34,8 +34,6 @@ import "../../../util/TestUtils.sol";
 
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
 
-import {DefaultTokenCallbackPlugin} from
-    "../../../../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
 import {TestUserOpAllPassValidator} from "./TestUserOpAllPassValidator.sol";
 import "./TestUserOpValidator.sol";
 import "./TestUserOpValidatorHook.sol";
@@ -299,7 +297,6 @@ contract SingleOwnerMSCATest is TestUtils {
 
         // install singleOwnerPlugin before renounceNativeOwner
         address ownerInPlugin = makeAddr("testRenounceOwnershipWithRuntimeValidation_ownerInPlugin");
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         vm.startPrank(sendingOwnerAddr);
         bytes32 manifest = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         sender.installPlugin(
@@ -436,7 +433,6 @@ contract SingleOwnerMSCATest is TestUtils {
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         assertEq(sender.getInstalledPlugins().length, 0);
         vm.deal(address(sender), 1 ether);
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
         bytes32 manifest = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
@@ -473,7 +469,6 @@ contract SingleOwnerMSCATest is TestUtils {
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         assertEq(sender.getInstalledPlugins().length, 0);
         vm.deal(address(sender), 1 ether);
-        SingleOwnerPlugin singleOwnerPlugin = new SingleOwnerPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
         bytes32 manifest = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
@@ -507,22 +502,17 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory initializingData = abi.encode(sendingOwnerAddr);
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         vm.deal(address(sender), 1 ether);
-        DefaultTokenCallbackPlugin defaultTokenCallbackPlugin = new DefaultTokenCallbackPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
-        bytes32 manifest = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
-        FunctionReference[] memory emptyFR = new FunctionReference[](0);
-        sender.installPlugin(address(defaultTokenCallbackPlugin), manifest, "", emptyFR);
-
         ExecutionFunctionConfig memory executionFunctionConfig =
             sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
+        assertEq(executionFunctionConfig.plugin, address(sender));
         vm.stopPrank();
 
         // okay to use a random address to view
         vm.startPrank(vm.addr(123));
         executionFunctionConfig = sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
+        assertEq(executionFunctionConfig.plugin, address(sender));
         vm.stopPrank();
     }
 
@@ -722,9 +712,7 @@ contract SingleOwnerMSCATest is TestUtils {
         testLiquidityPool.mint(senderAddr, 2000000);
         address recipient = address(0x9005Be081B8EC2A31258878409E88675Cd791376);
         // execute ERC20 token contract directly
-        address liquidityPoolSpenderAddr = address(testLiquidityPool);
         bytes memory tokenTransferCallData = abi.encodeCall(testLiquidityPool.transfer, (recipient, 1000000));
-        address factoryAddr = address(factory);
         PackedUserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
@@ -790,8 +778,7 @@ contract SingleOwnerMSCATest is TestUtils {
         (address nativeOwnerAddr, uint256 nativeOwnerPrivateKey) =
             makeAddrAndKey("testTransferWithEmptyValidation_native");
         address semiMSCA = createSemiAccount(nativeOwnerAddr, nativeOwnerPrivateKey);
-        (address ownerInPluginAddr, uint256 ownerInPluginPrivateKey) =
-            makeAddrAndKey("testTransferWithEmptyValidation_plugin");
+        (address ownerInPluginAddr,) = makeAddrAndKey("testTransferWithEmptyValidation_plugin");
         installSingleOwnerPlugin(semiMSCA, nativeOwnerPrivateKey, ownerInPluginAddr);
         // renounce native ownership using native owner private key
         renounceNativeOwner(semiMSCA, nativeOwnerPrivateKey);

@@ -5,3 +5,5 @@
 @solady/=node_modules/solady/src/
 @fcl/=node_modules/fcl/solidity/src/
 forge-std/=node_modules/forge-std/
+@erc6900/reference-implementation/=node_modules/erc6900-reference-implementation/src/
+@eth-infinitism/account-abstraction/=lib/account-abstraction/contracts/

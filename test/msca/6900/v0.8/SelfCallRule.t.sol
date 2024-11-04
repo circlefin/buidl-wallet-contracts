@@ -19,14 +19,15 @@
 pragma solidity 0.8.24;
 
 import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
-import {Call} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
-import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+
+import {Call, IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {FooBarModule} from "./FooBarModule.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
@@ -110,7 +111,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.ValidationFunctionMissing.selector, fooBarModule.bar.selector, ownerValidation
+                    BaseMSCA.InvalidValidationFunction.selector, fooBarModule.bar.selector, ownerValidation
                 )
             )
         );
@@ -136,7 +137,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.ValidationFunctionMissing.selector, IAccountExecute.executeUserOp.selector, ownerValidation
+                    BaseMSCA.InvalidValidationFunction.selector, fooBarModule.bar.selector, ownerValidation
                 )
             )
         );
@@ -162,7 +163,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector, ownerValidation
+                    BaseMSCA.InvalidValidationFunction.selector, IModularAccount.execute.selector, ownerValidation
                 )
             )
         );
@@ -189,7 +190,7 @@ contract SelfCallRuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.executeBatch.selector, ownerValidation
+                    BaseMSCA.InvalidValidationFunction.selector, IModularAccount.executeBatch.selector, ownerValidation
                 )
             )
         );
@@ -433,7 +434,7 @@ contract SelfCallRuleTest is AccountTestUtils {
         vm.startPrank(ownerAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector, FooBarModule.bar.selector, ownerValidation
+                BaseMSCA.InvalidValidationFunction.selector, FooBarModule.bar.selector, ownerValidation
             )
         );
         msca.executeWithRuntimeValidation(callData, authorizationData);
@@ -446,7 +447,7 @@ contract SelfCallRuleTest is AccountTestUtils {
         vm.startPrank(ownerAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.execute.selector, ownerValidation
+                BaseMSCA.InvalidValidationFunction.selector, IModularAccount.execute.selector, ownerValidation
             )
         );
         msca.executeWithRuntimeValidation(callData, authorizationData);
@@ -461,7 +462,7 @@ contract SelfCallRuleTest is AccountTestUtils {
         vm.startPrank(ownerAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector, IModularAccount.executeBatch.selector, ownerValidation
+                BaseMSCA.InvalidValidationFunction.selector, IModularAccount.executeBatch.selector, ownerValidation
             )
         );
         msca.executeWithRuntimeValidation(callData, authorizationData);

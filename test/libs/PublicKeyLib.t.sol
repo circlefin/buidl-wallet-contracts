@@ -25,7 +25,7 @@ import {PublicKeyLibCaller} from "./PublicKeyLibCaller.sol";
 contract PublicKeyLibTest is TestUtils {
     PublicKeyLibCaller private publicKeyLibCaller = new PublicKeyLibCaller();
 
-    function testFuzz_toBytes30(uint256 rand, uint256 x, uint256 y) public {
+    function testFuzz_toBytes30(uint256 rand, uint256 x, uint256 y) public view {
         rand = bound(rand, 0, 1);
         x = bound(x, 0, UINT256_MAX);
         y = bound(y, 0, UINT256_MAX);
@@ -39,7 +39,7 @@ contract PublicKeyLibTest is TestUtils {
         assertNotEq(publicKeyLibCaller.toBytes30(x, y), bytes30(0));
     }
 
-    function testFuzz_toBytes30PubKey(uint256 rand, PublicKey memory pubKey) public {
+    function testFuzz_toBytes30PubKey(uint256 rand, PublicKey memory pubKey) public view {
         rand = bound(rand, 0, 1);
         pubKey.x = bound(pubKey.x, 0, UINT256_MAX);
         pubKey.y = bound(pubKey.y, 0, UINT256_MAX);

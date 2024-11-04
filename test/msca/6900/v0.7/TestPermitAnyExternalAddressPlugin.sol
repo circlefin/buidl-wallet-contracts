@@ -72,12 +72,12 @@ contract TestPermitAnyExternalAddressPlugin is BasePlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function onInstall(bytes calldata data) external override {
+    function onInstall(bytes calldata data) external pure override {
         (data);
     }
 
     /// @inheritdoc BasePlugin
-    function onUninstall(bytes calldata data) external override {
+    function onUninstall(bytes calldata data) external pure override {
         (data);
     }
 
@@ -88,6 +88,7 @@ contract TestPermitAnyExternalAddressPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.PRE_USER_OP_VALIDATION_HOOK_PASS)) {
             return SIG_VALIDATION_SUCCEEDED;
         }
@@ -101,6 +102,7 @@ contract TestPermitAnyExternalAddressPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.USER_OP_VALIDATION)) {
             return SIG_VALIDATION_SUCCEEDED;
         }
@@ -113,6 +115,7 @@ contract TestPermitAnyExternalAddressPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.PRE_RUNTIME_VALIDATION_HOOK_PASS)) {
             return;
         }
@@ -125,6 +128,7 @@ contract TestPermitAnyExternalAddressPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.RUNTIME_VALIDATION)) {
             return;
         }

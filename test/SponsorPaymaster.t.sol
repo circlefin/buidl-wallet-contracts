@@ -121,7 +121,7 @@ contract SponsorPaymasterTest is TestUtils {
         assertEq(actualVerifyingSigners.length, 2);
     }
 
-    function testParsePaymasterAndData_validData() public {
+    function testParsePaymasterAndData_validData() public view {
         bytes memory paymasterAndData = abi.encodePacked(
             address(sponsorPaymaster),
             MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,
@@ -265,7 +265,6 @@ contract SponsorPaymasterTest is TestUtils {
 
         // verifyingSigner2 signature
         (v, r, s) = vm.sign(verifyingSigner2PrivateKey, paymasterHash);
-        bytes memory paymasterSig2 = abi.encodePacked(r, s, v);
         bytes memory actualPaymasterAndData2 = abi.encodePacked(
             address(sponsorPaymaster),
             MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT,

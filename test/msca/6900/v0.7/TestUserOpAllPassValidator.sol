@@ -31,11 +31,11 @@ contract TestUserOpAllPassValidator is BasePlugin {
         expectedValidationData = expectToPass;
     }
 
-    function onInstall(bytes calldata data) external override {
+    function onInstall(bytes calldata data) external pure override {
         (data);
     }
 
-    function onUninstall(bytes calldata data) external override {
+    function onUninstall(bytes calldata data) external pure override {
         (data);
     }
 
@@ -53,10 +53,10 @@ contract TestUserOpAllPassValidator is BasePlugin {
     /// @inheritdoc BasePlugin
     function runtimeValidationFunction(uint8 functionId, address sender, uint256 value, bytes calldata data)
         external
-        view
+        pure
         override
     {
-        (value, data);
+        (functionId, sender, value, data);
         return;
     }
 

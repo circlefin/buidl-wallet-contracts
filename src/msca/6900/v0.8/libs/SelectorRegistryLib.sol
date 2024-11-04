@@ -18,41 +18,32 @@
  */
 pragma solidity 0.8.24;
 
-import {IExecutionHookModule} from "../interfaces/IExecutionHookModule.sol";
-import {IModularAccountView} from "../interfaces/IModularAccountView.sol";
-import {IModule} from "../interfaces/IModule.sol";
+import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
+import {IModularAccountView} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
 
-import {IModularAccount} from "../interfaces/IModularAccount.sol";
-
-import {IValidationHookModule} from "../interfaces/IValidationHookModule.sol";
-import {IValidationModule} from "../interfaces/IValidationModule.sol";
-import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
-import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-
-import {IExecutionModule} from "../interfaces/IExecutionModule.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
 import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
+import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
+import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
+import {IExecutionModule} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 library SelectorRegistryLib {
-    /**
-     * @dev Check if the selector is native execution function that allows global validation.
-     * @param selector the function selector.
-     */
-    function _isGlobalValidationAllowedNativeExecutionFunction(bytes4 selector) internal pure returns (bool) {
-        return selector == IModularAccount.execute.selector || selector == IModularAccount.executeBatch.selector
-            || selector == IModularAccount.installExecution.selector
-            || selector == IModularAccount.uninstallExecution.selector
-            || selector == UUPSUpgradeable.upgradeToAndCall.selector;
-    }
-
     /**
      * @dev Check if the selector is native execution function.
      * @param selector the function selector.
      */
     function _isNativeExecutionFunction(bytes4 selector) internal pure returns (bool) {
-        return _isGlobalValidationAllowedNativeExecutionFunction(selector)
+        return selector == IModularAccount.execute.selector || selector == IModularAccount.executeBatch.selector
+            || selector == IModularAccount.installExecution.selector
+            || selector == IModularAccount.uninstallExecution.selector
+            || selector == UUPSUpgradeable.upgradeToAndCall.selector
             || selector == IModularAccount.installValidation.selector
             || selector == IModularAccount.uninstallValidation.selector;
     }

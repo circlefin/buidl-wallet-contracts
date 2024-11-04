@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {ExecutionDetail, ValidationDetail} from "../common/Structs.sol";
-import {ModuleEntity} from "../common/Types.sol";
+import {ExecutionStorage, ValidationStorage} from "../common/Structs.sol";
+import {ModuleEntity} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
 /// @dev The same storage will be used for ERC6900 v0.8 MSCAs.
 library WalletStorageLib {
@@ -31,8 +31,8 @@ library WalletStorageLib {
         // interfaceId => counter
         mapping(bytes4 => uint256) supportedInterfaces;
         // find module or native function execution detail by selector
-        mapping(bytes4 => ExecutionDetail) executionDetails;
-        mapping(ModuleEntity validationFunction => ValidationDetail) validationDetails;
+        mapping(bytes4 => ExecutionStorage) executionStorage;
+        mapping(ModuleEntity validationFunction => ValidationStorage) validationStorage;
         /// indicates that the contract has been initialized
         uint8 initialized;
         /// indicates that the contract is in the process of being initialized

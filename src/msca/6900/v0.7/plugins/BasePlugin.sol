@@ -82,7 +82,7 @@ abstract contract BasePlugin is IPlugin, ERC165 {
         virtual
         returns (uint256 validationData)
     {
-        (functionId, userOp, userOpHash);
+        (functionId, userOp, userOpHash, validationData);
         revert NotImplemented(msg.sig, functionId);
     }
 
@@ -98,7 +98,7 @@ abstract contract BasePlugin is IPlugin, ERC165 {
         virtual
         returns (uint256 validationData)
     {
-        (functionId, userOp, userOpHash);
+        (functionId, userOp, userOpHash, validationData);
         revert NotImplemented(msg.sig, functionId);
     }
 
@@ -145,7 +145,7 @@ abstract contract BasePlugin is IPlugin, ERC165 {
         virtual
         returns (bytes memory context)
     {
-        (functionId, sender, value, data);
+        (functionId, sender, value, data, context);
         revert NotImplemented(msg.sig, functionId);
     }
 

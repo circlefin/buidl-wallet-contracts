@@ -25,16 +25,16 @@ import {
     ExecutionManifest,
     ManifestExecutionFunction,
     ManifestExecutionHook
-} from "../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
+} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
 
-import {IExecutionHookModule} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionHookModule.sol";
+import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
 
-import {IExecutionModule} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionModule.sol";
-import {IModule} from "../../../../src/msca/6900/v0.8/interfaces/IModule.sol";
-import {IValidationHookModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationHookModule.sol";
-import {IValidationModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationModule.sol";
 import {BaseModule} from "../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IExecutionModule} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 import {console} from "forge-std/src/console.sol";
 
 /**
@@ -130,6 +130,7 @@ contract TestTokenModule is
         bytes calldata data,
         bytes calldata authorization
     ) external pure override {
+        (authorization);
         (sender, value, data);
         if (entityId == uint32(EntityId.PRE_VALIDATION_HOOK_PASS1)) {
             return;
@@ -148,7 +149,7 @@ contract TestTokenModule is
         bytes calldata data,
         bytes calldata authorization
     ) external pure override {
-        (sender, value, data, authorization);
+        (account, sender, value, data, authorization);
         if (entityId == uint8(EntityId.VALIDATION)) {
             return;
         }
@@ -161,6 +162,7 @@ contract TestTokenModule is
         pure
         returns (bytes4)
     {
+        (account);
         revert NotImplementedFunction(msg.sig, entityId);
     }
 
@@ -200,7 +202,7 @@ contract TestTokenModule is
 
     function preSignatureValidationHook(uint32 entityId, address sender, bytes32 hash, bytes calldata signature)
         external
-        view
+        pure
         override
     {
         (entityId, sender, hash, signature);

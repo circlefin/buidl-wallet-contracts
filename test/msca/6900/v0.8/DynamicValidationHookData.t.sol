@@ -22,23 +22,23 @@ pragma solidity 0.8.24;
 
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 
-import {ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+import {ModuleEntity} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
 
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 
-import {HookConfigLib} from "../../../../src/msca/6900/v0.8/libs/HookConfigLib.sol";
 import {TestAddressBookModule} from "./helpers/TestAddressBookModule.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {HookConfigLib} from "@erc6900/reference-implementation/libraries/HookConfigLib.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 // We use UpgradableMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
@@ -144,7 +144,6 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         // signature is the data for ownerValidation
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
 
@@ -330,7 +329,6 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         PackedUserOperation memory userOp = buildPartialUserOp(
             address(msca), 0, "0x", vm.toString(executeCallData), 83353, 1028650, 45484, 516219199704, 1130000000, "0x"
         );
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         // signature is the data for ownerValidation
         bytes memory signature = signUserOpHash(entryPoint, vm, ownerPrivateKey, userOp);
 
@@ -342,14 +340,7 @@ contract DynamicValidationHookDataTest is AccountTestUtils {
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IEntryPoint.FailedOpWithRevert.selector,
-                0,
-                "AA23 reverted",
-                abi.encodeWithSelector(NonCanonicalEncoding.selector)
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(IEntryPoint.FailedOp.selector, 0, "AA24 signature error"));
         entryPoint.handleOps(ops, beneficiary);
         vm.stopPrank();
         // verify recipient balance

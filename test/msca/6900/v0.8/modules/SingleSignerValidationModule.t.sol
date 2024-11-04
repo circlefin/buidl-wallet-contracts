@@ -21,12 +21,15 @@ pragma solidity 0.8.24;
 /* solhint-disable max-states-count */
 import {BaseMSCA} from "../../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 
-import {ExecutionDataView, ValidationDataView} from "../../../../../src/msca/6900/v0.8/common/Structs.sol";
-import {ModuleEntity, ValidationConfig} from "../../../../../src/msca/6900/v0.8/common/Types.sol";
-import {IModularAccount} from "../../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
-import {ModuleEntityLib} from "../../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {
+    ExecutionDataView, ValidationDataView
+} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
 
-import {ValidationConfigLib} from "../../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
+
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {SingleSignerValidationModule} from
     "../../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
@@ -38,7 +41,6 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {UpgradableMSCA} from "../../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 import {UpgradableMSCAFactory} from "../../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 
-import {IModularAccount} from "../../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {console} from "forge-std/src/console.sol";
@@ -202,7 +204,6 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
             "0x"
         ); // no paymaster
 
-        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         // eoaPrivateKey from singleSignerValidationModule
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey1, userOp);
         userOp.signature = encodeSignature(new PreValidationHookData[](0), signerValidation, signature, false);
@@ -215,7 +216,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
                 0,
                 "AA23 reverted",
                 abi.encodeWithSelector(
-                    BaseMSCA.ValidationFunctionMissing.selector,
+                    BaseMSCA.InvalidValidationFunction.selector,
                     singleSignerValidationModule.transferSigner.selector,
                     signerValidation
                 )

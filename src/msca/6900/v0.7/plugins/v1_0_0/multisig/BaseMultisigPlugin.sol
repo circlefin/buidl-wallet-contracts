@@ -29,6 +29,8 @@ import {
 
 import {NotImplemented} from "../../../../shared/common/Errors.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
+import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
+
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {
     AssociatedLinkedListSet,
@@ -71,26 +73,18 @@ abstract contract BaseMultisigPlugin is BasePlugin {
     AssociatedLinkedListSet internal _owners;
 
     address public immutable ENTRYPOINT;
-    string constant ADD_OWNERS_PERMISSION = "Add Owners";
-    string constant UPDATE_MULTISIG_WEIGHTS_PERMISSION = "Update Multisig Weights";
-    string constant REMOVE_OWNERS_PERMISSION = "Remove Owners";
+    string internal constant ADD_OWNERS_PERMISSION = "Add Owners";
+    string internal constant UPDATE_MULTISIG_WEIGHTS_PERMISSION = "Update Multisig Weights";
+    string internal constant REMOVE_OWNERS_PERMISSION = "Remove Owners";
 
     constructor(address entryPoint) {
         ENTRYPOINT = entryPoint;
     }
 
     /// @notice Check if the signatures are valid for the account.
-    /// @param actualDigest The actual gas digest.
-    /// @param minimalDigest Digest of user op with minimal required fields set:
-    /// (address sender, uint256 nonce, bytes initCode, bytes callData), and remaining
-    /// fields set to default values.
-    /// @param account The account to check the signatures for.
-    /// @param signatures The signatures to check.
-    /// @return success True if the signatures are valid.
-    /// @return firstFailure first failure, if failed is true.
     /// (Note: if all signatures are individually valid but do not satisfy the
     /// multisig, firstFailure will be set to the last signature's index.)
-    function checkNSignatures(bytes32 actualDigest, bytes32 minimalDigest, address account, bytes memory signatures)
+    function checkNSignatures(IWeightedMultisigPlugin.CheckNSignatureInput memory input)
         public
         view
         virtual
@@ -114,8 +108,13 @@ abstract contract BaseMultisigPlugin is BasePlugin {
             if (actualUserOpDigest == minimalUserOpDigest) {
                 revert InvalidUserOpDigest();
             }
-            (bool success,) = checkNSignatures(actualUserOpDigest, minimalUserOpDigest, msg.sender, userOp.signature);
-
+            IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
+                actualDigest: actualUserOpDigest,
+                minimalDigest: minimalUserOpDigest,
+                account: msg.sender,
+                signatures: userOp.signature
+            });
+            (bool success,) = checkNSignatures(input);
             return success ? SIG_VALIDATION_SUCCEEDED : SIG_VALIDATION_FAILED;
         }
 

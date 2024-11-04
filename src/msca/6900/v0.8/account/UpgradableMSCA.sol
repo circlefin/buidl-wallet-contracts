@@ -21,13 +21,13 @@ pragma solidity 0.8.24;
 import {DefaultCallbackHandler} from "../../../../callback/DefaultCallbackHandler.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
 
-import {ValidationConfig} from "../common/Types.sol";
 import {BaseMSCA} from "./BaseMSCA.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import {IModularAccount} from "../interfaces/IModularAccount.sol";
-import {ValidationConfigLib} from "../libs/thirdparty/ValidationConfigLib.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
