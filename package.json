@@ -21,7 +21,7 @@
     "fcl": "github:rdubois-crypto/FreshCryptoLib#8179e08cac72072bd260796633fec41fdfd5b441",
     "forge-std": "github:foundry-rs/forge-std#v1.9.2",
     "solady": "0.0.243",
-    "erc6900-reference-implementation": "0.8.0-rc.6"
+    "@erc6900/reference-implementation": "github:erc6900/reference-implementation#v0.8.0-rc.6"
   },
   "devDependencies": {
     "solhint": "^5.0.3"

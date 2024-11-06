@@ -25,6 +25,10 @@
     js-tokens "^4.0.0"
     picocolors "^1.0.0"
 
+"@erc6900/reference-implementation@github:erc6900/reference-implementation#v0.8.0-rc.6":
+  version "0.8.0-rc.5"
+  resolved "https://codeload.github.com/erc6900/reference-implementation/tar.gz/6cdcfa653eb019d27d23586a86ff8171201a4066"
+
 "@modular-account-libs@github:erc6900/modular-account-libs#v0.8.0-rc.0":
   version "0.8.0-rc.0"
   resolved "https://codeload.github.com/erc6900/modular-account-libs/tar.gz/d64adb5bd100d6ad64d0a83b5dc13b356423d852"
@@ -261,11 +265,6 @@ emoji-regex@^8.0.0:
   version "8.0.0"
   resolved "https://registry.yarnpkg.com/emoji-regex/-/emoji-regex-8.0.0.tgz#e818fd69ce5ccfcb404594f842963bf53164cc37"
   integrity sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==
-
-erc6900-reference-implementation@0.8.0-rc.6:
-  version "0.8.0-rc.6"
-  resolved "https://registry.yarnpkg.com/erc6900-reference-implementation/-/erc6900-reference-implementation-0.8.0-rc.6.tgz#57b91eefe9b1f9db05f2508efb452ec36388da41"
-  integrity sha512-Wc/lG0WosOMxZX+iZSGBfN9KQ5SLuyjooPc8e1BljLuDDDn9yViOEB+szHAoy2AQswwo6xJ3cvDEo035hCndJg==
 
 error-ex@^1.3.1:
   version "1.3.2"
