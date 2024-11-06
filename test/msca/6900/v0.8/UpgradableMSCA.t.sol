@@ -35,34 +35,35 @@ import {
     ExecutionManifest,
     ManifestExecutionFunction,
     ManifestExecutionHook
-} from "../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
-import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-import {IExecutionHookModule} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionHookModule.sol";
-import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
+import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
+import {Call, IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-import {IValidationHookModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationHookModule.sol";
-import {IValidationModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationModule.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
 
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {TestERC1155} from "../../../util/TestERC1155.sol";
 import {TestERC721} from "../../../util/TestERC721.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
-import {Call, ValidationDataView} from "../../../../src/msca/6900/v0.8/common/Structs.sol";
+import {ValidationDataView} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
 
-import {HookConfigLib} from "../../../../src/msca/6900/v0.8/libs/HookConfigLib.sol";
 import {MockModule} from "./helpers/MockModule.sol";
 import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {HookConfigLib} from "@erc6900/reference-implementation/libraries/HookConfigLib.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 // We use UpgradableMSCA (that inherits from UpgradableMSCA) because it has some convenience functions
@@ -298,7 +299,7 @@ contract UpgradableMSCATest is AccountTestUtils {
         vm.startPrank(address(entryPoint));
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector,
+                BaseMSCA.InvalidValidationFunction.selector,
                 bytes4(keccak256("execute(address,uint256,bytes)")),
                 ownerValidation
             )
@@ -613,6 +614,12 @@ contract UpgradableMSCATest is AccountTestUtils {
         MockModule mockModule = new MockModule(
             execManifest, SIG_VALIDATION_SUCCEEDED, true, true, bytes(""), true, SIG_VALIDATION_SUCCEEDED, true
         );
+        bool[] memory permissions = new bool[](1);
+        address[] memory modulesAddr = new address[](1);
+        permissions[0] = true;
+        modulesAddr[0] = address(mockModule);
+        vm.prank(factoryOwner);
+        factory.setModules(modulesAddr, permissions);
         ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
         bytes[] memory hooks = new bytes[](1);
         hooks[0] = abi.encodePacked(HookConfigLib.packValidationHook(address(mockModule), uint32(0)), "");
@@ -1018,47 +1025,15 @@ contract UpgradableMSCATest is AccountTestUtils {
     }
 
     function testReplaceValidationModule() public {
-        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("test_replaceValidationModule");
-        SingleSignerValidationModule validationV1 = singleSignerValidationModule;
-        SingleSignerValidationModule validationV2 = singleSignerValidationModule2;
         uint32 validationEntityIdV1 = 10;
         uint32 validationEntityIdV2 = 11;
-        ModuleEntity moduleEntityV1 = ModuleEntityLib.pack(address(validationV1), validationEntityIdV1);
-        ModuleEntity moduleEntityV2 = ModuleEntityLib.pack(address(validationV2), validationEntityIdV2);
-
-        MockModule mockPreValAndExecutionHookModule = new MockModule(
-            ExecutionManifest({
-                executionFunctions: new ManifestExecutionFunction[](0),
-                executionHooks: new ManifestExecutionHook[](0),
-                interfaceIds: new bytes4[](0)
-            }),
-            SIG_VALIDATION_SUCCEEDED,
-            true,
-            true,
-            bytes(""),
-            true,
-            SIG_VALIDATION_SUCCEEDED,
-            true
-        );
-        // setup a validation with pre validation and execution hooks
-        bytes[] memory hooksForValidationV1 = new bytes[](2);
-        hooksForValidationV1[0] = abi.encodePacked(
-            HookConfigLib.packValidationHook(address(mockPreValAndExecutionHookModule), validationEntityIdV1)
-        );
-        hooksForValidationV1[1] = abi.encodePacked(
-            HookConfigLib.packExecHook(address(mockPreValAndExecutionHookModule), validationEntityIdV1, true, true)
-        );
-        ValidationConfig validationConfig = ValidationConfigLib.pack(moduleEntityV1, true, true, true);
-        bytes memory initializingData = abi.encode(
-            validationConfig, new bytes4[](0), abi.encode(validationEntityIdV1, ownerAddr), hooksForValidationV1
-        );
-        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
-        vm.deal(address(msca), 10 ether);
-        address target = vm.addr(123);
-        uint256 amount = 1 ether;
+        ModuleEntity moduleEntityV1 = ModuleEntityLib.pack(address(singleSignerValidationModule), validationEntityIdV1);
+        ModuleEntity moduleEntityV2 = ModuleEntityLib.pack(address(singleSignerValidationModule2), validationEntityIdV2);
+        (UpgradableMSCA msca, address mockPreValAndExecutionHookModule) =
+            _createAccountForReplaceValidationModule(validationEntityIdV1, moduleEntityV1);
 
         vm.startPrank(address(msca));
-        bytes memory callData = abi.encodeCall(IModularAccount.execute, (target, amount, bytes("")));
+        bytes memory callData = abi.encodeCall(IModularAccount.execute, (vm.addr(123), 1 ether, bytes("")));
         vm.expectEmit(true, true, true, true);
         emit ReceivedCall(
             abi.encodeCall(
@@ -1079,15 +1054,14 @@ contract UpgradableMSCATest is AccountTestUtils {
         msca.executeWithRuntimeValidation(
             callData, encodeSignature(new PreValidationHookData[](0), moduleEntityV1, "", true)
         );
-        assertEq(target.balance, amount);
+        assertEq(vm.addr(123).balance, 1 ether);
 
         // upgrade module by batching uninstall + install calls
         bytes[] memory hooksForValidationV2 = new bytes[](2);
-        hooksForValidationV2[0] = abi.encodePacked(
-            HookConfigLib.packValidationHook(address(mockPreValAndExecutionHookModule), validationEntityIdV2)
-        );
+        hooksForValidationV2[0] =
+            abi.encodePacked(HookConfigLib.packValidationHook(mockPreValAndExecutionHookModule, validationEntityIdV2));
         hooksForValidationV2[1] = abi.encodePacked(
-            HookConfigLib.packExecHook(address(mockPreValAndExecutionHookModule), validationEntityIdV2, true, true)
+            HookConfigLib.packExecHook(mockPreValAndExecutionHookModule, validationEntityIdV2, true, true)
         );
 
         Call[] memory calls = new Call[](2);
@@ -1120,12 +1094,12 @@ contract UpgradableMSCATest is AccountTestUtils {
         // old validation should fail
         vm.expectRevert(
             abi.encodePacked(
-                BaseMSCA.ValidationFunctionMissing.selector,
+                BaseMSCA.InvalidValidationFunction.selector,
                 abi.encode(IModularAccount.execute.selector, moduleEntityV1)
             )
         );
         msca.executeWithRuntimeValidation(
-            abi.encodeCall(IModularAccount.execute, (target, amount, "")),
+            abi.encodeCall(IModularAccount.execute, (vm.addr(123), 1 ether, "")),
             encodeSignature(new PreValidationHookData[](0), moduleEntityV1, "", true)
         );
 
@@ -1150,8 +1124,49 @@ contract UpgradableMSCATest is AccountTestUtils {
         msca.executeWithRuntimeValidation(
             callData, encodeSignature(new PreValidationHookData[](0), moduleEntityV2, "", true)
         );
-        assertEq(target.balance, 2 * amount);
+        assertEq(vm.addr(123).balance, 2 ether);
         vm.stopPrank();
+    }
+
+    function _createAccountForReplaceValidationModule(uint32 validationEntityIdV1, ModuleEntity moduleEntityV1)
+        internal
+        returns (UpgradableMSCA msca, address mockPreValAndExecutionHookModuleAddr)
+    {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("test_replaceValidationModule");
+        MockModule mockPreValAndExecutionHookModule = new MockModule(
+            ExecutionManifest({
+                executionFunctions: new ManifestExecutionFunction[](0),
+                executionHooks: new ManifestExecutionHook[](0),
+                interfaceIds: new bytes4[](0)
+            }),
+            SIG_VALIDATION_SUCCEEDED,
+            true,
+            true,
+            bytes(""),
+            true,
+            SIG_VALIDATION_SUCCEEDED,
+            true
+        );
+        bool[] memory permissions = new bool[](1);
+        address[] memory modulesAddr = new address[](1);
+        permissions[0] = true;
+        modulesAddr[0] = address(mockPreValAndExecutionHookModule);
+        // setup a validation with pre validation and execution hooks
+        bytes[] memory hooksForValidationV1 = new bytes[](2);
+        hooksForValidationV1[0] =
+            abi.encodePacked(HookConfigLib.packValidationHook(modulesAddr[0], validationEntityIdV1));
+        hooksForValidationV1[1] =
+            abi.encodePacked(HookConfigLib.packExecHook(modulesAddr[0], validationEntityIdV1, true, true));
+        vm.prank(factoryOwner);
+        factory.setModules(modulesAddr, permissions);
+
+        ValidationConfig validationConfig = ValidationConfigLib.pack(moduleEntityV1, true, true, true);
+        bytes memory initializingData = abi.encode(
+            validationConfig, new bytes4[](0), abi.encode(validationEntityIdV1, ownerAddr), hooksForValidationV1
+        );
+        msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        vm.deal(address(msca), 10 ether);
+        mockPreValAndExecutionHookModuleAddr = modulesAddr[0];
     }
 
     function testAccountId() public {
@@ -1162,6 +1177,76 @@ contract UpgradableMSCATest is AccountTestUtils {
             abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
         UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
         assertEq(msca.accountId(), "circle.msca.2.0.0");
+    }
+
+    function testMaxLimitValidationHooks() public {
+        MockModule[] memory modules = new MockModule[](300);
+        bool[] memory permissions = new bool[](300);
+        address[] memory modulesAddr = new address[](300);
+        for (uint256 i = 0; i < 300; i++) {
+            modules[i] = new MockModule(
+                ExecutionManifest({
+                    executionFunctions: new ManifestExecutionFunction[](0),
+                    executionHooks: new ManifestExecutionHook[](0),
+                    interfaceIds: new bytes4[](0)
+                }),
+                SIG_VALIDATION_SUCCEEDED,
+                true,
+                true,
+                bytes(""),
+                true,
+                SIG_VALIDATION_SUCCEEDED,
+                true
+            );
+            modulesAddr[i] = address(modules[i]);
+            permissions[i] = true;
+        }
+        vm.prank(factoryOwner);
+        factory.setModules(modulesAddr, permissions);
+        bytes[] memory hooks = new bytes[](300);
+        for (uint256 i = 0; i < 300; i++) {
+            hooks[i] = abi.encodePacked(HookConfigLib.packValidationHook(address(modules[i]), uint32(i)));
+        }
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), hooks);
+        vm.expectRevert(abi.encodeWithSelector(BaseMSCA.MaxHooksExceeded.selector));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+    }
+
+    function testMaxLimitExecutionHooks() public {
+        MockModule[] memory modules = new MockModule[](300);
+        bool[] memory permissions = new bool[](300);
+        address[] memory modulesAddr = new address[](300);
+        for (uint256 i = 0; i < 300; i++) {
+            modules[i] = new MockModule(
+                ExecutionManifest({
+                    executionFunctions: new ManifestExecutionFunction[](0),
+                    executionHooks: new ManifestExecutionHook[](0),
+                    interfaceIds: new bytes4[](0)
+                }),
+                SIG_VALIDATION_SUCCEEDED,
+                true,
+                true,
+                bytes(""),
+                true,
+                SIG_VALIDATION_SUCCEEDED,
+                true
+            );
+            modulesAddr[i] = address(modules[i]);
+            permissions[i] = true;
+        }
+        vm.prank(factoryOwner);
+        factory.setModules(modulesAddr, permissions);
+        bytes[] memory hooks = new bytes[](300);
+        for (uint256 i = 0; i < 300; i++) {
+            hooks[i] = abi.encodePacked(HookConfigLib.packExecHook(address(modules[i]), uint32(i), false, false));
+        }
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), hooks);
+        vm.expectRevert(abi.encodeWithSelector(BaseMSCA.MaxHooksExceeded.selector));
+        factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
     }
 
     function _installMultipleOwnerValidations() internal returns (UpgradableMSCA msca) {

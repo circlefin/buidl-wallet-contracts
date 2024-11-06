@@ -19,15 +19,16 @@
 pragma solidity 0.8.24;
 
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
-import {ModuleEntity} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
+
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
-import {IModularAccount} from "../../../../src/msca/6900/v0.8/interfaces/IModularAccount.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
@@ -109,7 +110,8 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         emit SignerTransferred(counterfactualAddr, uint32(0), ownerAddr, address(0));
         // emit ModuleInstalled first
         vm.expectEmit(true, false, false, true);
-        emit ValidationInstalled(ownerValidation.module(), uint32(0));
+        (address moduleAddr,) = ownerValidation.unpack();
+        emit ValidationInstalled(moduleAddr, uint32(0));
         // emit UpgradableMSCAInitialized
         vm.expectEmit(true, true, false, false);
         emit UpgradableMSCAInitialized(counterfactualAddr, address(entryPoint));

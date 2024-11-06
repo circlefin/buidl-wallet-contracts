@@ -69,6 +69,20 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     bytes32 private constant _MULTISIG_PLUGIN_TYPEHASH =
         keccak256("CircleWeightedWebauthnMultisigMessage(bytes32 hash)");
 
+    struct CheckNSignatureData {
+        // lowestOffset of signature dynamic part, must locate after the signature constant part
+        // 0 means we only have EOA signer so far
+        uint256 lowestSigDynamicPartOffset;
+        bytes30 lastOwner;
+        bytes30 currentOwner;
+        bool success;
+        uint256 firstFailure;
+        // first32Bytes of signature constant part
+        bytes32 first32Bytes;
+        // second32Bytes of signature constant part
+        bytes32 second32Bytes;
+    }
+
     constructor(address entryPoint) BaseWeightedMultisigPlugin(entryPoint) {}
 
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -117,8 +131,8 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 digest, bytes memory signature) external view override returns (bytes4) {
         bytes32 wrappedDigest = getReplaySafeMessageHash(msg.sender, digest);
-        (bool success,) = checkNSignatures(wrappedDigest, wrappedDigest, msg.sender, signature);
-
+        CheckNSignatureInput memory input = CheckNSignatureInput(wrappedDigest, wrappedDigest, msg.sender, signature);
+        (bool success,) = checkNSignatures(input);
         return success ? EIP1271_VALID_SIGNATURE : EIP1271_INVALID_SIGNATURE;
     }
 
@@ -301,40 +315,32 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     // ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
     /// @inheritdoc IWeightedMultisigPlugin
-    function checkNSignatures(bytes32 actualDigest, bytes32 minimalDigest, address account, bytes memory signatures)
+    function checkNSignatures(CheckNSignatureInput memory input)
         public
         view
         override
         returns (bool success, uint256 firstFailure)
     {
-        if (signatures.length < _INDIVIDUAL_SIGNATURE_BYTES_LEN) {
+        if (input.signatures.length < _INDIVIDUAL_SIGNATURE_BYTES_LEN) {
             revert InvalidSigLength();
         }
 
-        uint256 thresholdWeight = _ownerMetadata[account].thresholdWeight;
+        uint256 thresholdWeight = _ownerMetadata[input.account].thresholdWeight;
         // (Account is not initialized)
         if (thresholdWeight == 0) {
             revert InvalidThresholdWeight();
         }
 
+        CheckNSignatureData memory checkNSignatureData;
         uint256 accumulatedWeight;
-        uint256 signatureCount;
-        bytes30 lastOwner;
-        bytes30 currentOwner;
-        // first32Bytes of signature constant part
-        bytes32 first32Bytes;
-        // second32Bytes of signature constant part
-        bytes32 second32Bytes;
         // lastByte of signature constant part
         uint8 sigType;
-        // lowestOffset of signature dynamic part, must locate after the signature constant part
-        // 0 means we only have EOA signer so far
-        uint256 lowestSigDynamicPartOffset = 0;
+        uint256 signatureCount;
         // if the digests differ, make sure we have exactly 1 sig on the actual digest
-        uint256 numSigsOnActualDigest = (actualDigest != minimalDigest) ? 1 : 0;
+        uint256 numSigsOnActualDigest = (input.actualDigest != input.minimalDigest) ? 1 : 0;
 
         // tracks whether `signatures` is a complete and valid multisig signature
-        success = true;
+        checkNSignatureData.success = true;
         while (accumulatedWeight < thresholdWeight) {
             // Fail if the next 65 bytes would exceed signature length
             // or lowest dynamic part signature offset, where next 65 bytes is defined as
@@ -345,23 +351,26 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
                 signatureCount * _INDIVIDUAL_SIGNATURE_BYTES_LEN + _INDIVIDUAL_SIGNATURE_BYTES_LEN;
             // do not fail if only have EOA signer so far
             if (
-                (lowestSigDynamicPartOffset != 0 && sigConstantPartEndPos > lowestSigDynamicPartOffset)
-                    || sigConstantPartEndPos > signatures.length
+                (
+                    checkNSignatureData.lowestSigDynamicPartOffset != 0
+                        && sigConstantPartEndPos > checkNSignatureData.lowestSigDynamicPartOffset
+                ) || sigConstantPartEndPos > input.signatures.length
             ) {
-                if (success) {
+                if (checkNSignatureData.success) {
                     return (false, signatureCount);
                 } else {
-                    return (false, firstFailure);
+                    return (false, checkNSignatureData.firstFailure);
                 }
             }
 
-            (sigType, first32Bytes, second32Bytes) = _signatureSplit(signatures, signatureCount);
+            (sigType, checkNSignatureData.first32Bytes, checkNSignatureData.second32Bytes) =
+                _signatureSplit(input.signatures, signatureCount);
 
             // sigType >= 32 implies it's signed over the actual digest, so we deduct it according to encoding rule
             // if sigType > 60, it will eventually fail the ecdsa recover check below
             bytes32 digest;
             if (sigType >= 32) {
-                digest = actualDigest;
+                digest = input.actualDigest;
                 sigType -= 32;
                 // can have unchecked since we check against zero at the end
                 // underflow would wrap the value to 2 ^ 256 - 1
@@ -370,132 +379,33 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
                     numSigsOnActualDigest -= 1;
                 }
             } else {
-                digest = minimalDigest;
+                digest = input.minimalDigest;
             }
 
             // sigType == 0 is the contract signature case
             if (sigType == 0) {
-                // first32Bytes contains the address to perform 1271 validation on
-                address contractAddress = address(uint160(uint256(first32Bytes)));
-                // make sure upper bits are clean
-                if (uint256(first32Bytes) > uint256(uint160(contractAddress))) {
-                    revert InvalidAddress();
-                }
-                currentOwner = contractAddress.toBytes30();
-                if (ownerDataPerAccount[currentOwner][account].addr != contractAddress) {
-                    if (success) {
-                        firstFailure = signatureCount;
-                        success = false;
-                    }
-                }
-                // retrieve contract signature
-                bytes memory contractSignature;
-                {
-                    // offset of current signature dynamic part
-                    // second32Bytes is the memory offset containing the signature
-                    uint256 sigDynamicPartOffset = uint256(second32Bytes);
-                    if (
-                        sigDynamicPartOffset > signatures.length
-                            || sigDynamicPartOffset < _INDIVIDUAL_SIGNATURE_BYTES_LEN
-                    ) {
-                        revert InvalidSigOffset();
-                    }
-                    // total length of current signature dynamic part
-                    uint256 sigDynamicPartTotalLen;
-                    // 1. load contractSignature content starting from the correct memory offset
-                    // 2. calculate total length including the content and the prefix storing the length
-                    assembly ("memory-safe") {
-                        contractSignature := add(add(signatures, sigDynamicPartOffset), 0x20)
-                        sigDynamicPartTotalLen := add(mload(contractSignature), 0x20)
-                    }
-                    // signature dynamic part should not exceed the total signature length
-                    if (sigDynamicPartOffset + sigDynamicPartTotalLen > signatures.length) {
-                        revert InvalidContractSigLength();
-                    }
-                    if (sigDynamicPartOffset < lowestSigDynamicPartOffset || lowestSigDynamicPartOffset == 0) {
-                        lowestSigDynamicPartOffset = sigDynamicPartOffset;
-                    }
-                }
-                if (!SignatureChecker.isValidERC1271SignatureNow(contractAddress, digest, contractSignature)) {
-                    if (success) {
-                        firstFailure = signatureCount;
-                        success = false;
-                    }
-                }
+                _validateContractSignature(checkNSignatureData, input, digest, signatureCount);
             } else if (sigType == 2) {
-                // secp256r1 sig, webauthn and public key data bytes
-                bytes memory sigDynamicPartBytes;
-                // first32Bytes stores public key on-chain identifier
-                currentOwner = bytes30(uint240(uint256(first32Bytes)));
-                OwnerData memory currentOwnerData = ownerDataPerAccount[currentOwner][account];
-                uint256 x = currentOwnerData.publicKeyX;
-                uint256 y = currentOwnerData.publicKeyY;
-                // retrieve sig dynamic part bytes
-                WebAuthnSigDynamicPart memory sigDynamicPart;
-                {
-                    // second32Bytes is the memory offset containing the sigDynamicPart
-                    uint256 sigDynamicPartOffset = uint256(second32Bytes);
-                    if (
-                        sigDynamicPartOffset > signatures.length
-                            || sigDynamicPartOffset < _INDIVIDUAL_SIGNATURE_BYTES_LEN
-                    ) {
-                        revert InvalidSigOffset();
-                    }
-                    uint256 sigDynamicPartTotalLen;
-                    // 1. load the content starting from the correct memory offset
-                    // 2. calculate total length including the content and the prefix storing the length
-                    assembly ("memory-safe") {
-                        sigDynamicPartBytes := add(add(signatures, sigDynamicPartOffset), 0x20)
-                        sigDynamicPartTotalLen := add(mload(sigDynamicPartBytes), 0x20)
-                    }
-                    if (sigDynamicPartOffset + sigDynamicPartTotalLen > signatures.length) {
-                        revert InvalidSigLength();
-                    }
-                    if (sigDynamicPartOffset < lowestSigDynamicPartOffset || lowestSigDynamicPartOffset == 0) {
-                        lowestSigDynamicPartOffset = sigDynamicPartOffset;
-                    }
-                    sigDynamicPart = abi.decode(sigDynamicPartBytes, (WebAuthnSigDynamicPart));
-                }
-                if (
-                    !WebAuthnLib.verify({
-                        challenge: abi.encode(digest),
-                        webAuthnData: sigDynamicPart.webAuthnData,
-                        r: sigDynamicPart.r,
-                        s: sigDynamicPart.s,
-                        x: x,
-                        y: y
-                    })
-                ) {
-                    if (success) {
-                        firstFailure = signatureCount;
-                        success = false;
-                    }
-                }
+                _validateWebauthnSignature(checkNSignatureData, input, digest, signatureCount);
             } else {
                 // reverts if signature has the wrong s value, wrong v value, or if it's a bad point on the k1 curve
-                address signer = digest.recover(sigType, first32Bytes, second32Bytes);
-                currentOwner = signer.toBytes30();
-                if (ownerDataPerAccount[currentOwner][account].addr != signer) {
-                    if (success) {
-                        firstFailure = signatureCount;
-                        success = false;
-                    }
-                }
+                _validateEOASignature(checkNSignatureData, input, digest, signatureCount, sigType);
             }
 
             if (
                 // if the signature is out of order or duplicate
                 // or is not an owner
-                currentOwner <= lastOwner || !_owners.contains(account, SetValue.wrap(currentOwner))
+                checkNSignatureData.currentOwner <= checkNSignatureData.lastOwner
+                    || !_owners.contains(input.account, SetValue.wrap(checkNSignatureData.currentOwner))
             ) {
-                if (success) {
-                    firstFailure = signatureCount;
-                    success = false;
+                if (checkNSignatureData.success) {
+                    checkNSignatureData.firstFailure = signatureCount;
+                    checkNSignatureData.success = false;
                 }
             }
 
-            accumulatedWeight += ownerDataPerAccount[currentOwner][account].weight;
-            lastOwner = currentOwner;
+            accumulatedWeight += ownerDataPerAccount[checkNSignatureData.currentOwner][input.account].weight;
+            checkNSignatureData.lastOwner = checkNSignatureData.currentOwner;
             signatureCount++;
         }
 
@@ -504,7 +414,145 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         if (numSigsOnActualDigest != 0) {
             revert InvalidNumSigsOnActualDigest(numSigsOnActualDigest);
         }
-        return (success, firstFailure);
+        return (checkNSignatureData.success, checkNSignatureData.firstFailure);
+    }
+
+    function _validateContractSignature(
+        CheckNSignatureData memory checkNSignatureData,
+        CheckNSignatureInput memory input,
+        bytes32 digest,
+        uint256 signatureCount
+    ) internal view {
+        // first32Bytes contains the address to perform 1271 validation on
+        address contractAddress = address(uint160(uint256(checkNSignatureData.first32Bytes)));
+        // make sure upper bits are clean
+        if (uint256(checkNSignatureData.first32Bytes) > uint256(uint160(contractAddress))) {
+            revert InvalidAddress();
+        }
+        checkNSignatureData.currentOwner = contractAddress.toBytes30();
+        if (ownerDataPerAccount[checkNSignatureData.currentOwner][input.account].addr != contractAddress) {
+            if (checkNSignatureData.success) {
+                checkNSignatureData.firstFailure = signatureCount;
+                checkNSignatureData.success = false;
+            }
+        }
+        // offset of current signature dynamic part
+        // second32Bytes is the memory offset containing the signature
+        uint256 sigDynamicPartOffset = uint256(checkNSignatureData.second32Bytes);
+        // retrieve contract signature
+        bytes memory contractSignature;
+        {
+            // offset of current signature dynamic part
+            // second32Bytes is the memory offset containing the signature
+            if (
+                sigDynamicPartOffset > input.signatures.length || sigDynamicPartOffset < _INDIVIDUAL_SIGNATURE_BYTES_LEN
+            ) {
+                revert InvalidSigOffset();
+            }
+            // total length of current signature dynamic part
+            uint256 sigDynamicPartTotalLen;
+            // 0. load the signatures from CheckNSignatureInput struct
+            // 1. load contractSignature content starting from the correct memory offset
+            // 2. calculate total length including the content and the prefix storing the length
+            assembly ("memory-safe") {
+                let signatures := mload(add(input, 0x60))
+                contractSignature := add(add(signatures, sigDynamicPartOffset), 0x20)
+                sigDynamicPartTotalLen := add(mload(contractSignature), 0x20)
+            }
+            // signature dynamic part should not exceed the total signature length
+            if (sigDynamicPartOffset + sigDynamicPartTotalLen > input.signatures.length) {
+                revert InvalidContractSigLength();
+            }
+            if (
+                sigDynamicPartOffset < checkNSignatureData.lowestSigDynamicPartOffset
+                    || checkNSignatureData.lowestSigDynamicPartOffset == 0
+            ) {
+                checkNSignatureData.lowestSigDynamicPartOffset = sigDynamicPartOffset;
+            }
+        }
+        if (!SignatureChecker.isValidERC1271SignatureNow(contractAddress, digest, contractSignature)) {
+            if (checkNSignatureData.success) {
+                checkNSignatureData.firstFailure = signatureCount;
+                checkNSignatureData.success = false;
+            }
+        }
+    }
+
+    function _validateWebauthnSignature(
+        CheckNSignatureData memory checkNSignatureData,
+        CheckNSignatureInput memory input,
+        bytes32 digest,
+        uint256 signatureCount
+    ) internal view {
+        bytes memory sigDynamicPartBytes;
+        // first32Bytes stores public key on-chain identifier
+        checkNSignatureData.currentOwner = bytes30(uint240(uint256(checkNSignatureData.first32Bytes)));
+        OwnerData memory currentOwnerData = ownerDataPerAccount[checkNSignatureData.currentOwner][input.account];
+        uint256 x = currentOwnerData.publicKeyX;
+        uint256 y = currentOwnerData.publicKeyY;
+        // retrieve sig dynamic part bytes
+        WebAuthnSigDynamicPart memory sigDynamicPart;
+        // second32Bytes is the memory offset containing the sigDynamicPart
+        uint256 sigDynamicPartOffset = uint256(checkNSignatureData.second32Bytes);
+        {
+            if (
+                sigDynamicPartOffset > input.signatures.length || sigDynamicPartOffset < _INDIVIDUAL_SIGNATURE_BYTES_LEN
+            ) {
+                revert InvalidSigOffset();
+            }
+            uint256 sigDynamicPartTotalLen;
+            // 0. load the signatures from CheckNSignatureInput struct
+            // 1. load the content starting from the correct memory offset
+            // 2. calculate total length including the content and the prefix storing the length
+            assembly ("memory-safe") {
+                let signatures := mload(add(input, 0x60))
+                sigDynamicPartBytes := add(add(signatures, sigDynamicPartOffset), 0x20)
+                sigDynamicPartTotalLen := add(mload(sigDynamicPartBytes), 0x20)
+            }
+            if (sigDynamicPartOffset + sigDynamicPartTotalLen > input.signatures.length) {
+                revert InvalidSigLength();
+            }
+            if (
+                sigDynamicPartOffset < checkNSignatureData.lowestSigDynamicPartOffset
+                    || checkNSignatureData.lowestSigDynamicPartOffset == 0
+            ) {
+                checkNSignatureData.lowestSigDynamicPartOffset = sigDynamicPartOffset;
+            }
+            sigDynamicPart = abi.decode(sigDynamicPartBytes, (WebAuthnSigDynamicPart));
+        }
+        if (
+            !WebAuthnLib.verify({
+                challenge: abi.encode(digest),
+                webAuthnData: sigDynamicPart.webAuthnData,
+                r: sigDynamicPart.r,
+                s: sigDynamicPart.s,
+                x: x,
+                y: y
+            })
+        ) {
+            if (checkNSignatureData.success) {
+                checkNSignatureData.firstFailure = signatureCount;
+                checkNSignatureData.success = false;
+            }
+        }
+    }
+
+    function _validateEOASignature(
+        CheckNSignatureData memory checkNSignatureData,
+        CheckNSignatureInput memory input,
+        bytes32 digest,
+        uint256 signatureCount,
+        uint8 sigType
+    ) internal view {
+        // reverts if signature has the wrong s value, wrong v value, or if it's a bad point on the k1 curve
+        address signer = digest.recover(sigType, checkNSignatureData.first32Bytes, checkNSignatureData.second32Bytes);
+        checkNSignatureData.currentOwner = signer.toBytes30();
+        if (ownerDataPerAccount[checkNSignatureData.currentOwner][input.account].addr != signer) {
+            if (checkNSignatureData.success) {
+                checkNSignatureData.firstFailure = signatureCount;
+                checkNSignatureData.success = false;
+            }
+        }
     }
 
     /// @inheritdoc BaseERC712CompliantModule

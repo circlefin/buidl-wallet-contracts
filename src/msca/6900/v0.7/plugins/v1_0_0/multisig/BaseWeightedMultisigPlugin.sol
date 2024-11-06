@@ -175,7 +175,7 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
     }
 
     /// @inheritdoc IWeightedMultisigPlugin
-    function checkNSignatures(bytes32 actualDigest, bytes32 minimalDigest, address account, bytes memory signatures)
+    function checkNSignatures(CheckNSignatureInput memory inputs)
         public
         view
         virtual

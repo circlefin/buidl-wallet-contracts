@@ -130,7 +130,7 @@ contract SingleOwnerPluginTest is TestUtils {
     }
 
     /// SingleOwnerPlugin is installed in setUp function, this test is just verifying details
-    function testSingleOwnerPluginDetailsInstalledDuringAccountDeployment() public {
+    function testSingleOwnerPluginDetailsInstalledDuringAccountDeployment() public view {
         address sender = address(msca1);
         // deployment was done in setUp
         assertTrue(sender.code.length != 0);

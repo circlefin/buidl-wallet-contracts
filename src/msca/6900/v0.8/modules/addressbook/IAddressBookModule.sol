@@ -18,8 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {IExecutionModule} from "../../interfaces/IExecutionModule.sol";
-import {IValidationHookModule} from "../../interfaces/IValidationHookModule.sol";
+import {IExecutionModule} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
 
 /**
  * @dev Interface for address book module.

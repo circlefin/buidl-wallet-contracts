@@ -20,19 +20,21 @@ pragma solidity 0.8.24;
 
 import {BaseMSCA} from "../../../../src/msca/6900/v0.8/account/BaseMSCA.sol";
 import {UpgradableMSCA} from "../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
-import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "../../../../src/msca/6900/v0.8/common/Constants.sol";
-import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
-import {ModuleEntityLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
-import {TestUtils} from "../../../util/TestUtils.sol";
 
-import {ModuleEntity, ValidationConfig} from "../../../../src/msca/6900/v0.8/common/Types.sol";
-import {ValidationConfigLib} from "../../../../src/msca/6900/v0.8/libs/thirdparty/ValidationConfigLib.sol";
+import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
+import {DIRECT_CALL_VALIDATION_ENTITY_ID} from "@erc6900/reference-implementation/helpers/Constants.sol";
+
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
+
 import {SingleSignerValidationModule} from
     "../../../../src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol";
 import {FooBarModule} from "./FooBarModule.sol";
 import {TestPermittedCallModule} from "./TestPermittedCallModule.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 
 contract PermittedCallTest is TestUtils {
     IEntryPoint private entryPoint = new EntryPoint();
@@ -94,7 +96,7 @@ contract PermittedCallTest is TestUtils {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                BaseMSCA.ValidationFunctionMissing.selector,
+                BaseMSCA.InvalidValidationFunction.selector,
                 FooBarModule.bar.selector,
                 ModuleEntityLib.pack(address(permittedCallModule), DIRECT_CALL_VALIDATION_ENTITY_ID)
             )

@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {IModule} from "../interfaces/IModule.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 

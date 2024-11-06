@@ -142,6 +142,7 @@ contract HookFunctionReferenceDLLTest is TestUtils {
 
     function bulkGetPreValidationHooks(TestRepeatableFunctionReferenceDLL dll, uint256 totalHooks, uint256 limit)
         private
+        view
     {
         FunctionReference[] memory results = new FunctionReference[](totalHooks);
         FunctionReference memory start = SENTINEL_BYTES21.unpack();

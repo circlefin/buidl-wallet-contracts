@@ -18,11 +18,14 @@
  */
 pragma solidity 0.8.24;
 
-import {ExecutionManifest, ManifestExecutionFunction} from "../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
+import {
+    ExecutionManifest,
+    ManifestExecutionFunction
+} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
 
-import {IExecutionModule} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionModule.sol";
 import {BaseModule} from "../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
 import {FooBarModule} from "./FooBarModule.sol";
+import {IExecutionModule} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
 
 /**
  * @dev Module for tests only. This module demos permitted call.

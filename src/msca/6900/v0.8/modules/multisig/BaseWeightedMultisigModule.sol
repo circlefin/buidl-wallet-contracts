@@ -25,12 +25,12 @@ import {AddressBytesLib} from "../../../../../libs/AddressBytesLib.sol";
 import {PublicKeyLib} from "../../../../../libs/PublicKeyLib.sol";
 import {SetValueLib} from "../../../../../libs/SetValueLib.sol";
 import {NotImplemented} from "../../../shared/common/Errors.sol";
-import {IModule} from "../../interfaces/IModule.sol";
+import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
 
-import {IValidationModule} from "../../interfaces/IValidationModule.sol";
 import {BaseModule} from "../BaseModule.sol";
 import {BaseMultisigModule} from "./BaseMultisigModule.sol";
 import {IWeightedMultisigModule} from "./IWeightedMultisigModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 import {
     AssociatedLinkedListSet,
@@ -258,7 +258,7 @@ abstract contract BaseWeightedMultisigModule is IWeightedMultisigModule, BaseMul
         bytes30[] memory ownersToUpdate,
         OwnerData[] memory newOwnersData,
         uint256 newThresholdWeight
-    ) internal {
+    ) internal pure {
         (ownersToUpdate, newOwnersData, newThresholdWeight);
         revert NotImplemented(msg.sig, 0);
     }

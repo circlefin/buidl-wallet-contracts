@@ -3,12 +3,13 @@ fs_permissions = [{ access = "read-write", path = "./gas"},
     { access = "read", path = "./test/fixtures"}]
 src = 'src'
 out = 'out'
-libs = ['lib']
+libs = ['lib', 'node_modules']
 solc_version = "0.8.24"
 test = 'test'
 via_ir = true
 auto_detect_solc = false
 auto_detect_remappings = false
+deny_warnings = true
 
 [fuzz]
 runs = 1024

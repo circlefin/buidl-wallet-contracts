@@ -19,13 +19,14 @@
 pragma solidity 0.8.24;
 
 import {EIP1271_INVALID_SIGNATURE, EIP1271_VALID_SIGNATURE} from "../../../../../src/common/Constants.sol";
-import {ExecutionManifest} from "../../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
-import {IExecutionHookModule} from "../../../../../src/msca/6900/v0.8/interfaces/IExecutionHookModule.sol";
 
-import {IValidationHookModule} from "../../../../../src/msca/6900/v0.8/interfaces/IValidationHookModule.sol";
-import {IValidationModule} from "../../../../../src/msca/6900/v0.8/interfaces/IValidationModule.sol";
+import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
+import {ExecutionManifest} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+
 import {BaseModule} from "../../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IValidationHookModule} from "@erc6900/reference-implementation/interfaces/IValidationHookModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 /// @author Inspired by 6900 reference implementation of MockModule.
 contract MockModule is BaseModule, IExecutionHookModule, IValidationModule, IValidationHookModule {

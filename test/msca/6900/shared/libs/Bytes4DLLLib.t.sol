@@ -42,7 +42,7 @@ contract TestDLL {
         return bytes4DLL.size();
     }
 
-    function contains(bytes4 value) external returns (bool) {
+    function contains(bytes4 value) external view returns (bool) {
         return bytes4DLL.contains(value);
     }
 

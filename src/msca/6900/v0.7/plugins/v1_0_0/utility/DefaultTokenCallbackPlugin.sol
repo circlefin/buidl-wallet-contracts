@@ -40,11 +40,11 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 contract DefaultTokenCallbackPlugin is BasePlugin, IERC721Receiver, IERC1155Receiver, IERC777Recipient {
     string public constant NAME = "Default Token Callback Plugin";
 
-    function onInstall(bytes calldata data) external override {
+    function onInstall(bytes calldata data) external pure override {
         (data);
     }
 
-    function onUninstall(bytes calldata data) external override {
+    function onUninstall(bytes calldata data) external pure override {
         (data);
     }
 

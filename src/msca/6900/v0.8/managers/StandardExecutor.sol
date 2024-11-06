@@ -19,7 +19,7 @@
 pragma solidity 0.8.24;
 
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
-import {Call} from "../common/Structs.sol";
+import {Call} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
 /**
  * @dev Default implementation of https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to

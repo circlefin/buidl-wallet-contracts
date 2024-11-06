@@ -20,12 +20,14 @@ pragma solidity 0.8.24;
 
 import {
     GLOBAL_VALIDATION_FLAG,
-    PER_SELECTOR_VALIDATION_FLAG,
-    RESERVED_VALIDATION_DATA_INDEX
+    PER_SELECTOR_VALIDATION_FLAG
 } from "../../../../../src/msca/6900/v0.8/common/Constants.sol";
-import {ModuleEntity} from "../../../../../src/msca/6900/v0.8/common/Types.sol";
-import {ModuleEntityLib} from "../../../../../src/msca/6900/v0.8/libs/thirdparty/ModuleEntityLib.sol";
+
 import {TestUtils} from "../../../../util/TestUtils.sol";
+
+import {RESERVED_VALIDATION_DATA_INDEX} from "@erc6900/reference-implementation/helpers/Constants.sol";
+import {ModuleEntity} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
 
 contract AccountTestUtils is TestUtils {
     using ModuleEntityLib for ModuleEntity;
@@ -54,7 +56,7 @@ contract AccountTestUtils is TestUtils {
                 signature, packSparseDataWithIndex(preValidationHookData[i].index, preValidationHookData[i].hookData)
             );
         }
-        signature = abi.encodePacked(signature, packSparseDataWithIndex(RESERVED_VALIDATION_DATA_INDEX, validationData));
+        signature = abi.encodePacked(signature, packFinalSignature(validationData));
         return signature;
     }
 
@@ -71,13 +73,19 @@ contract AccountTestUtils is TestUtils {
                 signature, packSparseDataWithIndex(preValidationHookData[i].index, preValidationHookData[i].hookData)
             );
         }
-        signature = abi.encodePacked(signature, packSparseDataWithIndex(RESERVED_VALIDATION_DATA_INDEX, validationData));
+        signature = abi.encodePacked(signature, packFinalSignature(validationData));
         return signature;
     }
 
     // @notice Helper function forked from 6900 to pack validation data with an index, according to the sparse calldata
     // segment spec.
     function packSparseDataWithIndex(uint8 index, bytes memory callData) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint32(callData.length + 1), index, callData);
+        return abi.encodePacked(index, uint32(callData.length), callData);
+    }
+
+    // @notice Helper function forked from 6900 to pack the final signature, according to the sparse calldata segment
+    // spec.
+    function packFinalSignature(bytes memory signature) internal pure returns (bytes memory) {
+        return abi.encodePacked(RESERVED_VALIDATION_DATA_INDEX, signature);
     }
 }

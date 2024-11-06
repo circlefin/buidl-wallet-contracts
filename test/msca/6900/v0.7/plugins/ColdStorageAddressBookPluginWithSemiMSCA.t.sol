@@ -120,7 +120,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         testERC721 = new TestERC721("721", "$$$");
     }
 
-    function testPluginMetadataItself() public {
+    function testPluginMetadataItself() public view {
         PluginMetadata memory pluginMetadata = addressBookPlugin.pluginMetadata();
         assertEq(pluginMetadata.name, "Cold Storage Address Book Plugin");
         assertEq(pluginMetadata.version, PLUGIN_VERSION_1);
@@ -1315,7 +1315,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         addressBookPlugin.postExecutionHook(functionId, data);
     }
 
-    function testFuzz_getRecipientForSCCalls(uint256 rand) public {
+    function testFuzz_getRecipientForSCCalls(uint256 rand) public view {
         rand = bound(rand, 1, 3);
         address expectedRecipient = vm.addr(1);
         uint256 amount = 1;

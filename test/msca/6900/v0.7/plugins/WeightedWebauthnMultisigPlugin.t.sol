@@ -29,6 +29,8 @@ import {
     WebAuthnData,
     WebAuthnSigDynamicPart
 } from "../../../../../src/common/CommonStructs.sol";
+import "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/IWeightedMultisigPlugin.sol";
+
 import {
     EIP1271_INVALID_SIGNATURE,
     EIP1271_VALID_SIGNATURE,
@@ -38,31 +40,32 @@ import {
     SIG_VALIDATION_SUCCEEDED,
     ZERO_BYTES32
 } from "../../../../../src/common/Constants.sol";
-
 import {AddressBytesLib} from "../../../../../src/libs/AddressBytesLib.sol";
-import {PublicKeyLib} from "../../../../../src/libs/PublicKeyLib.sol";
 
-import {WebAuthnLib} from "../../../../../src/libs/WebAuthnLib.sol";
-import {NotImplemented} from "../../../../../src/msca/6900/shared/common/Errors.sol";
-import {PluginManifest, PluginMetadata} from "../../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 import {IPlugin} from "../../../../../src/msca/6900/v0.7/interfaces/IPlugin.sol";
 import {BasePlugin} from "../../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
 import {BaseMultisigPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/BaseMultisigPlugin.sol";
+
 import {IWeightedMultisigPlugin} from
     "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/IWeightedMultisigPlugin.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import {NotImplemented} from "../../../../../src/msca/6900/shared/common/Errors.sol";
+
+import {PluginManifest, PluginMetadata} from "../../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
+import {MockContractOwner} from "../../../../util/MockContractOwner.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import {PublicKeyLib} from "../../../../../src/libs/PublicKeyLib.sol";
+import {TestUtils} from "../../../../util/TestUtils.sol";
+
+import {WebAuthnLib} from "../../../../../src/libs/WebAuthnLib.sol";
 import {WeightedWebauthnMultisigPlugin} from
     "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
 
-import {MockContractOwner} from "../../../../util/MockContractOwner.sol";
-import {TestUtils} from "../../../../util/TestUtils.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-
-import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {stdJson} from "forge-std/src/StdJson.sol";
 import {VmSafe} from "forge-std/src/Vm.sol";
 import {console} from "forge-std/src/console.sol";
@@ -119,6 +122,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     uint256 private passkeyPrivateKey = uint256(0x03d99692017473e2d631945a812607b23269d85721e0f370b8d3e7d29a874fd2);
     uint256 private passkeyPublicKeyX = uint256(0x1c05286fe694493eae33312f2d2e0d0abeda8db76238b7a204be1fb87f54ce42);
     uint256 private passkeyPublicKeyY = uint256(0x28fef61ef4ac300f631657635c28e59bfb2fe71bce1634c81c65642042f6dc4d);
+    bytes32 private wrappedDigest;
 
     struct Owner {
         bytes30 owner;
@@ -141,6 +145,88 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256 publicKeyX;
         uint256 publicKeyY;
         uint256 privateKey;
+    }
+
+    struct RemoveOwnersInput {
+        address owner1;
+        address owner2;
+        address owner3;
+        uint256 weight1;
+        uint256 weight2;
+        uint256 weight3;
+        PublicKey pubKey1;
+        PublicKey pubKey2;
+        PublicKey pubKey3;
+        uint256 pubKeyWeight1;
+        uint256 pubKeyWeight2;
+        uint256 pubKeyWeight3;
+    }
+
+    struct UpdateMultisigWeightsPubKeyOnlyInput {
+        PublicKey pubKey1;
+        PublicKey pubKey2;
+        PublicKey pubKey3;
+        uint256 weight1;
+        uint256 weight2;
+        uint256 weight3;
+        uint256 weight4;
+        uint256 weight5;
+        uint256 weight6;
+    }
+
+    struct UpdateMultisigWeightsInput {
+        address owner1;
+        address owner2;
+        address owner3;
+        PublicKey pubKey1;
+        PublicKey pubKey2;
+        PublicKey pubKey3;
+        uint256 weight1;
+        uint256 weight2;
+        uint256 weight3;
+        uint256 weight4;
+        uint256 weight5;
+        uint256 weight6;
+    }
+
+    struct MultisigInput {
+        uint256 k;
+        uint256 n;
+    }
+
+    struct AddOwnersInput {
+        address owner1;
+        address owner2;
+        address owner3;
+        uint256 weight1;
+        uint256 weight2;
+        uint256 weight3;
+        PublicKey pubKey1;
+        PublicKey pubKey2;
+        PublicKey pubKey3;
+        uint256 pubKeyWeight1;
+        uint256 pubKeyWeight2;
+        uint256 pubKeyWeight3;
+    }
+
+    struct AddPubKeyOnlyOwnersThenK1OwnerInput {
+        PublicKey pubKey1;
+        PublicKey pubKey2;
+        PublicKey pubKey3;
+        uint256 pubKeyWeight1;
+        uint256 pubKeyWeight2;
+        uint256 pubKeyWeight3;
+        address owner1;
+        uint256 weight1;
+    }
+
+    struct RemovePubKeyOnlyOwnersInput {
+        PublicKey pubKey1;
+        PublicKey pubKey2;
+        PublicKey pubKey3;
+        uint256 pubKeyWeight1;
+        uint256 pubKeyWeight2;
+        uint256 pubKeyWeight3;
     }
 
     uint256 internal constant _MAX_OWNERS = 1000;
@@ -272,7 +358,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(res, 0);
     }
 
-    function test_pluginManifest() public {
+    function test_pluginManifest() public view {
         PluginManifest memory manifest = plugin.pluginManifest();
         // 4 execution functions (addOwners, removeOwners, updateMultisigWeights, isValidSignature,
         // getReplaySafeMessageHash)
@@ -285,7 +371,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(10, manifest.runtimeValidationFunctions.length);
     }
 
-    function test_pluginMetadata() public {
+    function test_pluginMetadata() public view {
         PluginMetadata memory metadata = plugin.pluginMetadata();
 
         string memory addOwnersPermission = "Add Owners";
@@ -321,122 +407,21 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         _addOwners(ownerTwoList, weightTwoList, pubKeyTwoList, pubKeyWeightTwoList, thresholdWeightTwo);
     }
 
-    function testFuzz_addOwners(
-        address owner1,
-        address owner2,
-        address owner3,
-        uint256 weight1,
-        uint256 weight2,
-        uint256 weight3,
-        PublicKey memory pubKey1,
-        PublicKey memory pubKey2,
-        PublicKey memory pubKey3,
-        uint256 pubKeyWeight1,
-        uint256 pubKeyWeight2,
-        uint256 pubKeyWeight3
-    ) public {
-        vm.assume(owner1 != address(0));
-        vm.assume(owner2 != address(0));
-        vm.assume(owner3 != address(0));
-        vm.assume(owner1 != owner2);
-        vm.assume(owner2 != owner3);
-        vm.assume(owner3 != owner1);
-
-        vm.assume(!(pubKey1.x == 0 && pubKey1.y == 0));
-        vm.assume(!(pubKey2.x == 0 && pubKey2.y == 0));
-        vm.assume(!(pubKey3.x == 0 && pubKey3.y == 0));
-        vm.assume(!_isSame(pubKey1, pubKey2));
-        vm.assume(!_isSame(pubKey2, pubKey3));
-        vm.assume(!_isSame(pubKey3, pubKey1));
-        vm.assume(pubKey1.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey1.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey1.toBytes30() != owner3.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner3.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner3.toBytes30());
-
-        weight1 = bound(weight1, 1, _MAX_WEIGHT);
-        weight2 = bound(weight2, 1, _MAX_WEIGHT);
-        weight3 = bound(weight3, 1, _MAX_WEIGHT);
-
-        pubKeyWeight1 = bound(pubKeyWeight1, 1, _MAX_WEIGHT);
-        pubKeyWeight2 = bound(pubKeyWeight2, 1, _MAX_WEIGHT);
-        pubKeyWeight3 = bound(pubKeyWeight3, 1, _MAX_WEIGHT);
-
-        address[] memory initialOwners = new address[](2);
-        initialOwners[0] = owner1;
-        initialOwners[1] = owner2;
-
-        PublicKey[] memory initialPubKeys = new PublicKey[](2);
-        initialPubKeys[0] = pubKey1;
-        initialPubKeys[1] = pubKey2;
-
-        uint256[] memory initialWeights = new uint256[](2);
-        initialWeights[0] = weight1;
-        initialWeights[1] = weight2;
-
-        uint256[] memory initialPubKeyWeights = new uint256[](2);
-        initialPubKeyWeights[0] = pubKeyWeight1;
-        initialPubKeyWeights[1] = pubKeyWeight2;
-
-        uint256 initialThresholdWeight = weight1 + weight2 + pubKeyWeight1 + pubKeyWeight2;
-        plugin.onInstall(
-            abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
-        );
-        (
-            bytes30[] memory returnedOwners,
-            OwnerData[] memory returnedOwnersData,
-            OwnershipMetadata memory ownershipMetadata
-        ) = plugin.ownershipInfoOf(account);
-
-        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
-        assertEq(returnedOwners.length, 4);
-        assertEq(returnedOwnersData.length, 4);
-        // (reverse insertion order)
-        assertEq(returnedOwners[0], pubKey2.toBytes30());
-        assertEq(returnedOwnersData[0].weight, pubKeyWeight2);
-        assertEq(uint8(returnedOwnersData[0].credType), uint8(CredentialType.PUBLIC_KEY));
-        assertEq(returnedOwnersData[0].addr, address(0));
-        assertEq(returnedOwnersData[0].publicKeyX, pubKey2.x);
-        assertEq(returnedOwnersData[0].publicKeyY, pubKey2.y);
-
-        assertEq(returnedOwners[1], pubKey1.toBytes30());
-        assertEq(returnedOwnersData[1].weight, pubKeyWeight1);
-        assertEq(uint8(returnedOwnersData[1].credType), uint8(CredentialType.PUBLIC_KEY));
-        assertEq(returnedOwnersData[1].addr, address(0));
-        assertEq(returnedOwnersData[1].publicKeyX, pubKey1.x);
-        assertEq(returnedOwnersData[1].publicKeyY, pubKey1.y);
-
-        assertEq(returnedOwners[2], owner2.toBytes30());
-        assertEq(returnedOwnersData[2].weight, weight2);
-        assertEq(uint8(returnedOwnersData[2].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersData[2].addr, owner2);
-        assertEq(returnedOwnersData[2].publicKeyX, uint256(0));
-        assertEq(returnedOwnersData[2].publicKeyY, uint256(0));
-
-        assertEq(returnedOwners[3], owner1.toBytes30());
-        assertEq(returnedOwnersData[3].weight, weight1);
-        assertEq(uint8(returnedOwnersData[3].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersData[3].addr, owner1);
-        assertEq(returnedOwnersData[3].publicKeyX, uint256(0));
-        assertEq(returnedOwnersData[3].publicKeyY, uint256(0));
-
-        assertEq(returnedThresholdWeight, initialThresholdWeight);
-
+    function testFuzz_addOwners(AddOwnersInput memory input) public {
+        _installPluginForAddOwners(input);
+        uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.pubKeyWeight1 + input.pubKeyWeight2;
         address[] memory newOwners = new address[](1);
-        newOwners[0] = owner3;
+        newOwners[0] = input.owner3;
         PublicKey[] memory newPubKeys = new PublicKey[](1);
-        newPubKeys[0] = pubKey3;
+        newPubKeys[0] = input.pubKey3;
 
         uint256[] memory newWeights = new uint256[](1);
-        newWeights[0] = weight3;
+        newWeights[0] = input.weight3;
         uint256[] memory newPubKeyWeights = new uint256[](1);
-        newPubKeyWeights[0] = pubKeyWeight3;
+        newPubKeyWeights[0] = input.pubKeyWeight3;
 
-        uint256 newThresholdWeight = weight1 + weight2 + weight3 + pubKeyWeight1 + pubKeyWeight2 + pubKeyWeight3;
+        uint256 newThresholdWeight = input.weight1 + input.weight2 + input.weight3 + input.pubKeyWeight1
+            + input.pubKeyWeight2 + input.pubKeyWeight3;
         (bytes30[] memory _tOwners, OwnerData[] memory _tWeights) =
             _mergeOwnersData(newOwners, newWeights, newPubKeys, newPubKeyWeights);
         vm.expectEmit(true, true, true, true);
@@ -457,30 +442,122 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(returnedOwnersAfterUpdate.length, 6);
         assertEq(returnedOwnersDataAfterUpdate.length, 6);
         // new
-        assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[0].weight, pubKeyWeight3);
+        assertEq(returnedOwnersAfterUpdate[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[0].weight, input.pubKeyWeight3);
         assertEq(uint8(returnedOwnersDataAfterUpdate[0].credType), uint8(CredentialType.PUBLIC_KEY));
         assertEq(returnedOwnersDataAfterUpdate[0].addr, address(0));
-        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyX, pubKey3.x);
-        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyY, pubKey3.y);
+        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyX, input.pubKey3.x);
+        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyY, input.pubKey3.y);
 
-        assertEq(returnedOwnersAfterUpdate[1], owner3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[1].weight, weight3);
+        assertEq(returnedOwnersAfterUpdate[1], input.owner3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[1].weight, input.weight3);
         assertEq(uint8(returnedOwnersDataAfterUpdate[1].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersDataAfterUpdate[1].addr, owner3);
+        assertEq(returnedOwnersDataAfterUpdate[1].addr, input.owner3);
         assertEq(returnedOwnersDataAfterUpdate[1].publicKeyX, uint256(0));
         assertEq(returnedOwnersDataAfterUpdate[1].publicKeyY, uint256(0));
 
         // old
-        assertEq(returnedOwnersAfterUpdate[2], pubKey2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[2].weight, pubKeyWeight2);
-        assertEq(returnedOwnersAfterUpdate[3], pubKey1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[3].weight, pubKeyWeight1);
-        assertEq(returnedOwnersAfterUpdate[4], owner2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[4].weight, weight2);
-        assertEq(returnedOwnersAfterUpdate[5], owner1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[5].weight, weight1);
+        assertEq(returnedOwnersAfterUpdate[2], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[2].weight, input.pubKeyWeight2);
+        assertEq(returnedOwnersAfterUpdate[3], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[3].weight, input.pubKeyWeight1);
+        assertEq(returnedOwnersAfterUpdate[4], input.owner2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[4].weight, input.weight2);
+        assertEq(returnedOwnersAfterUpdate[5], input.owner1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[5].weight, input.weight1);
         assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
+    }
+
+    function _installPluginForAddOwners(AddOwnersInput memory input) internal {
+        vm.assume(input.owner1 != address(0));
+        vm.assume(input.owner2 != address(0));
+        vm.assume(input.owner3 != address(0));
+        vm.assume(input.owner1 != input.owner2);
+        vm.assume(input.owner2 != input.owner3);
+        vm.assume(input.owner3 != input.owner1);
+
+        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
+        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
+        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
+        vm.assume(input.pubKey1.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey1.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey1.toBytes30() != input.owner3.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner3.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner3.toBytes30());
+
+        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
+        input.weight2 = bound(input.weight2, 1, _MAX_WEIGHT);
+        input.weight3 = bound(input.weight3, 1, _MAX_WEIGHT);
+
+        input.pubKeyWeight1 = bound(input.pubKeyWeight1, 1, _MAX_WEIGHT);
+        input.pubKeyWeight2 = bound(input.pubKeyWeight2, 1, _MAX_WEIGHT);
+        input.pubKeyWeight3 = bound(input.pubKeyWeight3, 1, _MAX_WEIGHT);
+
+        address[] memory initialOwners = new address[](2);
+        initialOwners[0] = input.owner1;
+        initialOwners[1] = input.owner2;
+
+        PublicKey[] memory initialPubKeys = new PublicKey[](2);
+        initialPubKeys[0] = input.pubKey1;
+        initialPubKeys[1] = input.pubKey2;
+
+        uint256[] memory initialWeights = new uint256[](2);
+        initialWeights[0] = input.weight1;
+        initialWeights[1] = input.weight2;
+
+        uint256[] memory initialPubKeyWeights = new uint256[](2);
+        initialPubKeyWeights[0] = input.pubKeyWeight1;
+        initialPubKeyWeights[1] = input.pubKeyWeight2;
+
+        uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.pubKeyWeight1 + input.pubKeyWeight2;
+        plugin.onInstall(
+            abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
+        );
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
+        assertEq(returnedOwners.length, 4);
+        assertEq(returnedOwnersData.length, 4);
+        // (reverse insertion order)
+        assertEq(returnedOwners[0], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersData[0].weight, input.pubKeyWeight2);
+        assertEq(uint8(returnedOwnersData[0].credType), uint8(CredentialType.PUBLIC_KEY));
+        assertEq(returnedOwnersData[0].addr, address(0));
+        assertEq(returnedOwnersData[0].publicKeyX, input.pubKey2.x);
+        assertEq(returnedOwnersData[0].publicKeyY, input.pubKey2.y);
+
+        assertEq(returnedOwners[1], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersData[1].weight, input.pubKeyWeight1);
+        assertEq(uint8(returnedOwnersData[1].credType), uint8(CredentialType.PUBLIC_KEY));
+        assertEq(returnedOwnersData[1].addr, address(0));
+        assertEq(returnedOwnersData[1].publicKeyX, input.pubKey1.x);
+        assertEq(returnedOwnersData[1].publicKeyY, input.pubKey1.y);
+
+        assertEq(returnedOwners[2], input.owner2.toBytes30());
+        assertEq(returnedOwnersData[2].weight, input.weight2);
+        assertEq(uint8(returnedOwnersData[2].credType), uint8(CredentialType.ADDRESS));
+        assertEq(returnedOwnersData[2].addr, input.owner2);
+        assertEq(returnedOwnersData[2].publicKeyX, uint256(0));
+        assertEq(returnedOwnersData[2].publicKeyY, uint256(0));
+
+        assertEq(returnedOwners[3], input.owner1.toBytes30());
+        assertEq(returnedOwnersData[3].weight, input.weight1);
+        assertEq(uint8(returnedOwnersData[3].credType), uint8(CredentialType.ADDRESS));
+        assertEq(returnedOwnersData[3].addr, input.owner1);
+        assertEq(returnedOwnersData[3].publicKeyX, uint256(0));
+        assertEq(returnedOwnersData[3].publicKeyY, uint256(0));
+        assertEq(returnedThresholdWeight, initialThresholdWeight);
     }
 
     function test_addOwnersZeroThreshold() public {
@@ -643,71 +720,58 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(res, returnedWeights[0].weight);
     }
 
-    function testFuzz_removeOwners(
-        address owner1,
-        address owner2,
-        address owner3,
-        uint256 weight1,
-        uint256 weight2,
-        uint256 weight3,
-        PublicKey memory pubKey1,
-        PublicKey memory pubKey2,
-        PublicKey memory pubKey3,
-        uint256 pubKeyWeight1,
-        uint256 pubKeyWeight2,
-        uint256 pubKeyWeight3
-    ) public {
-        vm.assume(owner1 != address(0));
-        vm.assume(owner2 != address(0));
-        vm.assume(owner3 != address(0));
-        vm.assume(owner1 != owner2);
-        vm.assume(owner2 != owner3);
-        vm.assume(owner3 != owner1);
+    function testFuzz_removeOwners(RemoveOwnersInput memory input) public {
+        vm.assume(input.owner1 != address(0));
+        vm.assume(input.owner2 != address(0));
+        vm.assume(input.owner3 != address(0));
+        vm.assume(input.owner1 != input.owner2);
+        vm.assume(input.owner2 != input.owner3);
+        vm.assume(input.owner3 != input.owner1);
 
-        vm.assume(!(pubKey1.x == 0 && pubKey1.y == 0));
-        vm.assume(!(pubKey2.x == 0 && pubKey2.y == 0));
-        vm.assume(!(pubKey3.x == 0 && pubKey3.y == 0));
-        vm.assume(!_isSame(pubKey1, pubKey2));
-        vm.assume(!_isSame(pubKey2, pubKey3));
-        vm.assume(!_isSame(pubKey3, pubKey1));
-        vm.assume(pubKey1.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey1.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey1.toBytes30() != owner3.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner3.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner3.toBytes30());
+        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
+        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
+        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
+        vm.assume(input.pubKey1.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey1.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey1.toBytes30() != input.owner3.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner3.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner3.toBytes30());
 
-        weight1 = bound(weight1, 1, _MAX_WEIGHT);
-        weight2 = bound(weight2, 1, _MAX_WEIGHT);
-        weight3 = bound(weight3, 1, _MAX_WEIGHT);
+        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
+        input.weight2 = bound(input.weight2, 1, _MAX_WEIGHT);
+        input.weight3 = bound(input.weight3, 1, _MAX_WEIGHT);
 
-        pubKeyWeight1 = bound(pubKeyWeight1, 1, _MAX_WEIGHT);
-        pubKeyWeight2 = bound(pubKeyWeight2, 1, _MAX_WEIGHT);
-        pubKeyWeight3 = bound(pubKeyWeight3, 1, _MAX_WEIGHT);
+        input.pubKeyWeight1 = bound(input.pubKeyWeight1, 1, _MAX_WEIGHT);
+        input.pubKeyWeight2 = bound(input.pubKeyWeight2, 1, _MAX_WEIGHT);
+        input.pubKeyWeight3 = bound(input.pubKeyWeight3, 1, _MAX_WEIGHT);
 
         address[] memory initialOwners = new address[](3);
-        initialOwners[0] = owner1;
-        initialOwners[1] = owner2;
-        initialOwners[2] = owner3;
+        initialOwners[0] = input.owner1;
+        initialOwners[1] = input.owner2;
+        initialOwners[2] = input.owner3;
         PublicKey[] memory initialPubKeys = new PublicKey[](3);
-        initialPubKeys[0] = pubKey1;
-        initialPubKeys[1] = pubKey2;
-        initialPubKeys[2] = pubKey3;
+        initialPubKeys[0] = input.pubKey1;
+        initialPubKeys[1] = input.pubKey2;
+        initialPubKeys[2] = input.pubKey3;
 
         uint256[] memory initialWeights = new uint256[](3);
-        initialWeights[0] = weight1;
-        initialWeights[1] = weight2;
-        initialWeights[2] = weight3;
+        initialWeights[0] = input.weight1;
+        initialWeights[1] = input.weight2;
+        initialWeights[2] = input.weight3;
 
         uint256[] memory initialPubKeyWeights = new uint256[](3);
-        initialPubKeyWeights[0] = pubKeyWeight1;
-        initialPubKeyWeights[1] = pubKeyWeight2;
-        initialPubKeyWeights[2] = pubKeyWeight3;
+        initialPubKeyWeights[0] = input.pubKeyWeight1;
+        initialPubKeyWeights[1] = input.pubKeyWeight2;
+        initialPubKeyWeights[2] = input.pubKeyWeight3;
 
-        uint256 initialThresholdWeight = weight1 + weight2 + pubKeyWeight1 + pubKeyWeight2;
+        uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.pubKeyWeight1 + input.pubKeyWeight2;
 
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
@@ -718,63 +782,64 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             OwnershipMetadata memory ownershipMetadata
         ) = plugin.ownershipInfoOf(account);
 
-        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
         assertEq(returnedOwners.length, 6);
         assertEq(returnedOwnersData.length, 6);
         // (reverse insertion order)
-        assertEq(returnedOwners[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersData[0].weight, pubKeyWeight3);
+        assertEq(returnedOwners[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersData[0].weight, input.pubKeyWeight3);
         assertEq(uint8(returnedOwnersData[0].credType), uint8(CredentialType.PUBLIC_KEY));
         assertEq(returnedOwnersData[0].addr, address(0));
-        assertEq(returnedOwnersData[0].publicKeyX, pubKey3.x);
-        assertEq(returnedOwnersData[0].publicKeyY, pubKey3.y);
+        assertEq(returnedOwnersData[0].publicKeyX, input.pubKey3.x);
+        assertEq(returnedOwnersData[0].publicKeyY, input.pubKey3.y);
 
-        assertEq(returnedOwners[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersData[1].weight, pubKeyWeight2);
+        assertEq(returnedOwners[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersData[1].weight, input.pubKeyWeight2);
         assertEq(uint8(returnedOwnersData[1].credType), uint8(CredentialType.PUBLIC_KEY));
         assertEq(returnedOwnersData[1].addr, address(0));
-        assertEq(returnedOwnersData[1].publicKeyX, pubKey2.x);
-        assertEq(returnedOwnersData[1].publicKeyY, pubKey2.y);
+        assertEq(returnedOwnersData[1].publicKeyX, input.pubKey2.x);
+        assertEq(returnedOwnersData[1].publicKeyY, input.pubKey2.y);
 
-        assertEq(returnedOwners[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersData[2].weight, pubKeyWeight1);
+        assertEq(returnedOwners[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersData[2].weight, input.pubKeyWeight1);
         assertEq(uint8(returnedOwnersData[2].credType), uint8(CredentialType.PUBLIC_KEY));
         assertEq(returnedOwnersData[2].addr, address(0));
-        assertEq(returnedOwnersData[2].publicKeyX, pubKey1.x);
-        assertEq(returnedOwnersData[2].publicKeyY, pubKey1.y);
+        assertEq(returnedOwnersData[2].publicKeyX, input.pubKey1.x);
+        assertEq(returnedOwnersData[2].publicKeyY, input.pubKey1.y);
 
-        assertEq(returnedOwners[3], owner3.toBytes30());
-        assertEq(returnedOwnersData[3].weight, weight3);
+        assertEq(returnedOwners[3], input.owner3.toBytes30());
+        assertEq(returnedOwnersData[3].weight, input.weight3);
         assertEq(uint8(returnedOwnersData[3].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersData[3].addr, owner3);
+        assertEq(returnedOwnersData[3].addr, input.owner3);
         assertEq(returnedOwnersData[3].publicKeyX, uint256(0));
         assertEq(returnedOwnersData[3].publicKeyY, uint256(0));
 
-        assertEq(returnedOwners[4], owner2.toBytes30());
-        assertEq(returnedOwnersData[4].weight, weight2);
+        assertEq(returnedOwners[4], input.owner2.toBytes30());
+        assertEq(returnedOwnersData[4].weight, input.weight2);
         assertEq(uint8(returnedOwnersData[4].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersData[4].addr, owner2);
+        assertEq(returnedOwnersData[4].addr, input.owner2);
         assertEq(returnedOwnersData[4].publicKeyX, uint256(0));
         assertEq(returnedOwnersData[4].publicKeyY, uint256(0));
 
-        assertEq(returnedOwners[5], owner1.toBytes30());
-        assertEq(returnedOwnersData[5].weight, weight1);
+        assertEq(returnedOwners[5], input.owner1.toBytes30());
+        assertEq(returnedOwnersData[5].weight, input.weight1);
         assertEq(uint8(returnedOwnersData[5].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersData[5].addr, owner1);
+        assertEq(returnedOwnersData[5].addr, input.owner1);
         assertEq(returnedOwnersData[5].publicKeyX, uint256(0));
         assertEq(returnedOwnersData[5].publicKeyY, uint256(0));
 
-        assertEq(returnedThresholdWeight, initialThresholdWeight);
+        assertEq(ownershipMetadata.thresholdWeight, initialThresholdWeight);
+        _removeOwnersAndAssert(input);
+    }
 
+    function _removeOwnersAndAssert(RemoveOwnersInput memory input) internal {
         // remove owners
         address[] memory ownersToRemove = new address[](2);
-        ownersToRemove[0] = owner1;
-        ownersToRemove[1] = owner2;
+        ownersToRemove[0] = input.owner1;
+        ownersToRemove[1] = input.owner2;
         PublicKey[] memory pubKeysToRemove = new PublicKey[](2);
-        pubKeysToRemove[0] = pubKey1;
-        pubKeysToRemove[1] = pubKey2;
-
-        uint256 newThresholdWeight = weight3 + pubKeyWeight3;
+        pubKeysToRemove[0] = input.pubKey1;
+        pubKeysToRemove[1] = input.pubKey2;
+        uint256 newThresholdWeight = input.weight3 + input.pubKeyWeight3;
 
         vm.prank(account);
         plugin.removeOwners(ownersToRemove, pubKeysToRemove, newThresholdWeight);
@@ -786,25 +851,24 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
 
-        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 2);
         assertEq(returnedOwnersDataAfterUpdate.length, 2);
 
-        assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[0].weight, pubKeyWeight3);
+        assertEq(returnedOwnersAfterUpdate[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[0].weight, input.pubKeyWeight3);
         assertEq(uint8(returnedOwnersDataAfterUpdate[0].credType), uint8(CredentialType.PUBLIC_KEY));
         assertEq(returnedOwnersDataAfterUpdate[0].addr, address(0));
-        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyX, pubKey3.x);
-        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyY, pubKey3.y);
+        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyX, input.pubKey3.x);
+        assertEq(returnedOwnersDataAfterUpdate[0].publicKeyY, input.pubKey3.y);
 
-        assertEq(returnedOwnersAfterUpdate[1], owner3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[1].weight, weight3);
+        assertEq(returnedOwnersAfterUpdate[1], input.owner3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[1].weight, input.weight3);
         assertEq(uint8(returnedOwnersDataAfterUpdate[1].credType), uint8(CredentialType.ADDRESS));
-        assertEq(returnedOwnersDataAfterUpdate[1].addr, owner3);
+        assertEq(returnedOwnersDataAfterUpdate[1].addr, input.owner3);
         assertEq(returnedOwnersDataAfterUpdate[1].publicKeyX, uint256(0));
         assertEq(returnedOwnersDataAfterUpdate[1].publicKeyY, uint256(0));
 
-        assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
+        assertEq(ownershipMetadataAfterUpdate.thresholdWeight, newThresholdWeight);
     }
 
     function test_removeOwners_zeroThreshold() public {
@@ -1112,71 +1176,59 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(returnedThresholdWeight, _newThresholdWeight);
     }
 
-    function testFuzz_updateMultisigWeights(
-        address owner1,
-        address owner2,
-        address owner3,
-        PublicKey memory pubKey1,
-        PublicKey memory pubKey2,
-        PublicKey memory pubKey3,
-        uint256 weight1,
-        uint256 weight2,
-        uint256 weight3,
-        uint256 weight4,
-        uint256 weight5,
-        uint256 weight6
-    ) public {
-        vm.assume(owner1 != address(0));
-        vm.assume(owner2 != address(0));
-        vm.assume(owner3 != address(0));
-        vm.assume(owner1 != owner2);
-        vm.assume(owner2 != owner3);
-        vm.assume(owner3 != owner1);
+    function testFuzz_updateMultisigWeights(UpdateMultisigWeightsInput memory input) public {
+        vm.assume(input.owner1 != address(0));
+        vm.assume(input.owner2 != address(0));
+        vm.assume(input.owner3 != address(0));
+        vm.assume(input.owner1 != input.owner2);
+        vm.assume(input.owner2 != input.owner3);
+        vm.assume(input.owner3 != input.owner1);
 
-        vm.assume(!(pubKey1.x == 0 && pubKey1.y == 0));
-        vm.assume(!(pubKey2.x == 0 && pubKey2.y == 0));
-        vm.assume(!(pubKey3.x == 0 && pubKey3.y == 0));
-        vm.assume(!_isSame(pubKey1, pubKey2));
-        vm.assume(!_isSame(pubKey2, pubKey3));
-        vm.assume(!_isSame(pubKey3, pubKey1));
-        vm.assume(pubKey1.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey1.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey1.toBytes30() != owner3.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner3.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner2.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner3.toBytes30());
+        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
+        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
+        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
+        vm.assume(input.pubKey1.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey1.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey1.toBytes30() != input.owner3.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner3.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner2.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner3.toBytes30());
 
-        weight1 = bound(weight1, 1, _MAX_WEIGHT);
-        weight2 = bound(weight2, 1, _MAX_WEIGHT);
-        weight3 = bound(weight3, 1, _MAX_WEIGHT);
-        weight4 = bound(weight4, 1, _MAX_WEIGHT);
-        weight5 = bound(weight5, 1, _MAX_WEIGHT);
-        weight6 = bound(weight6, 1, _MAX_WEIGHT);
+        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
+        input.weight2 = bound(input.weight2, 1, _MAX_WEIGHT);
+        input.weight3 = bound(input.weight3, 1, _MAX_WEIGHT);
+        input.weight4 = bound(input.weight4, 1, _MAX_WEIGHT);
+        input.weight5 = bound(input.weight5, 1, _MAX_WEIGHT);
+        input.weight6 = bound(input.weight6, 1, _MAX_WEIGHT);
 
         address[] memory initialOwners = new address[](3);
-        initialOwners[0] = owner1;
-        initialOwners[1] = owner2;
-        initialOwners[2] = owner3;
+        initialOwners[0] = input.owner1;
+        initialOwners[1] = input.owner2;
+        initialOwners[2] = input.owner3;
 
         PublicKey[] memory initialPubKeys = new PublicKey[](3);
-        initialPubKeys[0] = pubKey1;
-        initialPubKeys[1] = pubKey2;
-        initialPubKeys[2] = pubKey3;
+        initialPubKeys[0] = input.pubKey1;
+        initialPubKeys[1] = input.pubKey2;
+        initialPubKeys[2] = input.pubKey3;
 
         uint256[] memory initialWeights = new uint256[](3);
-        initialWeights[0] = weight1;
-        initialWeights[1] = weight2;
-        initialWeights[2] = weight3;
+        initialWeights[0] = input.weight1;
+        initialWeights[1] = input.weight2;
+        initialWeights[2] = input.weight3;
 
         uint256[] memory initialPubKeyWeights = new uint256[](3);
-        initialPubKeyWeights[0] = weight1;
-        initialPubKeyWeights[1] = weight2;
-        initialPubKeyWeights[2] = weight3;
+        initialPubKeyWeights[0] = input.weight1;
+        initialPubKeyWeights[1] = input.weight2;
+        initialPubKeyWeights[2] = input.weight3;
 
-        uint256 initialThresholdWeight = weight1 + weight2 + weight3 + weight1 + weight2 + weight3;
+        uint256 initialThresholdWeight =
+            input.weight1 + input.weight2 + input.weight3 + input.weight1 + input.weight2 + input.weight3;
 
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
@@ -1191,30 +1243,39 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(returnedOwners.length, 6);
         assertEq(returnedOwnersData.length, 6);
         // (reverse insertion order)
-        assertEq(returnedOwners[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersData[0].weight, weight3);
-        assertEq(returnedOwners[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersData[1].weight, weight2);
-        assertEq(returnedOwners[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersData[2].weight, weight1);
-        assertEq(returnedOwners[3], owner3.toBytes30());
-        assertEq(returnedOwnersData[3].weight, weight3);
-        assertEq(returnedOwners[4], owner2.toBytes30());
-        assertEq(returnedOwnersData[4].weight, weight2);
-        assertEq(returnedOwners[5], owner1.toBytes30());
-        assertEq(returnedOwnersData[5].weight, weight1);
+        assertEq(returnedOwners[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersData[0].weight, input.weight3);
+        assertEq(returnedOwners[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersData[1].weight, input.weight2);
+        assertEq(returnedOwners[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersData[2].weight, input.weight1);
+        assertEq(returnedOwners[3], input.owner3.toBytes30());
+        assertEq(returnedOwnersData[3].weight, input.weight3);
+        assertEq(returnedOwners[4], input.owner2.toBytes30());
+        assertEq(returnedOwnersData[4].weight, input.weight2);
+        assertEq(returnedOwners[5], input.owner1.toBytes30());
+        assertEq(returnedOwnersData[5].weight, input.weight1);
         assertEq(returnedThresholdWeight, initialThresholdWeight);
 
-        uint256[] memory newWeights = new uint256[](3);
-        newWeights[0] = weight4;
-        newWeights[1] = weight5;
-        newWeights[2] = weight6;
-        uint256[] memory newPubKeyWeights = new uint256[](3);
-        newPubKeyWeights[0] = weight4;
-        newPubKeyWeights[1] = weight5;
-        newPubKeyWeights[2] = weight6;
+        _updateWeightsAndAssert(input, initialOwners, initialPubKeys);
+    }
 
-        uint256 newThresholdWeight = weight4 + weight5 + weight6 + weight4 + weight5 + weight6;
+    function _updateWeightsAndAssert(
+        UpdateMultisigWeightsInput memory input,
+        address[] memory initialOwners,
+        PublicKey[] memory initialPubKeys
+    ) internal {
+        uint256[] memory newWeights = new uint256[](3);
+        newWeights[0] = input.weight4;
+        newWeights[1] = input.weight5;
+        newWeights[2] = input.weight6;
+        uint256[] memory newPubKeyWeights = new uint256[](3);
+        newPubKeyWeights[0] = input.weight4;
+        newPubKeyWeights[1] = input.weight5;
+        newPubKeyWeights[2] = input.weight6;
+
+        uint256 newThresholdWeight =
+            input.weight4 + input.weight5 + input.weight6 + input.weight4 + input.weight5 + input.weight6;
 
         vm.prank(account);
         plugin.updateMultisigWeights(initialOwners, newWeights, initialPubKeys, newPubKeyWeights, newThresholdWeight);
@@ -1228,22 +1289,22 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 6);
         assertEq(returnedOwnersDataAfterUpdate.length, 6);
-        assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[0].weight, weight6);
-        assertEq(returnedOwnersAfterUpdate[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[1].weight, weight5);
-        assertEq(returnedOwnersAfterUpdate[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[2].weight, weight4);
-        assertEq(returnedOwnersAfterUpdate[3], owner3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[3].weight, weight6);
-        assertEq(returnedOwnersAfterUpdate[4], owner2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[4].weight, weight5);
-        assertEq(returnedOwnersAfterUpdate[5], owner1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[5].weight, weight4);
+        assertEq(returnedOwnersAfterUpdate[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[0].weight, input.weight6);
+        assertEq(returnedOwnersAfterUpdate[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[1].weight, input.weight5);
+        assertEq(returnedOwnersAfterUpdate[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[2].weight, input.weight4);
+        assertEq(returnedOwnersAfterUpdate[3], input.owner3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[3].weight, input.weight6);
+        assertEq(returnedOwnersAfterUpdate[4], input.owner2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[4].weight, input.weight5);
+        assertEq(returnedOwnersAfterUpdate[5], input.owner1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[5].weight, input.weight4);
         assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
     }
 
-    function test_supportsInterface() public {
+    function test_supportsInterface() public view {
         bool isSupported = plugin.supportsInterface(type(IWeightedMultisigPlugin).interfaceId);
         assertTrue(isSupported);
         isSupported = plugin.supportsInterface(type(IPlugin).interfaceId);
@@ -1287,7 +1348,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(ownerData.publicKeyY, uint256(0));
     }
 
-    function testFuzz_getOwnerId(address addr, PublicKey memory pubKey) public {
+    function testFuzz_getOwnerId(address addr, PublicKey memory pubKey) public view {
         vm.assume(pubKey.x != 0 || pubKey.y != 0);
         console.logString("addrId:");
         console.logBytes32(addr.toBytes30());
@@ -1318,77 +1379,19 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(returnedThresholdWeight, thresholdWeightOne);
     }
 
-    function testFuzz_addPubKeyOnlyOwnersThenK1Owner(
-        PublicKey memory pubKey1,
-        PublicKey memory pubKey2,
-        PublicKey memory pubKey3,
-        uint256 pubKeyWeight1,
-        uint256 pubKeyWeight2,
-        uint256 pubKeyWeight3,
-        address owner1,
-        uint256 weight1
-    ) public {
-        vm.assume(!(pubKey1.x == 0 && pubKey1.y == 0));
-        vm.assume(!(pubKey2.x == 0 && pubKey2.y == 0));
-        vm.assume(!(pubKey3.x == 0 && pubKey3.y == 0));
-        vm.assume(!_isSame(pubKey1, pubKey2));
-        vm.assume(!_isSame(pubKey2, pubKey3));
-        vm.assume(!_isSame(pubKey3, pubKey1));
-
-        vm.assume(owner1 != address(0));
-
-        vm.assume(pubKey1.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey2.toBytes30() != owner1.toBytes30());
-        vm.assume(pubKey3.toBytes30() != owner1.toBytes30());
-
-        pubKeyWeight1 = bound(pubKeyWeight1, 1, _MAX_WEIGHT);
-        pubKeyWeight2 = bound(pubKeyWeight2, 1, _MAX_WEIGHT);
-        pubKeyWeight3 = bound(pubKeyWeight3, 1, _MAX_WEIGHT);
-
-        weight1 = bound(weight1, 1, _MAX_WEIGHT);
-
-        // no k1 owners
-        address[] memory initialOwners;
-        uint256[] memory initialWeights;
-
-        PublicKey[] memory initialPubKeys = new PublicKey[](2);
-        initialPubKeys[0] = pubKey1;
-        initialPubKeys[1] = pubKey2;
-
-        uint256[] memory initialPubKeyWeights = new uint256[](2);
-        initialPubKeyWeights[0] = pubKeyWeight1;
-        initialPubKeyWeights[1] = pubKeyWeight2;
-
-        uint256 initialThresholdWeight = pubKeyWeight1 + pubKeyWeight2;
-        plugin.onInstall(
-            abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
-        );
-        (
-            bytes30[] memory returnedOwners,
-            OwnerData[] memory returnedOwnersData,
-            OwnershipMetadata memory ownershipMetadata
-        ) = plugin.ownershipInfoOf(account);
-        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
-
-        assertEq(returnedOwners.length, 2);
-        assertEq(returnedOwnersData.length, 2);
-        // (reverse insertion order)
-        assertEq(returnedOwners[0], pubKey2.toBytes30());
-        assertEq(returnedOwnersData[0].weight, pubKeyWeight2);
-        assertEq(returnedOwners[1], pubKey1.toBytes30());
-        assertEq(returnedOwnersData[1].weight, pubKeyWeight1);
-        assertEq(returnedThresholdWeight, initialThresholdWeight);
-
+    function testFuzz_addPubKeyOnlyOwnersThenK1Owner(AddPubKeyOnlyOwnersThenK1OwnerInput memory input) public {
+        _installPluginForAddPubKeyOnlyOwnersThenK1Owner(input);
+        uint256 initialThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2;
         // still no k1 configs
         address[] memory newOwners;
         uint256[] memory newWeights;
         PublicKey[] memory newPubKeys = new PublicKey[](1);
-        newPubKeys[0] = pubKey3;
+        newPubKeys[0] = input.pubKey3;
 
         uint256[] memory newPubKeyWeights = new uint256[](1);
-        newPubKeyWeights[0] = pubKeyWeight3;
+        newPubKeyWeights[0] = input.pubKeyWeight3;
 
-        uint256 newThresholdWeight = pubKeyWeight1 + pubKeyWeight2 + pubKeyWeight3;
+        uint256 newThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2 + input.pubKeyWeight3;
         (bytes30[] memory _tOwners, OwnerData[] memory _tWeights) =
             _mergeOwnersData(newOwners, newWeights, newPubKeys, newPubKeyWeights);
         vm.expectEmit(true, true, true, true);
@@ -1405,31 +1408,30 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             OwnershipMetadata memory ownershipMetadataAfterUpdate
         ) = plugin.ownershipInfoOf(account);
 
-        uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 3);
         assertEq(returnedOwnersDataAfterUpdate.length, 3);
         // new
-        assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[0].weight, pubKeyWeight3);
+        assertEq(returnedOwnersAfterUpdate[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[0].weight, input.pubKeyWeight3);
 
         // old
-        assertEq(returnedOwnersAfterUpdate[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[1].weight, pubKeyWeight2);
-        assertEq(returnedOwnersAfterUpdate[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[2].weight, pubKeyWeight1);
-        assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
+        assertEq(returnedOwnersAfterUpdate[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[1].weight, input.pubKeyWeight2);
+        assertEq(returnedOwnersAfterUpdate[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[2].weight, input.pubKeyWeight1);
+        assertEq(ownershipMetadataAfterUpdate.thresholdWeight, newThresholdWeight);
 
         // now we add k1 owners
         newOwners = new address[](1);
-        newOwners[0] = owner1;
+        newOwners[0] = input.owner1;
 
         newWeights = new uint256[](1);
-        newWeights[0] = weight1;
+        newWeights[0] = input.weight1;
         newPubKeys = new PublicKey[](0);
         newPubKeyWeights = new uint256[](0);
 
-        initialThresholdWeight = pubKeyWeight1 + pubKeyWeight2 + pubKeyWeight3;
-        newThresholdWeight = weight1 + initialThresholdWeight;
+        initialThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2 + input.pubKeyWeight3;
+        newThresholdWeight = input.weight1 + initialThresholdWeight;
         (_tOwners, _tWeights) = _mergeOwnersData(newOwners, newWeights, newPubKeys, newPubKeyWeights);
         vm.expectEmit(true, true, true, true);
         emit ThresholdUpdated(account, initialThresholdWeight, newThresholdWeight);
@@ -1442,56 +1444,57 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (returnedOwnersAfterUpdate, returnedOwnersDataAfterUpdate, ownershipMetadataAfterUpdate) =
             plugin.ownershipInfoOf(account);
 
-        returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 4);
         assertEq(returnedOwnersDataAfterUpdate.length, 4);
         // new
-        assertEq(returnedOwnersAfterUpdate[0], owner1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[0].weight, weight1);
+        assertEq(returnedOwnersAfterUpdate[0], input.owner1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[0].weight, input.weight1);
 
         // old
-        assertEq(returnedOwnersAfterUpdate[1], pubKey3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[1].weight, pubKeyWeight3);
-        assertEq(returnedOwnersAfterUpdate[2], pubKey2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[2].weight, pubKeyWeight2);
-        assertEq(returnedOwnersAfterUpdate[3], pubKey1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[3].weight, pubKeyWeight1);
-        assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
+        assertEq(returnedOwnersAfterUpdate[1], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[1].weight, input.pubKeyWeight3);
+        assertEq(returnedOwnersAfterUpdate[2], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[2].weight, input.pubKeyWeight2);
+        assertEq(returnedOwnersAfterUpdate[3], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[3].weight, input.pubKeyWeight1);
+        assertEq(ownershipMetadataAfterUpdate.thresholdWeight, newThresholdWeight);
     }
 
-    function testFuzz_removePubKeyOnlyOwners(
-        PublicKey memory pubKey1,
-        PublicKey memory pubKey2,
-        PublicKey memory pubKey3,
-        uint256 pubKeyWeight1,
-        uint256 pubKeyWeight2,
-        uint256 pubKeyWeight3
-    ) public {
-        vm.assume(!(pubKey1.x == 0 && pubKey1.y == 0));
-        vm.assume(!(pubKey2.x == 0 && pubKey2.y == 0));
-        vm.assume(!(pubKey3.x == 0 && pubKey3.y == 0));
-        vm.assume(!_isSame(pubKey1, pubKey2));
-        vm.assume(!_isSame(pubKey2, pubKey3));
-        vm.assume(!_isSame(pubKey3, pubKey1));
+    function _installPluginForAddPubKeyOnlyOwnersThenK1Owner(AddPubKeyOnlyOwnersThenK1OwnerInput memory input)
+        internal
+    {
+        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
+        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
+        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
 
-        pubKeyWeight1 = bound(pubKeyWeight1, 1, _MAX_WEIGHT);
-        pubKeyWeight2 = bound(pubKeyWeight2, 1, _MAX_WEIGHT);
-        pubKeyWeight3 = bound(pubKeyWeight3, 1, _MAX_WEIGHT);
+        vm.assume(input.owner1 != address(0));
 
+        vm.assume(input.pubKey1.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey2.toBytes30() != input.owner1.toBytes30());
+        vm.assume(input.pubKey3.toBytes30() != input.owner1.toBytes30());
+
+        input.pubKeyWeight1 = bound(input.pubKeyWeight1, 1, _MAX_WEIGHT);
+        input.pubKeyWeight2 = bound(input.pubKeyWeight2, 1, _MAX_WEIGHT);
+        input.pubKeyWeight3 = bound(input.pubKeyWeight3, 1, _MAX_WEIGHT);
+
+        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
+
+        // no k1 owners
         address[] memory initialOwners;
         uint256[] memory initialWeights;
 
-        PublicKey[] memory initialPubKeys = new PublicKey[](3);
-        initialPubKeys[0] = pubKey1;
-        initialPubKeys[1] = pubKey2;
-        initialPubKeys[2] = pubKey3;
+        PublicKey[] memory initialPubKeys = new PublicKey[](2);
+        initialPubKeys[0] = input.pubKey1;
+        initialPubKeys[1] = input.pubKey2;
 
-        uint256[] memory initialPubKeyWeights = new uint256[](3);
-        initialPubKeyWeights[0] = pubKeyWeight1;
-        initialPubKeyWeights[1] = pubKeyWeight2;
-        initialPubKeyWeights[2] = pubKeyWeight3;
+        uint256[] memory initialPubKeyWeights = new uint256[](2);
+        initialPubKeyWeights[0] = input.pubKeyWeight1;
+        initialPubKeyWeights[1] = input.pubKeyWeight2;
 
-        uint256 initialThresholdWeight = pubKeyWeight1 + pubKeyWeight2 + pubKeyWeight3;
+        uint256 initialThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2;
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1500,25 +1503,24 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             OwnerData[] memory returnedOwnersData,
             OwnershipMetadata memory ownershipMetadata
         ) = plugin.ownershipInfoOf(account);
-        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
 
-        assertEq(returnedOwners.length, 3);
-        assertEq(returnedOwnersData.length, 3);
+        assertEq(returnedOwners.length, 2);
+        assertEq(returnedOwnersData.length, 2);
         // (reverse insertion order)
-        assertEq(returnedOwners[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersData[0].weight, pubKeyWeight3);
-        assertEq(returnedOwners[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersData[1].weight, pubKeyWeight2);
-        assertEq(returnedOwners[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersData[2].weight, pubKeyWeight1);
-        assertEq(returnedThresholdWeight, initialThresholdWeight);
+        assertEq(returnedOwners[0], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersData[0].weight, input.pubKeyWeight2);
+        assertEq(returnedOwners[1], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersData[1].weight, input.pubKeyWeight1);
+        assertEq(ownershipMetadata.thresholdWeight, initialThresholdWeight);
+    }
 
+    function testFuzz_removePubKeyOnlyOwners(RemovePubKeyOnlyOwnersInput memory input) public {
+        _installPluginForRemovePubKeyOnlyOwners(input);
         address[] memory ownersToRemove;
         PublicKey[] memory pubKeysToRemove = new PublicKey[](2);
-        pubKeysToRemove[0] = pubKey1;
-        pubKeysToRemove[1] = pubKey2;
-
-        uint256 newThresholdWeight = pubKeyWeight3;
+        pubKeysToRemove[0] = input.pubKey1;
+        pubKeysToRemove[1] = input.pubKey2;
+        uint256 newThresholdWeight = input.pubKeyWeight3;
 
         vm.prank(account);
         plugin.removeOwners(ownersToRemove, pubKeysToRemove, newThresholdWeight);
@@ -1531,52 +1533,37 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 1);
         assertEq(returnedWeightsAfterUpdate.length, 1);
-        assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
-        assertEq(returnedWeightsAfterUpdate[0].weight, pubKeyWeight3);
+        assertEq(returnedOwnersAfterUpdate[0], input.pubKey3.toBytes30());
+        assertEq(returnedWeightsAfterUpdate[0].weight, input.pubKeyWeight3);
         assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
     }
 
-    function testFuzz_updateMultisigWeightsPubKeyOnly(
-        PublicKey memory pubKey1,
-        PublicKey memory pubKey2,
-        PublicKey memory pubKey3,
-        uint256 weight1,
-        uint256 weight2,
-        uint256 weight3,
-        uint256 weight4,
-        uint256 weight5,
-        uint256 weight6
-    ) public {
-        vm.assume(!(pubKey1.x == 0 && pubKey1.y == 0));
-        vm.assume(!(pubKey2.x == 0 && pubKey2.y == 0));
-        vm.assume(!(pubKey3.x == 0 && pubKey3.y == 0));
-        vm.assume(!_isSame(pubKey1, pubKey2));
-        vm.assume(!_isSame(pubKey2, pubKey3));
-        vm.assume(!_isSame(pubKey3, pubKey1));
+    function _installPluginForRemovePubKeyOnlyOwners(RemovePubKeyOnlyOwnersInput memory input) internal {
+        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
+        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
+        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
 
-        weight1 = bound(weight1, 1, _MAX_WEIGHT);
-        weight2 = bound(weight2, 1, _MAX_WEIGHT);
-        weight3 = bound(weight3, 1, _MAX_WEIGHT);
-        weight4 = bound(weight4, 1, _MAX_WEIGHT);
-        weight5 = bound(weight5, 1, _MAX_WEIGHT);
-        weight6 = bound(weight6, 1, _MAX_WEIGHT);
+        input.pubKeyWeight1 = bound(input.pubKeyWeight1, 1, _MAX_WEIGHT);
+        input.pubKeyWeight2 = bound(input.pubKeyWeight2, 1, _MAX_WEIGHT);
+        input.pubKeyWeight3 = bound(input.pubKeyWeight3, 1, _MAX_WEIGHT);
 
         address[] memory initialOwners;
-
-        PublicKey[] memory initialPubKeys = new PublicKey[](3);
-        initialPubKeys[0] = pubKey1;
-        initialPubKeys[1] = pubKey2;
-        initialPubKeys[2] = pubKey3;
-
         uint256[] memory initialWeights;
 
+        PublicKey[] memory initialPubKeys = new PublicKey[](3);
+        initialPubKeys[0] = input.pubKey1;
+        initialPubKeys[1] = input.pubKey2;
+        initialPubKeys[2] = input.pubKey3;
+
         uint256[] memory initialPubKeyWeights = new uint256[](3);
-        initialPubKeyWeights[0] = weight1;
-        initialPubKeyWeights[1] = weight2;
-        initialPubKeyWeights[2] = weight3;
+        initialPubKeyWeights[0] = input.pubKeyWeight1;
+        initialPubKeyWeights[1] = input.pubKeyWeight2;
+        initialPubKeyWeights[2] = input.pubKeyWeight3;
 
-        uint256 initialThresholdWeight = weight1 + weight2 + weight3;
-
+        uint256 initialThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2 + input.pubKeyWeight3;
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1590,21 +1577,30 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(returnedOwners.length, 3);
         assertEq(returnedOwnersData.length, 3);
         // (reverse insertion order)
-        assertEq(returnedOwners[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersData[0].weight, weight3);
-        assertEq(returnedOwners[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersData[1].weight, weight2);
-        assertEq(returnedOwners[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersData[2].weight, weight1);
+        assertEq(returnedOwners[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersData[0].weight, input.pubKeyWeight3);
+        assertEq(returnedOwners[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersData[1].weight, input.pubKeyWeight2);
+        assertEq(returnedOwners[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersData[2].weight, input.pubKeyWeight1);
         assertEq(returnedThresholdWeight, initialThresholdWeight);
+    }
 
+    function testFuzz_updateMultisigWeightsPubKeyOnly(UpdateMultisigWeightsPubKeyOnlyInput memory input) public {
+        address[] memory initialOwners;
+        PublicKey[] memory initialPubKeys = new PublicKey[](3);
+        initialPubKeys[0] = input.pubKey1;
+        initialPubKeys[1] = input.pubKey2;
+        initialPubKeys[2] = input.pubKey3;
+
+        _installPluginForUpdateMultisigWeightsPubKeyOnly(input, initialOwners, initialPubKeys);
         uint256[] memory newWeights;
         uint256[] memory newPubKeyWeights = new uint256[](3);
-        newPubKeyWeights[0] = weight4;
-        newPubKeyWeights[1] = weight5;
-        newPubKeyWeights[2] = weight6;
+        newPubKeyWeights[0] = input.weight4;
+        newPubKeyWeights[1] = input.weight5;
+        newPubKeyWeights[2] = input.weight6;
 
-        uint256 newThresholdWeight = weight4 + weight5 + weight6;
+        uint256 newThresholdWeight = input.weight4 + input.weight5 + input.weight6;
 
         vm.prank(account);
         plugin.updateMultisigWeights(initialOwners, newWeights, initialPubKeys, newPubKeyWeights, newThresholdWeight);
@@ -1617,13 +1613,61 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256 returnedThresholdWeightAfterUpdate = ownershipMetadataAfterUpdate.thresholdWeight;
         assertEq(returnedOwnersAfterUpdate.length, 3);
         assertEq(returnedOwnersDataAfterUpdate.length, 3);
-        assertEq(returnedOwnersAfterUpdate[0], pubKey3.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[0].weight, weight6);
-        assertEq(returnedOwnersAfterUpdate[1], pubKey2.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[1].weight, weight5);
-        assertEq(returnedOwnersAfterUpdate[2], pubKey1.toBytes30());
-        assertEq(returnedOwnersDataAfterUpdate[2].weight, weight4);
+        assertEq(returnedOwnersAfterUpdate[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[0].weight, input.weight6);
+        assertEq(returnedOwnersAfterUpdate[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[1].weight, input.weight5);
+        assertEq(returnedOwnersAfterUpdate[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersDataAfterUpdate[2].weight, input.weight4);
         assertEq(returnedThresholdWeightAfterUpdate, newThresholdWeight);
+    }
+
+    function _installPluginForUpdateMultisigWeightsPubKeyOnly(
+        UpdateMultisigWeightsPubKeyOnlyInput memory input,
+        address[] memory initialOwners,
+        PublicKey[] memory initialPubKeys
+    ) internal {
+        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
+        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
+        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
+
+        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
+        input.weight2 = bound(input.weight2, 1, _MAX_WEIGHT);
+        input.weight3 = bound(input.weight3, 1, _MAX_WEIGHT);
+        input.weight4 = bound(input.weight4, 1, _MAX_WEIGHT);
+        input.weight5 = bound(input.weight5, 1, _MAX_WEIGHT);
+        input.weight6 = bound(input.weight6, 1, _MAX_WEIGHT);
+
+        uint256[] memory initialWeights;
+        uint256[] memory initialPubKeyWeights = new uint256[](3);
+        initialPubKeyWeights[0] = input.weight1;
+        initialPubKeyWeights[1] = input.weight2;
+        initialPubKeyWeights[2] = input.weight3;
+
+        uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.weight3;
+        plugin.onInstall(
+            abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
+        );
+        (
+            bytes30[] memory returnedOwners,
+            OwnerData[] memory returnedOwnersData,
+            OwnershipMetadata memory ownershipMetadata
+        ) = plugin.ownershipInfoOf(account);
+        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
+
+        assertEq(returnedOwners.length, 3);
+        assertEq(returnedOwnersData.length, 3);
+        // (reverse insertion order)
+        assertEq(returnedOwners[0], input.pubKey3.toBytes30());
+        assertEq(returnedOwnersData[0].weight, input.weight3);
+        assertEq(returnedOwners[1], input.pubKey2.toBytes30());
+        assertEq(returnedOwnersData[1].weight, input.weight2);
+        assertEq(returnedOwners[2], input.pubKey1.toBytes30());
+        assertEq(returnedOwnersData[2].weight, input.weight1);
+        assertEq(returnedThresholdWeight, initialThresholdWeight);
     }
 
     function testFuzz_isValidSignature_eoaOwner(string memory salt, bytes memory message) public {
@@ -1633,7 +1677,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (address signer, uint256 signerPrivateKey) = makeAddrAndKey(salt);
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         bytes memory signature = signMessage(vm, signerPrivateKey, wrappedDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1705,7 +1749,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         Owner memory contractOwner = _createContractOwner(seed);
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         bytes memory signerSig = signMessage(vm, contractOwner.signerWallet.privateKey, wrappedDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -1763,8 +1807,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     function testFuzz_isValidSignature_p256Owner(bytes memory message) public {
         _install();
 
-        bytes32 digest = keccak256(message);
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(address(account), keccak256(message));
         WebAuthnSigDynamicPart memory webAuthnSigDynamicPart;
         webAuthnSigDynamicPart.webAuthnData = _getWebAuthnData(wrappedDigest);
         bytes32 digestToSign = _getWebAuthnMessageHash(webAuthnSigDynamicPart.webAuthnData);
@@ -1772,24 +1815,22 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         webAuthnSigDynamicPart.r = r;
         webAuthnSigDynamicPart.s = s;
         // x || dynamic pos || sig type || length of bytes || sig data bytes
-        uint256 dynamicPos = 65; // 1 constant part
         bytes memory sigBytes = abi.encode(webAuthnSigDynamicPart);
         PublicKey[] memory pubKeyOwnersToAdd1 = new PublicKey[](1);
         pubKeyOwnersToAdd1[0] = PublicKey(passkeyPublicKeyX, passkeyPublicKeyY);
         bytes32 pubKeyId = bytes32(bytes.concat(bytes2(0), plugin.getOwnerId(pubKeyOwnersToAdd1[0])));
         console.logString("pubKeyId:");
         console.logBytes32(pubKeyId);
-        bytes memory p256Sig = abi.encodePacked(pubKeyId, dynamicPos, uint8(2), sigBytes.length, sigBytes);
+        bytes memory p256Sig = abi.encodePacked(pubKeyId, uint256(65), uint8(2), sigBytes.length, sigBytes);
 
-        uint256 weightToAdd1 = 9;
         uint256[] memory weightsToAdd1 = new uint256[](1);
-        weightsToAdd1[0] = weightToAdd1;
+        weightsToAdd1[0] = 9;
 
         (bool isOwner,) = plugin.isOwnerOf(account, pubKeyOwnersToAdd1[0]);
         if (!isOwner) {
             // sig check should fail
             vm.prank(account);
-            assertEq(EIP1271_INVALID_SIGNATURE, plugin.isValidSignature(digest, p256Sig));
+            assertEq(EIP1271_INVALID_SIGNATURE, plugin.isValidSignature(keccak256(message), p256Sig));
 
             vm.prank(account);
             plugin.addOwners(new address[](0), new uint256[](0), pubKeyOwnersToAdd1, weightsToAdd1, 0);
@@ -1798,13 +1839,14 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (isOwner,) = plugin.isOwnerOf(account, pubKeyOwnersToAdd1[0]);
         assertTrue(isOwner);
         vm.prank(account);
-        assertEq(EIP1271_VALID_SIGNATURE, plugin.isValidSignature(digest, p256Sig));
+        assertEq(EIP1271_VALID_SIGNATURE, plugin.isValidSignature(keccak256(message), p256Sig));
     }
 
     function testIsValidSignature_p256Owner_emptyDigest() public {
         _install();
-        bytes32 digest = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(
+            address(account), 0x0000000000000000000000000000000000000000000000000000000000000000
+        );
         WebAuthnSigDynamicPart memory webAuthnSigDynamicPart;
         webAuthnSigDynamicPart.webAuthnData = _getWebAuthnData(wrappedDigest);
         bytes32 digestToSign = _getWebAuthnMessageHash(webAuthnSigDynamicPart.webAuthnData);
@@ -1812,12 +1854,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         webAuthnSigDynamicPart.r = r;
         webAuthnSigDynamicPart.s = s;
         // x || dynamic pos || sig type || length of bytes || sig data bytes
-        uint256 dynamicPos = 65; // 1 constant part
+        // uint256 dynamicPos = 65; // 1 constant part
         bytes memory sigBytes = abi.encode(webAuthnSigDynamicPart);
         PublicKey[] memory pubKeyOwnersToAdd1 = new PublicKey[](1);
         pubKeyOwnersToAdd1[0] = PublicKey(passkeyPublicKeyX, passkeyPublicKeyY);
         bytes32 pubKeyId = bytes32(bytes.concat(bytes2(0), plugin.getOwnerId(pubKeyOwnersToAdd1[0])));
-        bytes memory p256Sig = abi.encodePacked(pubKeyId, dynamicPos, uint8(2), sigBytes.length, sigBytes);
+        bytes memory p256Sig = abi.encodePacked(pubKeyId, uint256(65), uint8(2), sigBytes.length, sigBytes);
 
         uint256 weightToAdd1 = 9;
         uint256[] memory weightsToAdd1 = new uint256[](1);
@@ -1825,116 +1867,52 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.prank(account);
         plugin.addOwners(new address[](0), new uint256[](0), pubKeyOwnersToAdd1, weightsToAdd1, 0);
         vm.prank(account);
-        assertEq(EIP1271_VALID_SIGNATURE, plugin.isValidSignature(digest, p256Sig));
+        assertEq(
+            EIP1271_VALID_SIGNATURE,
+            plugin.isValidSignature(0x0000000000000000000000000000000000000000000000000000000000000000, p256Sig)
+        );
     }
 
     // mixed signature types
-    function testFuzz_isValidSignature_mixedSigTypes(uint256 k, uint256 n, bytes memory message) public {
+    function testFuzz_isValidSignature_mixedSigTypes(MultisigInput memory input, bytes memory message) public {
         // 1 < n < 10
-        n %= 11;
-        vm.assume(n > 0);
+        input.n %= 11;
+        vm.assume(input.n > 0);
 
         // 1 < k < n
-        k %= 11;
-        k %= n;
-        vm.assume(k > 0);
+        input.k %= 11;
+        input.k %= input.n;
+        vm.assume(input.k > 0);
 
-        bytes32 digest = keccak256(message);
         // for k1 signer
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(address(account), keccak256(message));
         WebAuthnSigDynamicPart memory webAuthnSigDynamicPart;
         // for r1 signer
         webAuthnSigDynamicPart.webAuthnData = _getWebAuthnData(wrappedDigest);
-        bytes32 webauthnDigest = _getWebAuthnMessageHash(webAuthnSigDynamicPart.webAuthnData);
 
         // get all owners
-        Owner[] memory owners = new Owner[](n);
-        uint256 lenOfK1Signers;
-        uint256 lenOfR1Signers;
-        for (uint256 i = 0; i < n; i++) {
-            uint256 seed = k + n + i;
-            if (seed % 3 == 2) {
-                lenOfR1Signers++;
-            } else {
-                lenOfK1Signers++;
-            }
-        }
-        console.log("lenOfK1Signers: ", lenOfK1Signers);
-        console.log("lenOfR1Signers: ", lenOfR1Signers);
-        assertEq(lenOfK1Signers + lenOfR1Signers, n);
-        address[] memory initialOwners = new address[](lenOfK1Signers);
-        uint256[] memory initialWeights = new uint256[](lenOfK1Signers);
-        PublicKey[] memory initialPubKeyOwners = new PublicKey[](lenOfR1Signers);
-        uint256[] memory initialPubKeyWeights = new uint256[](lenOfR1Signers);
-        uint256 numOfK1Signers;
-        uint256 numOfR1Signers;
+        Owner[] memory owners = new Owner[](input.n);
+        uint256[] memory lenOfSigners = _calculateLenOfSigners(input.n, input.k);
+        address[] memory initialOwners = new address[](lenOfSigners[0]);
+        uint256[] memory initialWeights = new uint256[](lenOfSigners[0]);
+        PublicKey[] memory initialPubKeyOwners = new PublicKey[](lenOfSigners[1]);
+        uint256[] memory initialPubKeyWeights = new uint256[](lenOfSigners[1]);
         // load pre generated r1 keys list which has more keys than we need
         TestKey[] memory testR1Keys = _loadP256Keys();
-        for (uint256 i = 0; i < n; i++) {
-            uint256 seed = k + n + i;
-            if (seed % 3 == 0) {
-                // contract owners
-                console.logString("we have a contract owner..");
-                owners[i] = _createContractOwner(seed);
-                owners[i].sigType = 0;
-                initialOwners[numOfK1Signers] = toAddress(owners[i].owner);
-                initialWeights[numOfK1Signers] = 1;
-                numOfK1Signers++;
-            } else if (seed % 3 == 1) {
-                // eoa owners
-                console.logString("we have an eoa owner..");
-                VmSafe.Wallet memory signerWallet;
-                (signerWallet.addr, signerWallet.privateKey) = makeAddrAndKey(string(abi.encodePacked(seed)));
-                owners[i] = Owner({owner: signerWallet.addr.toBytes30(), signerWallet: signerWallet, sigType: 27});
-                initialOwners[numOfK1Signers] = signerWallet.addr;
-                initialWeights[numOfK1Signers] = 1;
-                numOfK1Signers++;
-            } else {
-                // r1 owners
-                console.logString("we have a r1 owner..");
-                VmSafe.Wallet memory signerWallet;
-                signerWallet.privateKey = testR1Keys[numOfR1Signers].privateKey;
-                signerWallet.publicKeyX = testR1Keys[numOfR1Signers].publicKeyX;
-                signerWallet.publicKeyY = testR1Keys[numOfR1Signers].publicKeyY;
-                // for sorting
-                bytes30 ownerBytes = PublicKeyLib.toBytes30(signerWallet.publicKeyX, signerWallet.publicKeyY);
-                owners[i] = Owner({owner: ownerBytes, signerWallet: signerWallet, sigType: 2});
-                initialPubKeyOwners[numOfR1Signers] = PublicKey(signerWallet.publicKeyX, signerWallet.publicKeyY);
-                initialPubKeyWeights[numOfR1Signers] = 1;
-                numOfR1Signers++;
-            }
-        }
+        _loadOwners(input, testR1Keys, owners, initialOwners, initialWeights, initialPubKeyOwners, initialPubKeyWeights);
 
-        // sort owners using address
-        uint256 minIdx;
-        for (uint256 i = 0; i < n; i++) {
-            minIdx = i;
-            for (uint256 j = i; j < n; j++) {
-                if (owners[j].owner < owners[minIdx].owner) {
-                    minIdx = j;
-                }
-            }
-            (owners[i], owners[minIdx]) = (owners[minIdx], owners[i]);
-        }
-
-        // initialThresholdWeight is equivalent to k because every signer has weight 1
-        vm.prank(account);
-        plugin.onInstall(abi.encode(initialOwners, initialWeights, initialPubKeyOwners, initialPubKeyWeights, k));
         bytes memory sigDynamicParts = bytes("");
-        uint256 offset = k * 65; // start after constant part
+        uint256 offset = input.k * 65; // start after constant part
         bytes memory signature; // constant + dynamic
-        for (uint256 i = 0; i < k; i++) {
-            uint8 v;
-            bytes32 r;
-            bytes32 s;
+        for (uint256 i = 0; i < input.k; i++) {
             if (owners[i].sigType == 27) {
                 console.logString("eoa owner signs..");
-                (v, r, s) = vm.sign(owners[i].signerWallet.privateKey, wrappedDigest);
                 // constant part only for EOA
-                signature = abi.encodePacked(signature, abi.encodePacked(r, s, v));
+                signature =
+                    abi.encodePacked(signature, signMessage(vm, owners[i].signerWallet.privateKey, wrappedDigest));
             } else if (owners[i].sigType == 0) {
                 console.logString("contract owner signs..");
-                (v, r, s) = vm.sign(owners[i].signerWallet.privateKey, wrappedDigest);
+                (uint8 v, bytes32 r, bytes32 s) = vm.sign(owners[i].signerWallet.privateKey, wrappedDigest);
                 signature =
                     abi.encodePacked(signature, abi.encode(toAddress(owners[i].owner)), uint256(offset), uint8(0));
                 // dynamic part because offset was set to the end of constant part initially
@@ -1943,15 +1921,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
                 sigDynamicParts = abi.encodePacked(sigDynamicParts, uint256(65), r, s, v);
             } else {
                 console.logString("r1 owner signs..");
-                (r, s) = vm.signP256(owners[i].signerWallet.privateKey, webauthnDigest);
-                uint256 ur = uint256(r);
-                uint256 us = uint256(s);
-                if (us > _P256_N_DIV_2) {
-                    us = FCL_Elliptic_ZZ.n - us;
-                }
-                v = 2;
-                webAuthnSigDynamicPart.r = ur;
-                webAuthnSigDynamicPart.s = us;
+                (webAuthnSigDynamicPart.r, webAuthnSigDynamicPart.s) = signP256Message(
+                    vm, owners[i].signerWallet.privateKey, _getWebAuthnMessageHash(webAuthnSigDynamicPart.webAuthnData)
+                );
+                uint8 v = 2;
                 PublicKey memory pubKey =
                     PublicKey({x: owners[i].signerWallet.publicKeyX, y: owners[i].signerWallet.publicKeyY});
                 bytes32 pubKeyId = bytes32(bytes.concat(bytes2(0), plugin.getOwnerId(pubKey)));
@@ -1969,7 +1942,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         signature = abi.encodePacked(signature, sigDynamicParts);
 
         vm.prank(account);
-        assertEq(EIP1271_VALID_SIGNATURE, plugin.isValidSignature(digest, signature));
+        assertEq(EIP1271_VALID_SIGNATURE, plugin.isValidSignature(keccak256(message), signature));
     }
 
     function testIsValidSignature_invalidContractOwner() public {
@@ -1979,7 +1952,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         Owner memory contractOwner = _createContractOwner(123);
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
         bytes memory signerSig = signMessage(vm, contractOwner.signerWallet.privateKey, wrappedDigest);
 
         address[] memory ownersToAdd1 = new address[](1);
@@ -2008,7 +1981,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         (, uint256 signerPrivateKey) = makeAddrAndKey("testIsValidSignature_invalidEOAOwner");
         bytes32 digest = keccak256(message);
         // the caller should sign the wrapped digest
-        bytes32 wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        wrappedDigest = plugin.getReplaySafeMessageHash(address(account), digest);
 
         address anotherOwner = vm.addr(1);
         address[] memory ownersToAdd1 = new address[](1);
@@ -2044,15 +2017,11 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     }
 
     function testIsValidSignature_remainingSigTooShort() public {
-        uint256 seed = 0;
-        bytes32 digest = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        (address eoaOwner, uint256 privateKey) = makeAddrAndKey(string(abi.encodePacked(seed)));
-
         // 1. install with two owners, so contract owner has insufficient weight to pass threshold
         address[] memory listOfTwoOwners = new address[](2);
-        listOfTwoOwners[0] = eoaOwner;
         listOfTwoOwners[1] = ownerTwo;
-
+        uint256 privateKey;
+        (listOfTwoOwners[0], privateKey) = makeAddrAndKey(string(abi.encodePacked(uint256(0))));
         uint256[] memory listOfTwoWeights = new uint256[](2);
         listOfTwoWeights[0] = weightOne; // 100
         listOfTwoWeights[1] = weightTwo; // 101
@@ -2062,7 +2031,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(abi.encode(listOfTwoOwners, listOfTwoWeights, new PublicKey[](0), new uint256[](0), threshold));
 
         // 2. create a valid signature for installed owner
-        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), digest);
+        bytes32 messageDigest = plugin.getReplaySafeMessageHash(address(account), bytes32(0));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, messageDigest);
         bytes memory sig = abi.encodePacked(r, s, v);
 
@@ -2075,13 +2044,18 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(sigWithFooAppended.length, 68);
 
         vm.prank(account);
-        (bool success, uint256 firstFailure) =
-            plugin.checkNSignatures(messageDigest, messageDigest, account, sigWithFooAppended);
+        IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
+            actualDigest: messageDigest,
+            minimalDigest: messageDigest,
+            account: account,
+            signatures: sigWithFooAppended
+        });
+        (bool success, uint256 firstFailure) = plugin.checkNSignatures(input);
         assertEq(success, false);
         assertEq(firstFailure, 1);
 
         vm.prank(account);
-        assertEq(EIP1271_INVALID_SIGNATURE, plugin.isValidSignature(digest, sigWithFooAppended));
+        assertEq(EIP1271_INVALID_SIGNATURE, plugin.isValidSignature(bytes32(0), sigWithFooAppended));
     }
 
     function testIsValidSignature_revertsOnTooHighV() public {
@@ -2112,7 +2086,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         bytes32 messageDigest = bytes32("foo");
         vm.prank(account);
         vm.expectRevert(ECDSAInvalidSignature.selector);
-        plugin.checkNSignatures(messageDigest, messageDigest, account, INVALID_ECDSA_SIGNATURE);
+        IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
+            actualDigest: messageDigest,
+            minimalDigest: messageDigest,
+            account: account,
+            signatures: INVALID_ECDSA_SIGNATURE
+        });
+        plugin.checkNSignatures(input);
     }
 
     function testCheckNSignatures_revertsECDSASignatureOnHighS() public {
@@ -2124,7 +2104,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         bytes32 messageDigest = 0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9;
         vm.prank(account);
         vm.expectRevert(ECDSAInvalidSignature.selector);
-        plugin.checkNSignatures(messageDigest, messageDigest, account, INVALID_ECDSA_SIGNATURE);
+        IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
+            actualDigest: messageDigest,
+            minimalDigest: messageDigest,
+            account: account,
+            signatures: INVALID_ECDSA_SIGNATURE
+        });
+        plugin.checkNSignatures(input);
     }
 
     function testFuzz_checkNSignatures_failsOnIsValidERC1271SignatureNow(uint256 seed1, uint256 seed2, bytes32 digest)
@@ -2144,7 +2130,13 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             abi.encodePacked(abi.encode(toAddress(newOwner1.owner)), uint256(65), uint8(0), uint256(65), r, s, v);
 
         vm.prank(account);
-        (bool success, uint256 firstFailure) = plugin.checkNSignatures(messageDigest, messageDigest, account, sig);
+        IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
+            actualDigest: messageDigest,
+            minimalDigest: messageDigest,
+            account: account,
+            signatures: sig
+        });
+        (bool success, uint256 firstFailure) = plugin.checkNSignatures(input);
         assertEq(success, false);
         assertEq(firstFailure, 0);
     }
@@ -2259,13 +2251,12 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         webAuthnSigDynamicPart.r = r;
         webAuthnSigDynamicPart.s = s;
         // x || dynamic pos || sig type || length of bytes || sig data bytes
-        uint256 dynamicPos = 65; // 1 constant part
         bytes memory sigBytes = abi.encode(webAuthnSigDynamicPart);
         PublicKey[] memory pubKeyOwnersToAdd1 = new PublicKey[](1);
         pubKeyOwnersToAdd1[0] = PublicKey(passkeyPublicKeyX, passkeyPublicKeyY);
         bytes32 pubKeyId = bytes32(bytes.concat(bytes2(0), plugin.getOwnerId(pubKeyOwnersToAdd1[0])));
         // actual digest sigType is 34 (2 + 32)
-        userOp.signature = abi.encodePacked(pubKeyId, dynamicPos, uint8(34), sigBytes.length, sigBytes);
+        userOp.signature = abi.encodePacked(pubKeyId, uint256(65), uint8(34), sigBytes.length, sigBytes);
         uint256 weightToAdd1 = 9;
         uint256[] memory weightsToAdd1 = new uint256[](1);
         weightsToAdd1[0] = weightToAdd1;
@@ -2297,15 +2288,17 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     }
 
     // mixed signature types in userOp.signature
-    function testFuzz_userOpValidation_mixedSigTypes(uint256 k, uint256 n, PackedUserOperation memory userOp) public {
+    function testFuzz_userOpValidation_mixedSigTypes(MultisigInput memory input, PackedUserOperation memory userOp)
+        public
+    {
         // 1 < n < 10
-        n %= 11;
-        vm.assume(n > 0);
+        input.n %= 11;
+        vm.assume(input.n > 0);
 
         // 1 < k < n
-        k %= 11;
-        k %= n;
-        vm.assume(k > 0);
+        input.k %= 11;
+        input.k %= input.n;
+        vm.assume(input.k > 0);
 
         // full userOp hash
         // for k1 signer
@@ -2321,54 +2314,217 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         userOp.gasFees = ZERO_BYTES32;
         userOp.paymasterAndData = "";
 
-        // minimal userOp hash
-        // for k1 signer
-        bytes32 minimalUserOpHash = entryPoint.getUserOpHash(userOp);
-        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForMinimalUserOp;
-        // for r1 signer
-        webAuthnSigDynamicPartForMinimalUserOp.webAuthnData =
-            _getWebAuthnData(minimalUserOpHash.toEthSignedMessageHash());
-        bytes32 webauthnDigestForMinimalUserOp =
-            _getWebAuthnMessageHash(webAuthnSigDynamicPartForMinimalUserOp.webAuthnData);
-
         // get all owners
-        Owner[] memory owners = new Owner[](n);
-        uint256 lenOfK1Signers;
-        uint256 lenOfR1Signers;
-        for (uint256 i = 0; i < n; i++) {
-            uint256 seed = k + n + i;
-            if (seed % 3 == 2) {
-                lenOfR1Signers++;
-            } else {
-                lenOfK1Signers++;
-            }
-        }
-        console.log("lenOfK1Signers: ", lenOfK1Signers);
-        console.log("lenOfR1Signers: ", lenOfR1Signers);
-        assertEq(lenOfK1Signers + lenOfR1Signers, n);
-        address[] memory initialOwners = new address[](lenOfK1Signers);
-        uint256[] memory initialWeights = new uint256[](lenOfK1Signers);
-        PublicKey[] memory initialPubKeyOwners = new PublicKey[](lenOfR1Signers);
-        uint256[] memory initialPubKeyWeights = new uint256[](lenOfR1Signers);
-        uint256 numOfK1Signers;
-        uint256 numOfR1Signers;
+        Owner[] memory owners = new Owner[](input.n);
+        uint256[] memory lenOfSigners = _calculateLenOfSigners(input.n, input.k);
+        address[] memory initialOwners = new address[](lenOfSigners[0]);
+        uint256[] memory initialWeights = new uint256[](lenOfSigners[0]);
+        PublicKey[] memory initialPubKeyOwners = new PublicKey[](lenOfSigners[1]);
+        uint256[] memory initialPubKeyWeights = new uint256[](lenOfSigners[1]);
+
         // load pre generated r1 keys list which has more keys than we need
         TestKey[] memory testR1Keys = _loadP256Keys();
+        _loadOwners(input, testR1Keys, owners, initialOwners, initialWeights, initialPubKeyOwners, initialPubKeyWeights);
+
+        _signSignatures(
+            input, userOp, owners, fullUserOpHash, webauthnDigestForFullUserOp, webAuthnSigDynamicPartForFullUserOp
+        );
+        vm.prank(account);
+        // sig check should pass
+        assertEq(
+            plugin.userOpValidationFunction(
+                uint8(BaseMultisigPlugin.FunctionId.USER_OP_VALIDATION_OWNER), userOp, fullUserOpHash
+            ),
+            SIG_VALIDATION_SUCCEEDED
+        );
+    }
+
+    function _signSignatures(
+        MultisigInput memory input,
+        PackedUserOperation memory userOp,
+        Owner[] memory owners,
+        bytes32 fullUserOpHash,
+        bytes32 webauthnDigestForFullUserOp,
+        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForFullUserOp
+    ) internal view {
+        userOp.signature = bytes(""); // constant + dynamic
+        bytes32 minimalUserOpHash = entryPoint.getUserOpHash(userOp);
+        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForMinimalUserOp;
+        webAuthnSigDynamicPartForMinimalUserOp.webAuthnData =
+            _getWebAuthnData(minimalUserOpHash.toEthSignedMessageHash());
+        bytes30 ownerSignFullUserOp;
+        if (fullUserOpHash != minimalUserOpHash) {
+            ownerSignFullUserOp = owners[input.n % input.k].owner;
+        }
+        bytes memory sigDynamicParts = bytes("");
+        uint256[] memory offset = new uint256[](1);
+        offset[0] = input.k * 65; // start after constant part;
+        for (uint256 i = 0; i < input.k; i++) {
+            sigDynamicParts = abi.encodePacked(
+                sigDynamicParts,
+                _SignIndividualOwnerSignature(
+                    offset,
+                    userOp,
+                    owners[i],
+                    fullUserOpHash,
+                    minimalUserOpHash,
+                    webauthnDigestForFullUserOp,
+                    webAuthnSigDynamicPartForFullUserOp,
+                    webAuthnSigDynamicPartForMinimalUserOp,
+                    ownerSignFullUserOp
+                )
+            );
+        }
+        userOp.signature = abi.encodePacked(userOp.signature, sigDynamicParts);
+    }
+
+    function _SignIndividualOwnerSignature(
+        uint256[] memory offset,
+        PackedUserOperation memory userOp,
+        Owner memory owner,
+        bytes32 fullUserOpHash,
+        bytes32 minimalUserOpHash,
+        bytes32 webauthnDigestForFullUserOp,
+        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForFullUserOp,
+        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForMinimalUserOp,
+        bytes30 ownerSignFullUserOp
+    ) internal view returns (bytes memory sigDynamicParts) {
+        sigDynamicParts = bytes("");
+        if (owner.sigType == 27) {
+            console.logString("eoa owner signs..");
+            bytes memory signed = _signEOAOwner(owner, fullUserOpHash, minimalUserOpHash, ownerSignFullUserOp);
+            userOp.signature = abi.encodePacked(userOp.signature, signed);
+        } else if (owner.sigType == 0) {
+            console.logString("contract owner signs..");
+            uint8 v;
+            (v, sigDynamicParts) = _signContractOwner(owner, fullUserOpHash, minimalUserOpHash, ownerSignFullUserOp);
+            userOp.signature =
+                abi.encodePacked(userOp.signature, abi.encode(toAddress(owner.owner)), uint256(offset[0]), v);
+            offset[0] += 97; // 65 (k1 sig length) + 32 (length of sig)
+        } else {
+            console.logString("r1 owner signs..");
+            bytes memory sigBytes;
+            uint8 v;
+            (v, sigBytes, sigDynamicParts) = _signR1Owner(
+                owner,
+                webauthnDigestForFullUserOp,
+                webAuthnSigDynamicPartForFullUserOp,
+                webAuthnSigDynamicPartForMinimalUserOp,
+                ownerSignFullUserOp
+            );
+            PublicKey memory pubKey = PublicKey({x: owner.signerWallet.publicKeyX, y: owner.signerWallet.publicKeyY});
+            bytes32 pubKeyId = bytes32(bytes.concat(bytes2(0), plugin.getOwnerId(pubKey)));
+            userOp.signature = abi.encodePacked(userOp.signature, pubKeyId, uint256(offset[0]), v);
+            offset[0] += (32 + sigBytes.length);
+        }
+        return sigDynamicParts;
+    }
+
+    function _signEOAOwner(
+        Owner memory owner,
+        bytes32 fullUserOpHash,
+        bytes32 minimalUserOpHash,
+        bytes30 ownerSignFullUserOp
+    ) internal pure returns (bytes memory signed) {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        if (owner.owner == ownerSignFullUserOp) {
+            (v, r, s) = vm.sign(owner.signerWallet.privateKey, fullUserOpHash.toEthSignedMessageHash());
+            v += 32;
+        } else {
+            (v, r, s) = vm.sign(owner.signerWallet.privateKey, minimalUserOpHash.toEthSignedMessageHash());
+        }
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _signContractOwner(
+        Owner memory owner,
+        bytes32 fullUserOpHash,
+        bytes32 minimalUserOpHash,
+        bytes30 ownerSignFullUserOp
+    ) internal pure returns (uint8 v, bytes memory sigDynamicParts) {
+        bytes32 r;
+        bytes32 s;
+        if (owner.owner == ownerSignFullUserOp) {
+            (v, r, s) = vm.sign(owner.signerWallet.privateKey, fullUserOpHash.toEthSignedMessageHash());
+            sigDynamicParts = abi.encodePacked(uint256(65), r, s, v);
+            v = 32; // 0 + 32
+        } else {
+            (v, r, s) = vm.sign(owner.signerWallet.privateKey, minimalUserOpHash.toEthSignedMessageHash());
+            sigDynamicParts = abi.encodePacked(uint256(65), r, s, v);
+            v = 0;
+        }
+        return (v, sigDynamicParts);
+    }
+
+    function _signR1Owner(
+        Owner memory owner,
+        bytes32 webauthnDigestForFullUserOp,
+        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForFullUserOp,
+        WebAuthnSigDynamicPart memory webAuthnSigDynamicPartForMinimalUserOp,
+        bytes30 ownerSignFullUserOp
+    ) internal pure returns (uint8 v, bytes memory sigBytes, bytes memory sigDynamicParts) {
+        if (owner.owner == ownerSignFullUserOp) {
+            (webAuthnSigDynamicPartForFullUserOp.r, webAuthnSigDynamicPartForFullUserOp.s) =
+                signP256Message(vm, owner.signerWallet.privateKey, webauthnDigestForFullUserOp);
+            v = 34; // 2 + 32
+            sigBytes = abi.encode(webAuthnSigDynamicPartForFullUserOp);
+        } else {
+            (webAuthnSigDynamicPartForMinimalUserOp.r, webAuthnSigDynamicPartForMinimalUserOp.s) = signP256Message(
+                vm,
+                owner.signerWallet.privateKey,
+                _getWebAuthnMessageHash(webAuthnSigDynamicPartForMinimalUserOp.webAuthnData)
+            );
+            v = 2;
+            sigBytes = abi.encode(webAuthnSigDynamicPartForMinimalUserOp);
+        }
+        // length of bytes || sig data bytes
+        sigDynamicParts = abi.encodePacked(uint256(sigBytes.length), sigBytes);
+        return (v, sigBytes, sigDynamicParts);
+    }
+
+    function _calculateLenOfSigners(uint256 n, uint256 k) internal pure returns (uint256[] memory) {
+        uint256[] memory lenOfSigners = new uint256[](2); // 0: lenOfK1Signers 1: lenOfR1Signers
         for (uint256 i = 0; i < n; i++) {
-            uint256 seed = k + n + i;
-            if (seed % 3 == 0) {
+            if ((k + n + i) % 3 == 2) {
+                lenOfSigners[1]++;
+            } else {
+                lenOfSigners[0]++;
+            }
+        }
+        console.log("lenOfK1Signers: ", lenOfSigners[0]);
+        console.log("lenOfR1Signers: ", lenOfSigners[1]);
+        assertEq(lenOfSigners[0] + lenOfSigners[1], n);
+        return lenOfSigners;
+    }
+
+    function _loadOwners(
+        MultisigInput memory input,
+        TestKey[] memory testR1Keys,
+        Owner[] memory owners,
+        address[] memory initialOwners,
+        uint256[] memory initialWeights,
+        PublicKey[] memory initialPubKeyOwners,
+        uint256[] memory initialPubKeyWeights
+    ) internal {
+        uint256 numOfK1Signers;
+        uint256 numOfR1Signers;
+        for (uint256 i = 0; i < input.n; i++) {
+            if ((input.k + input.n + i) % 3 == 0) {
                 // contract owners
                 console.logString("we have a contract owner..");
-                owners[i] = _createContractOwner(seed);
+                owners[i] = _createContractOwner((input.k + input.n + i));
                 owners[i].sigType = 0;
                 initialOwners[numOfK1Signers] = toAddress(owners[i].owner);
                 initialWeights[numOfK1Signers] = 1;
                 numOfK1Signers++;
-            } else if (seed % 3 == 1) {
+            } else if ((input.k + input.n + i) % 3 == 1) {
                 // eoa owners
                 console.logString("we have an eoa owner..");
                 VmSafe.Wallet memory signerWallet;
-                (signerWallet.addr, signerWallet.privateKey) = makeAddrAndKey(string(abi.encodePacked(seed)));
+                (signerWallet.addr, signerWallet.privateKey) =
+                    makeAddrAndKey(string(abi.encodePacked((input.k + input.n + i))));
                 owners[i] = Owner({owner: signerWallet.addr.toBytes30(), signerWallet: signerWallet, sigType: 27});
                 initialOwners[numOfK1Signers] = signerWallet.addr;
                 initialWeights[numOfK1Signers] = 1;
@@ -2390,6 +2546,14 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         }
 
         // sort owners using address
+        _sortOwnersByAddress(owners, input.n);
+
+        // initialThresholdWeight is equivalent to k because every signer has weight 1
+        vm.prank(account);
+        plugin.onInstall(abi.encode(initialOwners, initialWeights, initialPubKeyOwners, initialPubKeyWeights, input.k));
+    }
+
+    function _sortOwnersByAddress(Owner[] memory owners, uint256 n) internal pure {
         uint256 minIdx;
         for (uint256 i = 0; i < n; i++) {
             minIdx = i;
@@ -2400,109 +2564,6 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             }
             (owners[i], owners[minIdx]) = (owners[minIdx], owners[i]);
         }
-
-        // grab a ~random owner in the first k sigs to be the last signer
-        // last signer must sign over full(actual) gas vals used
-        bytes30 ownerSignFullUserOp;
-        // only require one singer to sign full digest if fullUserOpHash != minimalUserOpHash
-        if (fullUserOpHash != minimalUserOpHash) {
-            ownerSignFullUserOp = owners[n % k].owner;
-        }
-
-        // initialThresholdWeight is equivalent to k because every signer has weight 1
-        vm.prank(account);
-        plugin.onInstall(abi.encode(initialOwners, initialWeights, initialPubKeyOwners, initialPubKeyWeights, k));
-        bytes memory sigDynamicParts = bytes("");
-        uint256 offset = k * 65; // start after constant part
-        userOp.signature = bytes(""); // constant + dynamic
-        bytes32 k1Digest;
-        bytes32 r1Digest;
-        uint256 numOfSignersOnFullUserOp;
-        for (uint256 i = 0; i < k; i++) {
-            if (owners[i].owner == ownerSignFullUserOp) {
-                k1Digest = fullUserOpHash.toEthSignedMessageHash();
-                r1Digest = webauthnDigestForFullUserOp;
-            } else {
-                k1Digest = minimalUserOpHash.toEthSignedMessageHash();
-                r1Digest = webauthnDigestForMinimalUserOp;
-            }
-            uint8 v;
-            bytes32 r;
-            bytes32 s;
-            if (owners[i].sigType == 27) {
-                console.logString("eoa owner signs..");
-                (v, r, s) = vm.sign(owners[i].signerWallet.privateKey, k1Digest);
-                if (owners[i].owner == ownerSignFullUserOp) {
-                    v += 32;
-                    numOfSignersOnFullUserOp++;
-                }
-                // constant part only for EOA
-                userOp.signature = abi.encodePacked(userOp.signature, abi.encodePacked(r, s, v));
-            } else if (owners[i].sigType == 0) {
-                console.logString("contract owner signs..");
-                (v, r, s) = vm.sign(owners[i].signerWallet.privateKey, k1Digest);
-                // 65 is the length of k1 signature
-                // use the original v for signer ecrecover
-                sigDynamicParts = abi.encodePacked(sigDynamicParts, uint256(65), r, s, v);
-                if (owners[i].owner == ownerSignFullUserOp) {
-                    v = 32; // 0 + 32
-                    numOfSignersOnFullUserOp++;
-                } else {
-                    v = 0;
-                }
-                userOp.signature =
-                    abi.encodePacked(userOp.signature, abi.encode(toAddress(owners[i].owner)), uint256(offset), v);
-                // dynamic part because offset was set to the end of constant part initially
-                offset += 97; // 65 (k1 sig length) + 32 (length of sig)
-            } else {
-                console.logString("r1 owner signs..");
-                (r, s) = vm.signP256(owners[i].signerWallet.privateKey, r1Digest);
-                uint256 ur = uint256(r);
-                uint256 us = uint256(s);
-                if (us > _P256_N_DIV_2) {
-                    us = FCL_Elliptic_ZZ.n - us;
-                }
-                if (owners[i].owner == ownerSignFullUserOp) {
-                    v = 34; // 2 + 32
-                    numOfSignersOnFullUserOp++;
-                } else {
-                    v = 2;
-                }
-                // x || dynamic pos || sig type
-                PublicKey memory pubKey =
-                    PublicKey({x: owners[i].signerWallet.publicKeyX, y: owners[i].signerWallet.publicKeyY});
-                bytes32 pubKeyId = bytes32(bytes.concat(bytes2(0), plugin.getOwnerId(pubKey)));
-                userOp.signature = abi.encodePacked(userOp.signature, pubKeyId, uint256(offset), v);
-
-                bytes memory sigBytes;
-                if (owners[i].owner == ownerSignFullUserOp) {
-                    webAuthnSigDynamicPartForFullUserOp.r = ur;
-                    webAuthnSigDynamicPartForFullUserOp.s = us;
-                    sigBytes = abi.encode(webAuthnSigDynamicPartForFullUserOp);
-                } else {
-                    webAuthnSigDynamicPartForMinimalUserOp.r = ur;
-                    webAuthnSigDynamicPartForMinimalUserOp.s = us;
-                    sigBytes = abi.encode(webAuthnSigDynamicPartForMinimalUserOp);
-                }
-
-                // dynamic part because offset was set to the end of constant part initially
-                offset += (32 + sigBytes.length);
-                // length of bytes || sig data bytes
-                sigDynamicParts = abi.encodePacked(sigDynamicParts, uint256(sigBytes.length), sigBytes);
-            }
-        }
-        // concatenate(constant, dynamic)
-        userOp.signature = abi.encodePacked(userOp.signature, sigDynamicParts);
-        console.log("numOfSignersOnFullUserOp: ", numOfSignersOnFullUserOp);
-
-        vm.prank(account);
-        // sig check should pass
-        assertEq(
-            plugin.userOpValidationFunction(
-                uint8(BaseMultisigPlugin.FunctionId.USER_OP_VALIDATION_OWNER), userOp, fullUserOpHash
-            ),
-            SIG_VALIDATION_SUCCEEDED
-        );
     }
 
     function test_failUserOpValidationFunction_noActualDigest() public {
@@ -2591,16 +2652,18 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         // make salts different
         string memory salt2 = string.concat(salt1, "foo");
         // range bound the possible set of priv keys
-        (address signer1, uint256 privateKey1) = makeAddrAndKey(salt1);
-        (address signer2, uint256 privateKey2) = makeAddrAndKey(salt2);
+        address[] memory signers = new address[](2);
+        uint256[] memory privateKeys = new uint256[](2);
+        (signers[0], privateKeys[0]) = makeAddrAndKey(salt1);
+        (signers[1], privateKeys[1]) = makeAddrAndKey(salt2);
 
-        vm.assume(signer1 != address(0));
-        vm.assume(signer2 != address(0));
-        vm.assume(signer2 > signer1); // enforce ascending order
+        vm.assume(signers[0] != address(0));
+        vm.assume(signers[1] != address(0));
+        vm.assume(signers[1] > signers[0]); // enforce ascending order
 
         // add owners
         address[] memory ownersToAdd1 = new address[](1);
-        ownersToAdd1[0] = signer1;
+        ownersToAdd1[0] = signers[0];
 
         uint256[] memory weightsToAdd1 = new uint256[](1);
         weightsToAdd1[0] = weightOne;
@@ -2608,10 +2671,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.onInstall(abi.encode(ownersToAdd1, weightsToAdd1, new PublicKey[](0), new uint256[](0), weightOne));
 
         // sign minimal user op hash
-        bytes32 minimalUserOpHash = entryPoint.getUserOpHash(userOp);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey1, minimalUserOpHash.toEthSignedMessageHash());
-
-        userOp.signature = abi.encodePacked(r, s, v);
+        userOp.signature = signUserOpHash(entryPoint, vm, privateKeys[0], userOp);
 
         // set an actual gas field
         userOp.accountGasLimits = bytes32(0x0000000000000000000000000000000000000000000000000000000000000005);
@@ -2626,7 +2686,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         // Should succeed with 1 sig over actual digest
         address[] memory ownersToAdd2 = new address[](1);
-        ownersToAdd2[0] = signer2;
+        ownersToAdd2[0] = signers[1];
 
         uint256[] memory weightsToAdd2 = new uint256[](1);
         weightsToAdd2[0] = weightOne;
@@ -2634,8 +2694,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.prank(account);
         plugin.addOwners(ownersToAdd2, weightsToAdd2, new PublicKey[](0), new uint256[](0), weightOne * 2);
 
-        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(privateKey2, actualUserOpHash.toEthSignedMessageHash());
-        bytes memory sig2 = abi.encodePacked(r2, s2, v2 + 32); // add 32 to v for actual digest
+        bytes memory sig2 = _generateSig(privateKeys[1], actualUserOpHash);
 
         userOp.signature = abi.encodePacked(userOp.signature, sig2);
 
@@ -2648,8 +2707,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         );
 
         // Should fail with 2 sig over actual digest
-        (uint8 v3, bytes32 r3, bytes32 s3) = vm.sign(privateKey1, actualUserOpHash.toEthSignedMessageHash());
-        bytes memory sig3 = abi.encodePacked(r3, s3, v3 + 32);
+        bytes memory sig3 = _generateSig(privateKeys[0], actualUserOpHash);
 
         userOp.signature = abi.encodePacked(sig3, sig2);
 
@@ -2660,6 +2718,11 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         plugin.userOpValidationFunction(
             uint8(BaseMultisigPlugin.FunctionId.USER_OP_VALIDATION_OWNER), userOp, actualUserOpHash
         );
+    }
+
+    function _generateSig(uint256 privateKey, bytes32 actualUserOpHash) internal pure returns (bytes memory) {
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(privateKey, actualUserOpHash.toEthSignedMessageHash());
+        return abi.encodePacked(r2, s2, v2 + 32); // add 32 to v for actual digest
     }
 
     function test_failUserOpValidation_sigOffset() public {
@@ -2789,107 +2852,96 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     }
 
     function testAddUpdateThenRemoveWeights() public {
-        // install with owner1
-        address owner1 = address(0x1);
-        uint256 weight1 = 2;
-        uint256 thresholdWeight = 2;
+        // install with owner1 address(0x1) with weight 2
         vm.expectEmit(true, true, true, true);
         address[] memory ownerList = new address[](1);
         uint256[] memory weightList = new uint256[](1);
         PublicKey[] memory emptyPubKeyList = new PublicKey[](0);
         uint256[] memory emptyPubKeyWeightList = new uint256[](0);
         // set the initial weight
-        ownerList[0] = owner1;
-        weightList[0] = weight1;
+        ownerList[0] = address(0x1);
+        weightList[0] = 2;
 
         (bytes30[] memory _tOwners, OwnerData[] memory _tWeights) =
             _mergeOwnersData(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList);
         emit OwnersAdded(account, _tOwners, _tWeights);
 
         vm.expectEmit(true, true, true, true);
-        emit ThresholdUpdated(account, 0, thresholdWeight);
-
-        plugin.onInstall(abi.encode(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, thresholdWeight));
+        emit ThresholdUpdated(account, 0, 2);
+        // thresholdWeight = 2
+        plugin.onInstall(abi.encode(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, 2));
 
         (
             bytes30[] memory returnedOwners,
             OwnerData[] memory returnedOwnersData,
             OwnershipMetadata memory ownershipMetadata
         ) = plugin.ownershipInfoOf(account);
-        uint256 returnedThresholdWeight = ownershipMetadata.thresholdWeight;
-        (uint256 res,,,,) = plugin.ownerDataPerAccount(owner1.toBytes30(), account);
-        assertEq(res, weight1);
+        (uint256 res,,,,) = plugin.ownerDataPerAccount(address(0x1).toBytes30(), account);
+        assertEq(res, 2);
 
-        uint256 returnedTotalWeight = ownershipMetadata.totalWeight;
-        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
-        console.log("after installation with owner1, current total weight: %d", returnedTotalWeight);
-        console.log("after installation with owner1, current total threshold weight: %d", returnedThresholdWeight);
-        assertEq(returnedTotalWeight, weight1); // == 2
-        assertEq(returnedThresholdWeight, thresholdWeight); // == 2
+        assertEq(_sum(returnedOwnersData), ownershipMetadata.totalWeight);
+        console.log("after installation with owner1, current total weight: %d", ownershipMetadata.totalWeight);
+        console.log(
+            "after installation with owner1, current total threshold weight: %d", ownershipMetadata.thresholdWeight
+        );
+        assertEq(ownershipMetadata.totalWeight, 2); // == 2
+        assertEq(ownershipMetadata.thresholdWeight, 2); // == 2
         assertEq(ownershipMetadata.numOwners, 1);
 
-        // add owner2
-        address owner2 = address(0x2);
-        uint256 weight2 = 2;
-        ownerList[0] = owner2;
-        weightList[0] = weight2;
-        thresholdWeight = 4;
+        // add owner2 address(0x2) with weight 2
+        ownerList[0] = address(0x2);
+        weightList[0] = 2;
+        // thresholdWeight = 4
         vm.prank(account);
-        plugin.addOwners(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, thresholdWeight);
+        plugin.addOwners(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, 4);
 
         (returnedOwners, returnedOwnersData, ownershipMetadata) = plugin.ownershipInfoOf(account);
-        returnedTotalWeight = ownershipMetadata.totalWeight;
-        returnedThresholdWeight = ownershipMetadata.thresholdWeight;
-        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
-        console.log("after adding owner2, new total weight: %d", returnedTotalWeight);
-        console.log("after adding owner2, total threshold weight: %d", returnedThresholdWeight);
-        assertEq(returnedTotalWeight, weight1 + weight2); // == 4
-        assertEq(returnedThresholdWeight, thresholdWeight); // == 4
+        assertEq(_sum(returnedOwnersData), ownershipMetadata.totalWeight);
+        console.log("after adding owner2, new total weight: %d", ownershipMetadata.totalWeight);
+        console.log("after adding owner2, total threshold weight: %d", ownershipMetadata.thresholdWeight);
+        assertEq(ownershipMetadata.totalWeight, 2 + 2); // == 4
+        assertEq(ownershipMetadata.thresholdWeight, 4); // == 4
         assertEq(ownershipMetadata.numOwners, 2);
 
         // update owner2's weight from 2 to 4
         address[] memory updatedOwnerList = new address[](1);
-        updatedOwnerList[0] = owner2;
-        uint256 updatedWeight2 = 4;
+        updatedOwnerList[0] = address(0x2);
+        // updatedWeight2 = 4
         uint256[] memory updatedWeights = new uint256[](1);
-        updatedWeights[0] = updatedWeight2;
+        updatedWeights[0] = 4;
 
         (_tOwners, _tWeights) =
             _mergeOwnersData(updatedOwnerList, updatedWeights, emptyPubKeyList, emptyPubKeyWeightList);
         vm.expectEmit(true, true, true, true);
         emit OwnersUpdated(account, _tOwners, _tWeights);
         vm.prank(account);
-        thresholdWeight = 4;
-        plugin.updateMultisigWeights(
-            updatedOwnerList, updatedWeights, emptyPubKeyList, emptyPubKeyWeightList, thresholdWeight
-        );
+        // thresholdWeight = 4
+        plugin.updateMultisigWeights(updatedOwnerList, updatedWeights, emptyPubKeyList, emptyPubKeyWeightList, 4);
 
         (returnedOwners, returnedOwnersData, ownershipMetadata) = plugin.ownershipInfoOf(account);
-        returnedTotalWeight = ownershipMetadata.totalWeight;
-        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
-        uint256 expectedTotalWeight = weight1 + updatedWeight2;
+        assertEq(_sum(returnedOwnersData), ownershipMetadata.totalWeight);
+        uint256 expectedTotalWeight = 2 + 4;
         console.log("expected total weight: %d", expectedTotalWeight);
-        console.log("after updating owner2, new total weight: %d", returnedTotalWeight);
-        console.log("after updating owner2, new total threshold weight: %d", returnedThresholdWeight);
-        assertEq(returnedTotalWeight, expectedTotalWeight); // == 6
-        assertEq(returnedThresholdWeight, thresholdWeight); // == 4
+        console.log("after updating owner2, new total weight: %d", ownershipMetadata.totalWeight);
+        console.log("after updating owner2, new total threshold weight: %d", ownershipMetadata.thresholdWeight);
+        assertEq(ownershipMetadata.totalWeight, expectedTotalWeight); // == 6
+        assertEq(ownershipMetadata.thresholdWeight, 4); // == 4
         assertEq(ownershipMetadata.numOwners, 2);
 
         // remove owner1
-        thresholdWeight = 4;
+        // thresholdWeight = 4
         address[] memory ownersToRemove = new address[](1);
-        ownersToRemove[0] = owner1;
+        ownersToRemove[0] = address(0x1);
         vm.prank(account);
-        plugin.removeOwners(ownersToRemove, emptyPubKeyList, thresholdWeight);
+        plugin.removeOwners(ownersToRemove, emptyPubKeyList, 4);
         (returnedOwners, returnedOwnersData, ownershipMetadata) = plugin.ownershipInfoOf(account);
-        returnedTotalWeight = ownershipMetadata.totalWeight;
-        assertEq(_sum(returnedOwnersData), returnedTotalWeight);
-        expectedTotalWeight = updatedWeight2;
+        assertEq(_sum(returnedOwnersData), ownershipMetadata.totalWeight);
+        expectedTotalWeight = 4;
         console.log("expected total weight: %d", expectedTotalWeight);
-        console.log("after removing owner1, new total weight: %d", returnedTotalWeight);
-        console.log("after removing owner1, new total threshold weight: %d", returnedThresholdWeight);
-        assertEq(returnedTotalWeight, expectedTotalWeight); // == 4
-        assertEq(returnedThresholdWeight, thresholdWeight); // == 4
+        console.log("after removing owner1, new total weight: %d", ownershipMetadata.totalWeight);
+        console.log("after removing owner1, new total threshold weight: %d", ownershipMetadata.thresholdWeight);
+        assertEq(ownershipMetadata.totalWeight, expectedTotalWeight); // == 4
+        assertEq(ownershipMetadata.thresholdWeight, 4); // == 4
         assertEq(ownershipMetadata.numOwners, 1);
     }
 

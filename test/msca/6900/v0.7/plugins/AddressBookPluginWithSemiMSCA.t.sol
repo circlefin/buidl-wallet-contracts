@@ -90,7 +90,7 @@ contract AddressBookPluginWithSemiMSCATest is TestUtils {
         console.logAddress(address(testLiquidityPool));
     }
 
-    function testPluginMetadataItself() public {
+    function testPluginMetadataItself() public view {
         PluginMetadata memory pluginMetadata = addressBookPlugin.pluginMetadata();
         assertEq(pluginMetadata.name, "Address Book Plugin");
         assertEq(pluginMetadata.version, PLUGIN_VERSION_1);

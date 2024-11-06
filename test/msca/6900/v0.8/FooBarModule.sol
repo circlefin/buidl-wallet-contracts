@@ -21,12 +21,15 @@ pragma solidity 0.8.24;
 import {SIG_VALIDATION_SUCCEEDED} from "../../../../src/common/Constants.sol";
 
 import {NotImplementedFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import {ExecutionManifest, ManifestExecutionFunction} from "../../../../src/msca/6900/v0.8/common/ModuleManifest.sol";
+import {
+    ExecutionManifest,
+    ManifestExecutionFunction
+} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
 
-import {IExecutionModule} from "../../../../src/msca/6900/v0.8/interfaces/IExecutionModule.sol";
-import {IValidationModule} from "../../../../src/msca/6900/v0.8/interfaces/IValidationModule.sol";
 import {BaseModule} from "../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {IExecutionModule} from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 contract FooBarModule is IValidationModule, IExecutionModule, BaseModule {
     string public constant NAME = "Your Favourite Fruit Bar Module";

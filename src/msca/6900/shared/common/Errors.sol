@@ -59,3 +59,5 @@ error InvalidItem();
 
 // v2 NotImplemented
 error NotImplementedFunction(bytes4 selector, uint32 entityId);
+
+error SignatureInflation();

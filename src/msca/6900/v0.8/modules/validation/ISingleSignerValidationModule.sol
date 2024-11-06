@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {IValidationModule} from "../../interfaces/IValidationModule.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 interface ISingleSignerValidationModule is IValidationModule {
     event SignerTransferred(

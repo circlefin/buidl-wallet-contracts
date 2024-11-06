@@ -21,9 +21,12 @@ pragma solidity 0.8.24;
 import {Create2FailedDeployment, InvalidLength} from "../../shared/common/Errors.sol";
 import {UpgradableMSCA} from "../account/UpgradableMSCA.sol";
 
-import {ValidationConfig} from "../common/Types.sol";
-import {ValidationConfigLib} from "../libs/thirdparty/ValidationConfigLib.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+
+import {HookConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {HookConfigLib} from "@erc6900/reference-implementation/libraries/HookConfigLib.sol";
+import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -38,6 +41,7 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
  */
 contract UpgradableMSCAFactory is Ownable2Step {
     using ValidationConfigLib for ValidationConfig;
+    using HookConfigLib for HookConfig;
     // logic implementation
 
     UpgradableMSCA public immutable ACCOUNT_IMPLEMENTATION;
@@ -146,6 +150,22 @@ contract UpgradableMSCAFactory is Ownable2Step {
         address module = _validationConfig.module();
         if (!isModuleAllowed[module]) {
             revert ModuleIsNotAllowed(module);
+        }
+        for (uint256 i = 0; i < _hooks.length; ++i) {
+            address hookModule;
+            bytes memory hook = _hooks[i];
+            if (hook.length < 20) {
+                revert ModuleIsNotAllowed(hookModule);
+            }
+            // Skips the first 32 bytes that represent the length, then loads the next word
+            // Shifts the loaded 32 bytes to the right by 12 bytes to retrieve the address
+            // solhint-disable-next-line no-inline-assembly
+            assembly ("memory-safe") {
+                hookModule := shr(96, mload(add(hook, 0x20)))
+            }
+            if (!isModuleAllowed[hookModule]) {
+                revert ModuleIsNotAllowed(hookModule);
+            }
         }
         mixedSalt = keccak256(abi.encodePacked(_sender, _salt));
         bytes32 code = keccak256(

@@ -151,7 +151,8 @@ contract MockERC1820Registry is IERC1820Registry {
         return false;
     }
 
-    function setManager(address account, address newManager) external {
+    function setManager(address account, address newManager) external pure {
+        (account, newManager);
         revert NotImplemented();
     }
 
@@ -160,7 +161,8 @@ contract MockERC1820Registry is IERC1820Registry {
      *
      * See {setManager}.
      */
-    function getManager(address account) external view returns (address) {
+    function getManager(address account) external pure returns (address) {
+        (account);
         revert NotImplemented();
     }
 
