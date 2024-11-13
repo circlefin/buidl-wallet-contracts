@@ -1,0 +1,3 @@
+- This chain used cast send to deploy so there's no corresponding run json
+- Ran command in `script/cmd/SingleOwnerMSCAFactory`
+- tx hash: 0xa51b7723e50927746b3dabefebceebe2713d498a85b09e1a66fd150c89b505aa
