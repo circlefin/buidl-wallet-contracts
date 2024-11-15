@@ -24,10 +24,17 @@ import {
     SIG_VALIDATION_FAILED,
     SIG_VALIDATION_SUCCEEDED
 } from "../../../../../../common/Constants.sol";
+
+import {InvalidLength, Unsupported} from "../../../../../../common/Errors.sol";
 import {CastLib} from "../../../../../../libs/CastLib.sol";
-import {InvalidLength, Unsupported} from "../../../../shared/common/Errors.sol";
-import "../../../common/PluginManifest.sol";
-import "../../../common/Structs.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestFunction,
+    PluginManifest,
+    PluginMetadata,
+    SelectorPermission
+} from "../../../common/PluginManifest.sol";
 import {IPlugin} from "../../../interfaces/IPlugin.sol";
 import {IPluginExecutor} from "../../../interfaces/IPluginExecutor.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";

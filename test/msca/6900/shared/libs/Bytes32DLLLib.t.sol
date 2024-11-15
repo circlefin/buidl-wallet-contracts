@@ -18,60 +18,17 @@
  */
 pragma solidity 0.8.24;
 
-/* solhint-disable one-contract-per-file */
-
 import {SENTINEL_BYTES32} from "../../../../../src/common/Constants.sol";
 import {Bytes32DLL} from "../../../../../src/msca/6900/shared/common/Structs.sol";
 import {Bytes32DLLLib} from "../../../../../src/msca/6900/shared/libs/Bytes32DLLLib.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
-
-contract TestDLL {
-    using Bytes32DLLLib for Bytes32DLL;
-
-    Bytes32DLL private bytes32DLL;
-
-    function append(bytes32 valueToAdd) external returns (bool) {
-        return bytes32DLL.append(valueToAdd);
-    }
-
-    function remove(bytes32 valueToRemove) external returns (bool) {
-        return bytes32DLL.remove(valueToRemove);
-    }
-
-    function size() external view returns (uint256) {
-        return bytes32DLL.size();
-    }
-
-    function contains(bytes32 value) external view returns (bool) {
-        return bytes32DLL.contains(value);
-    }
-
-    function getAll() external view returns (bytes32[] memory results) {
-        return bytes32DLL.getAll();
-    }
-
-    function getPaginated(bytes32 start, uint256 limit)
-        external
-        view
-        returns (bytes32[] memory results, bytes32 next)
-    {
-        return bytes32DLL.getPaginated(start, limit);
-    }
-
-    function getHead() external view returns (bytes32) {
-        return bytes32DLL.getHead();
-    }
-
-    function getTail() external view returns (bytes32) {
-        return bytes32DLL.getTail();
-    }
-}
+import {TestBytes32DLL} from "./TestBytes32DLL.sol";
 
 contract Bytes32DLLLibTest is TestUtils {
     using Bytes32DLLLib for Bytes32DLL;
 
     function testAddRemoveGetBytes32Values() public {
-        TestDLL values = new TestDLL();
+        TestBytes32DLL values = new TestBytes32DLL();
         // sentinel value is initialized
         assertEq(values.size(), 0);
         // try to remove sentinel stupidly
@@ -152,14 +109,14 @@ contract Bytes32DLLLibTest is TestUtils {
         // try out different limits, even bigger than totalValues
         bound(limit, 1, 30);
         bound(totalValues, 3, 30);
-        TestDLL dll = new TestDLL();
+        TestBytes32DLL dll = new TestBytes32DLL();
         for (uint32 i = 1; i <= totalValues; i++) {
             dll.append(bytes32(uint256(i)));
         }
         bulkGetAndVerifyValues(dll, totalValues, limit);
     }
 
-    function bulkGetAndVerifyValues(TestDLL dll, uint256 totalValues, uint256 limit) private view {
+    function bulkGetAndVerifyValues(TestBytes32DLL dll, uint256 totalValues, uint256 limit) private view {
         bytes32[] memory results = new bytes32[](totalValues);
         bytes32 start = SENTINEL_BYTES32;
         uint32 count = 0;

@@ -18,8 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import "../common/PluginManifest.sol";
-import "../common/Structs.sol";
+import {PluginManifest, PluginMetadata} from "../common/PluginManifest.sol";
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 /**

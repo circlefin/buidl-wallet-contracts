@@ -19,14 +19,16 @@
 pragma solidity 0.8.24;
 
 import {SENTINEL_BYTES21} from "../../../../src/common/Constants.sol";
-import "../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../util/TestUtils.sol";
-import "./TestCircleMSCA.sol";
-import "./TestUserOpValidator.sol";
-import "./TestUserOpValidatorHook.sol";
+import {FunctionReference, RepeatableBytes21DLL} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {RepeatableFunctionReferenceDLLLib} from
+    "../../../../src/msca/6900/v0.7/libs/RepeatableFunctionReferenceDLLLib.sol";
+
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "forge-std/src/console.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PluginManager} from "src/msca/6900/v0.7/managers/PluginManager.sol";
 
 contract WalletStorageV1LibTest is TestUtils {
     using RepeatableFunctionReferenceDLLLib for RepeatableBytes21DLL;

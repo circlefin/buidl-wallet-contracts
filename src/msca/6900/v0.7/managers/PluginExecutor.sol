@@ -20,7 +20,7 @@ pragma solidity 0.8.24;
 
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
 import {InvalidExecutionFunction, NotFoundSelector} from "../../shared/common/Errors.sol";
-import "../common/Structs.sol";
+import {ExecutionDetail, HookGroup, PermittedExternalCall, PostExecHookToRun} from "../common/Structs.sol";
 import {IPlugin} from "../interfaces/IPlugin.sol";
 import {IPluginExecutor} from "../interfaces/IPluginExecutor.sol";
 import {ExecutionHookLib} from "../libs/ExecutionHookLib.sol";

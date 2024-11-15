@@ -18,12 +18,15 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {FunctionReference} from "../../../../../../src/msca/6900/v0.7/common/Structs.sol";
 
-import "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
-import "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import "../../../../../../src/utils/ExecutionUtils.sol";
-import "../../../../PluginGasProfileBase.t.sol";
+import {
+    PluginManager,
+    SingleOwnerMSCA,
+    SingleOwnerMSCAFactory
+} from "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {SingleOwnerPlugin} from "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {PluginGasProfileBaseTest, UserOperation} from "../../../../PluginGasProfileBase.t.sol";
 
 contract SingleOwnerMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
     event PluginInstalled(address indexed plugin, bytes32 manifestHash, FunctionReference[] dependencies);

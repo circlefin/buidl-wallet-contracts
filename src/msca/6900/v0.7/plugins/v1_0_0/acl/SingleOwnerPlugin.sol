@@ -26,9 +26,17 @@ import {
     SIG_VALIDATION_FAILED,
     SIG_VALIDATION_SUCCEEDED
 } from "../../../../../../common/Constants.sol";
-import {InvalidValidationFunctionId, UnauthorizedCaller} from "../../../../shared/common/Errors.sol";
-import "../../../common/PluginManifest.sol";
-import "../../../common/Structs.sol";
+
+import {UnauthorizedCaller} from "../../../../../../common/Errors.sol";
+import {InvalidValidationFunctionId} from "../../../../shared/common/Errors.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestFunction,
+    PluginManifest,
+    PluginMetadata,
+    SelectorPermission
+} from "../../../common/PluginManifest.sol";
 import {IPluginManager} from "../../../interfaces/IPluginManager.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
 import {BasePlugin} from "../../BasePlugin.sol";

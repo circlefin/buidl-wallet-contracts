@@ -18,35 +18,16 @@
  */
 pragma solidity 0.8.24;
 
-/**
- * @notice Throws when the selector is not found.
- */
-error NotFoundSelector();
+import {ConstructorInitializableMock} from "./ConstructorInitializableMock.sol";
 
-/**
- * @notice Throws when authorizer is invalid.
- */
-error InvalidAuthorizer();
+contract ChildConstructorInitializableMock is ConstructorInitializableMock {
+    bool public childInitializerRan;
 
-error InvalidValidationFunctionId(uint8 functionId);
+    constructor() walletStorageInitializer {
+        childInitialize();
+    }
 
-error InvalidFunctionReference();
-
-error ItemAlreadyExists();
-
-error ItemDoesNotExist();
-
-error InvalidLimit();
-
-error InvalidExecutionFunction(bytes4 selector);
-
-error InvalidInitializationInput();
-
-error Create2FailedDeployment();
-
-error NotImplemented(bytes4 selector, uint8 functionId);
-
-error InvalidItem();
-
-// v2 NotImplemented
-error NotImplementedFunction(bytes4 selector, uint32 entityId);
+    function childInitialize() public walletStorageInitializer {
+        childInitializerRan = true;
+    }
+}

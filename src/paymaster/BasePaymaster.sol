@@ -18,6 +18,7 @@
  */
 pragma solidity 0.8.24;
 
+import {UnauthorizedCaller} from "../common/Errors.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 
@@ -46,7 +47,7 @@ abstract contract BasePaymaster is
     PausableUpgradeable
 {
     // global entry point
-    IEntryPoint public immutable entryPoint;
+    IEntryPoint public immutable ENTRY_POINT;
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
@@ -57,16 +58,18 @@ abstract contract BasePaymaster is
     /// @inheritdoc UUPSUpgradeable
     // The {_authorizeUpgrade} function must be overridden to include access restriction to the upgrade mechanism.
     // Authorize the owner to upgrade the contract.
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     // for immutable values in implementations
     constructor(IEntryPoint _newEntryPoint) {
-        entryPoint = _newEntryPoint;
+        ENTRY_POINT = _newEntryPoint;
         // lock the implementation contract so it can only be called from proxies
         _disableInitializers();
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function __BasePaymaster_init(address _newOwner) internal onlyInitializing {
         __UUPSUpgradeable_init();
         __Ownable_init();
@@ -96,27 +99,28 @@ abstract contract BasePaymaster is
         _postOp(mode, context, actualGasCost);
     }
 
+    // solhint-disable-next-line no-empty-blocks
     function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal virtual {}
 
     /**
      * add a deposit for this paymaster, used for paying for transaction fees
      */
     function deposit() public payable whenNotPaused {
-        entryPoint.depositTo{value: msg.value}(address(this));
+        ENTRY_POINT.depositTo{value: msg.value}(address(this));
     }
 
     /**
-     * return current paymaster's deposit on the entryPoint.
+     * return current paymaster's deposit on the ENTRY_POINT.
      */
     function getDeposit() public view returns (uint256) {
-        return entryPoint.balanceOf(address(this));
+        return ENTRY_POINT.balanceOf(address(this));
     }
 
     /**
-     * return current paymaster's full deposit&stake information on the entryPoint.
+     * return current paymaster's full deposit&stake information on the ENTRY_POINT.
      */
     function getDepositInfo() public view returns (IStakeManager.DepositInfo memory info) {
-        return entryPoint.getDepositInfo(address(this));
+        return ENTRY_POINT.getDepositInfo(address(this));
     }
 
     /**
@@ -125,7 +129,7 @@ abstract contract BasePaymaster is
      * @param unstakeDelaySec - the unstake delay for this paymaster. Can only be increased.
      */
     function addStake(uint32 unstakeDelaySec) public payable onlyOwner whenNotPaused {
-        entryPoint.addStake{value: msg.value}(unstakeDelaySec);
+        ENTRY_POINT.addStake{value: msg.value}(unstakeDelaySec);
     }
 
     /**
@@ -133,7 +137,7 @@ abstract contract BasePaymaster is
      * The paymaster can't serve requests once unlocked, until it calls addStake again
      */
     function unlockStake() public onlyOwner whenNotPaused {
-        entryPoint.unlockStake();
+        ENTRY_POINT.unlockStake();
     }
 
     /**
@@ -142,12 +146,14 @@ abstract contract BasePaymaster is
      * @param withdrawAddress the address to send withdrawn value.
      */
     function withdrawStake(address payable withdrawAddress) public onlyOwner whenNotPaused {
-        entryPoint.withdrawStake(withdrawAddress);
+        ENTRY_POINT.withdrawStake(withdrawAddress);
     }
 
     /// validate the call is made from a valid entrypoint
     function _requireFromEntryPoint() internal view {
-        require(msg.sender == address(entryPoint), "Sender not EntryPoint");
+        if (msg.sender != address(ENTRY_POINT)) {
+            revert UnauthorizedCaller();
+        }
     }
 
     function pause() public onlyOwner whenNotPaused {
@@ -159,13 +165,13 @@ abstract contract BasePaymaster is
     }
 
     function withdrawTo(address payable withdrawAddress, uint256 amount) public onlyOwner whenNotPaused {
-        entryPoint.withdrawTo(withdrawAddress, amount);
+        ENTRY_POINT.withdrawTo(withdrawAddress, amount);
     }
 
     /**
      * automatically deposit received native token to entrypoint
      */
     receive() external payable whenNotPaused {
-        entryPoint.depositTo{value: msg.value}(address(this));
+        ENTRY_POINT.depositTo{value: msg.value}(address(this));
     }
 }

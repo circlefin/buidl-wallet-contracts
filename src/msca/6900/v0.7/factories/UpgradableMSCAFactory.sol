@@ -18,7 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {Create2FailedDeployment, InvalidInitializationInput, InvalidLength} from "../../shared/common/Errors.sol";
+import {InvalidLength} from "../../../../common/Errors.sol";
+import {Create2FailedDeployment, InvalidInitializationInput} from "../../shared/common/Errors.sol";
 import {UpgradableMSCA} from "../account/UpgradableMSCA.sol";
 import {PluginManager} from "../managers/PluginManager.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -35,8 +36,8 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
  */
 contract UpgradableMSCAFactory is Ownable2Step {
     // logic implementation
-    UpgradableMSCA public immutable accountImplementation;
-    IEntryPoint public immutable entryPoint;
+    UpgradableMSCA public immutable ACCOUNT_IMPLEMENTATION;
+    IEntryPoint public immutable ENTRY_POINT;
     mapping(address => bool) public isPluginAllowed;
 
     event FactoryDeployed(address indexed factory, address accountImplementation, address entryPoint);
@@ -45,11 +46,11 @@ contract UpgradableMSCAFactory is Ownable2Step {
     error PluginIsNotAllowed(address plugin);
 
     constructor(address _owner, address _entryPointAddr, address _pluginManagerAddr) {
-        entryPoint = IEntryPoint(_entryPointAddr);
+        ENTRY_POINT = IEntryPoint(_entryPointAddr);
         PluginManager _pluginManager = PluginManager(_pluginManagerAddr);
         _transferOwnership(_owner);
-        accountImplementation = new UpgradableMSCA(entryPoint, _pluginManager);
-        emit FactoryDeployed(address(this), address(accountImplementation), _entryPointAddr);
+        ACCOUNT_IMPLEMENTATION = new UpgradableMSCA(ENTRY_POINT, _pluginManager);
+        emit FactoryDeployed(address(this), address(ACCOUNT_IMPLEMENTATION), _entryPointAddr);
     }
 
     function setPlugins(address[] calldata _plugins, bool[] calldata _permissions) external onlyOwner {
@@ -94,7 +95,7 @@ contract UpgradableMSCAFactory is Ownable2Step {
         account = UpgradableMSCA(
             payable(
                 new ERC1967Proxy{salt: mixedSalt}(
-                    address(accountImplementation),
+                    address(ACCOUNT_IMPLEMENTATION),
                     abi.encodeCall(
                         UpgradableMSCA.initializeUpgradableMSCA, (_plugins, _manifestHashes, _pluginInstallData)
                     )
@@ -132,7 +133,7 @@ contract UpgradableMSCAFactory is Ownable2Step {
      * @param _unstakeDelaySec - the unstake delay for this entity. Can only be increased.
      */
     function addStake(uint32 _unstakeDelaySec) public payable onlyOwner {
-        entryPoint.addStake{value: msg.value}(_unstakeDelaySec);
+        ENTRY_POINT.addStake{value: msg.value}(_unstakeDelaySec);
     }
 
     /**
@@ -140,7 +141,7 @@ contract UpgradableMSCAFactory is Ownable2Step {
      * @notice This entity can't serve requests once unlocked, until it calls addStake again.
      */
     function unlockStake() public onlyOwner {
-        entryPoint.unlockStake();
+        ENTRY_POINT.unlockStake();
     }
 
     /**
@@ -149,7 +150,7 @@ contract UpgradableMSCAFactory is Ownable2Step {
      * @param _withdrawAddress the address to send withdrawn value.
      */
     function withdrawStake(address payable _withdrawAddress) public onlyOwner {
-        entryPoint.withdrawStake(_withdrawAddress);
+        ENTRY_POINT.withdrawStake(_withdrawAddress);
     }
 
     /**
@@ -187,7 +188,7 @@ contract UpgradableMSCAFactory is Ownable2Step {
             abi.encodePacked(
                 type(ERC1967Proxy).creationCode,
                 abi.encode(
-                    address(accountImplementation),
+                    address(ACCOUNT_IMPLEMENTATION),
                     abi.encodeCall(
                         UpgradableMSCA.initializeUpgradableMSCA, (_plugins, _manifestHashes, _pluginInstallData)
                     )

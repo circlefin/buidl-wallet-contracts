@@ -18,13 +18,15 @@
  */
 pragma solidity 0.8.24;
 
+/* solhint-disable no-empty-blocks */
+
 import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
 import {PluginManifest} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 contract TestUserOpAllPassValidator is BasePlugin {
-    ValidationData expectedValidationData;
+    ValidationData private expectedValidationData;
 
     constructor() {
         ValidationData memory expectToPass = ValidationData(0, 0xFFFFFFFFFFFF, address(0));

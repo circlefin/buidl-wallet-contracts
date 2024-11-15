@@ -38,6 +38,7 @@ library MessageHashUtils {
      */
     function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32 digest) {
         /// @solidity memory-safe-assembly
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
             mstore(ptr, hex"1901")
