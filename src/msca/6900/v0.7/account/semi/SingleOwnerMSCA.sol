@@ -30,13 +30,10 @@ import {
     SIG_VALIDATION_SUCCEEDED,
     WALLET_VERSION_1
 } from "../../../../../common/Constants.sol";
+
+import {UnauthorizedCaller} from "../../../../../common/Errors.sol";
 import {ExecutionUtils} from "../../../../../utils/ExecutionUtils.sol";
-import {
-    InvalidAuthorizer,
-    InvalidValidationFunctionId,
-    NotFoundSelector,
-    UnauthorizedCaller
-} from "../../../shared/common/Errors.sol";
+import {InvalidAuthorizer, InvalidValidationFunctionId, NotFoundSelector} from "../../../shared/common/Errors.sol";
 import {ValidationData} from "../../../shared/common/Structs.sol";
 import {ValidationDataLib} from "../../../shared/libs/ValidationDataLib.sol";
 import {
@@ -99,10 +96,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
 
     constructor(IEntryPoint _newEntryPoint, PluginManager _newPluginManager)
         BaseMSCA(_newEntryPoint, _newPluginManager)
-    {
-        // lock the implementation contract so it can only be called from proxies
-        _disableWalletStorageInitializers();
-    }
+    {}
 
     /// @notice Initializes the account with a set of plugins
     /// @dev No dependencies or hooks can be injected with this installation. For a full installation, please use
@@ -113,17 +107,22 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
             revert InvalidOwnerForMSCA(address(this), owner);
         }
         _transferNativeOwnership(owner);
-        emit SingleOwnerMSCAInitialized(address(this), address(entryPoint), owner);
+        emit SingleOwnerMSCAInitialized(address(this), address(ENTRY_POINT), owner);
     }
 
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes memory signature) external view override returns (bytes4) {
         address owner = WalletStorageV1Lib.getLayout().owner;
         if (owner == address(0)) {
+            ExecutionDetail storage executionDetail =
+                WalletStorageV1Lib.getLayout().executionDetails[IERC1271.isValidSignature.selector];
+            // this is a sanity check only, as using address(0) as a plugin is not permitted during installation
+            if (executionDetail.plugin == address(0)) {
+                return EIP1271_INVALID_SIGNATURE;
+            }
             // isValidSignature is installed via plugin, so it should fallback to the plugin
-            (bool success, bytes memory returnData) = WalletStorageV1Lib.getLayout().executionDetails[IERC1271
-                .isValidSignature
-                .selector].plugin.staticcall(abi.encodeCall(IERC1271.isValidSignature, (hash, signature)));
+            (bool success, bytes memory returnData) =
+                executionDetail.plugin.staticcall(abi.encodeCall(IERC1271.isValidSignature, (hash, signature)));
             if (!success) {
                 return EIP1271_INVALID_SIGNATURE;
             }
@@ -258,8 +257,8 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
     }
 
     function _processPreRuntimeHooksAndValidation(bytes4 selector) internal override {
-        if (msg.sender == address(entryPoint)) {
-            // entryPoint should go through validateUserOp flow which calls userOpValidationFunction
+        if (msg.sender == address(ENTRY_POINT)) {
+            // ENTRY_POINT should go through validateUserOp flow which calls userOpValidationFunction
             return;
         }
         ExecutionDetail storage executionDetail = WalletStorageV1Lib.getLayout().executionDetails[selector];
@@ -284,6 +283,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
                     revert InvalidValidationFunctionId(preRuntimeValidationHooks[j].functionId);
                 }
                 IPlugin preRuntimeValidationHookPlugin = IPlugin(preRuntimeValidationHooks[j].plugin);
+                // solhint-disable no-empty-blocks
                 try preRuntimeValidationHookPlugin.preRuntimeValidationHook(
                     preRuntimeValidationHooks[j].functionId, msg.sender, msg.value, msg.data
                 ) {} catch (bytes memory revertReason) {
@@ -291,6 +291,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
                         preRuntimeValidationHooks[j].plugin, preRuntimeValidationHooks[j].functionId, revertReason
                     );
                 }
+                // solhint-enable no-empty-blocks
             }
             if (nextHook.pack() == SENTINEL_BYTES21) {
                 break;
@@ -309,6 +310,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
             }
             // call runtimeValidationFunction if it's not always allowed
             if (packedValidationFunction != RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE) {
+                // solhint-disable no-empty-blocks
                 try IPlugin(validationFunction.plugin).runtimeValidationFunction(
                     validationFunction.functionId, msg.sender, msg.value, msg.data
                 ) {} catch (bytes memory revertReason) {
@@ -316,6 +318,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
                         validationFunction.plugin, validationFunction.functionId, revertReason
                     );
                 }
+                // solhint-enable no-empty-blocks
             }
             return;
         } else {
@@ -350,6 +353,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
      * @dev The function is overridden here so more granular ACLs to the upgrade mechanism should be enforced by
      * plugins.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 
     function _processPreUserOpValidationHooks(
@@ -399,7 +403,7 @@ contract SingleOwnerMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable, I
     function _checkFromEPOrOwnerOrSelf() internal view {
         // all need to go through validation first, which means being initiated by the owner or account
         if (
-            msg.sender != address(entryPoint) && msg.sender != WalletStorageV1Lib.getLayout().owner
+            msg.sender != address(ENTRY_POINT) && msg.sender != WalletStorageV1Lib.getLayout().owner
                 && msg.sender != address(this)
         ) {
             revert UnauthorizedCaller();

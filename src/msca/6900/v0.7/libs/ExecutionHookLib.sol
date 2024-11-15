@@ -24,7 +24,13 @@ import {
     PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
     RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
 } from "../common/Constants.sol";
-import "../common/Structs.sol";
+import {
+    ExecutionHooks,
+    FunctionReference,
+    HookGroup,
+    PostExecHookToRun,
+    RepeatableBytes21DLL
+} from "../common/Structs.sol";
 import {IPlugin} from "../interfaces/IPlugin.sol";
 import {FunctionReferenceLib} from "./FunctionReferenceLib.sol";
 import {RepeatableFunctionReferenceDLLLib} from "./RepeatableFunctionReferenceDLLLib.sol";
@@ -74,6 +80,7 @@ library ExecutionHookLib {
         input.totalPostExecHooksToRunCount = totalPostExecHooksToRunCount;
         input.postExecHooksToRun = postExecHooksToRun;
         (totalPostExecHooksToRunCount, postExecHooksToRun) = _setPostExecHooksFromPreHooks(hookGroup, data, input);
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             mstore(postExecHooksToRun, totalPostExecHooksToRunCount)
         }
@@ -97,11 +104,13 @@ library ExecutionHookLib {
         uint256 length = postExecHooksToRun.length;
         for (uint256 i = 0; i < length; ++i) {
             FunctionReference memory postExecHook = postExecHooksToRun[i].postExecHook;
+            // solhint-disable no-empty-blocks
             try IPlugin(postExecHook.plugin).postExecutionHook(
                 postExecHook.functionId, postExecHooksToRun[i].preExecHookReturnData
             ) {} catch (bytes memory revertReason) {
                 revert PostExecHookFailed(postExecHook.plugin, postExecHook.functionId, revertReason);
             }
+            // solhint-enable no-empty-blocks
         }
     }
 
@@ -152,6 +161,7 @@ library ExecutionHookLib {
             }
             startHook = nextHook;
         }
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             mstore(hooks, totalExecHooksCount)
         }

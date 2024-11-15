@@ -18,16 +18,19 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {InvalidInitializationInput} from "../../../../src/msca/6900/shared/common/Errors.sol";
+import {SingleOwnerMSCA} from "../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
 
-import "../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
-import "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+
+import {SingleOwnerMSCAFactory} from "../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
 import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
-import "../../../util/TestLiquidityPool.sol";
-import "../../../util/TestUtils.sol";
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/UserOperation.sol";
-import "forge-std/src/console.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 contract SingleOwnerMSCAFactoryTest is TestUtils {
     event AccountCreated(address indexed proxy, address sender, bytes32 salt);
@@ -50,7 +53,7 @@ contract SingleOwnerMSCAFactoryTest is TestUtils {
     address private ownerAddr;
     SingleOwnerMSCAFactory private factory;
     TestLiquidityPool private testLiquidityPool;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
 
     function setUp() public {
         factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
@@ -75,7 +78,7 @@ contract SingleOwnerMSCAFactoryTest is TestUtils {
         vm.expectEmit(true, true, false, false);
         emit AccountCreated(counterfactualAddr, ownerAddr, salt);
         SingleOwnerMSCA accountCreated = factory.createAccount(ownerAddr, salt, initializingData);
-        assertEq(address(accountCreated.entryPoint()), address(entryPoint));
+        assertEq(address(accountCreated.ENTRY_POINT()), address(entryPoint));
         assertEq(accountCreated.getNativeOwner(), ownerAddr);
         // verify the address does not change
         assertEq(address(accountCreated), counterfactualAddr);

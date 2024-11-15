@@ -18,35 +18,15 @@
  */
 pragma solidity 0.8.24;
 
-/**
- * @notice Throws when the selector is not found.
- */
-error NotFoundSelector();
+import {WalletStorageInitializable} from "../../../../src/msca/6900/v0.7/account/WalletStorageInitializable.sol";
+import {console} from "forge-std/src/console.sol";
 
-/**
- * @notice Throws when authorizer is invalid.
- */
-error InvalidAuthorizer();
-
-error InvalidValidationFunctionId(uint8 functionId);
-
-error InvalidFunctionReference();
-
-error ItemAlreadyExists();
-
-error ItemDoesNotExist();
-
-error InvalidLimit();
-
-error InvalidExecutionFunction(bytes4 selector);
-
-error InvalidInitializationInput();
-
-error Create2FailedDeployment();
-
-error NotImplemented(bytes4 selector, uint8 functionId);
-
-error InvalidItem();
-
-// v2 NotImplemented
-error NotImplementedFunction(bytes4 selector, uint32 entityId);
+// 1. call walletStorageInitializer before constructor, initializing is set to true
+// 2. call _disableWalletStorageInitializers in the same constructor, we can't disable initializer in the middle of
+// initialization
+contract DisableInitializingWalletStorageMock is WalletStorageInitializable {
+    constructor() walletStorageInitializer {
+        console.logString("DisableInitializingWalletStorageMock constructor");
+        _disableWalletStorageInitializers();
+    }
+}

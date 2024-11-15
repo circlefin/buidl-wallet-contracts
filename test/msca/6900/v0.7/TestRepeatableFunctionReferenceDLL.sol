@@ -18,13 +18,14 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../../src/msca/6900/v0.7/libs/RepeatableFunctionReferenceDLLLib.sol";
+import {FunctionReference, RepeatableBytes21DLL} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {RepeatableFunctionReferenceDLLLib} from
+    "../../../../src/msca/6900/v0.7/libs/RepeatableFunctionReferenceDLLLib.sol";
 
 contract TestRepeatableFunctionReferenceDLL {
     using RepeatableFunctionReferenceDLLLib for RepeatableBytes21DLL;
 
-    RepeatableBytes21DLL preValidationHooks;
+    RepeatableBytes21DLL private preValidationHooks;
 
     function appendPreValidationHook(FunctionReference memory hookToAdd) external returns (uint256) {
         return preValidationHooks.append(hookToAdd);

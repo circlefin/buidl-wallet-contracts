@@ -19,7 +19,8 @@
 pragma solidity 0.8.24;
 
 import {EMPTY_FUNCTION_REFERENCE, PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../../src/common/Constants.sol";
-import {NotImplemented, UnauthorizedCaller, Unsupported} from "../../../../../src/msca/6900/shared/common/Errors.sol";
+import {UnauthorizedCaller, Unsupported} from "../../../../../src/common/Errors.sol";
+import {NotImplemented} from "../../../../../src/msca/6900/shared/common/Errors.sol";
 import {BaseMSCA} from "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
 import {SingleOwnerMSCA} from "../../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
 

@@ -18,6 +18,7 @@
  */
 pragma solidity 0.8.24;
 
+import {Unsupported} from "../../src/common/Errors.sol";
 import {IERC1820Registry} from "@openzeppelin/contracts/interfaces/IERC1820Registry.sol";
 
 // IV is value needed to have a vanity address starting with '0x1820'.
@@ -81,13 +82,16 @@ contract MockERC1820Registry is IERC1820Registry {
         // we don't check this for the convenience of testing
         // require(getManager(addr) == msg.sender, "Not the manager");
 
-        require(!isERC165Interface(_interfaceHash), "Must not be an ERC165 hash");
+        if (isERC165Interface(_interfaceHash)) {
+            revert Unsupported();
+        }
         if (_implementer != address(0) && _implementer != msg.sender) {
-            require(
+            if (
                 ERC1820ImplementerInterface(_implementer).canImplementInterfaceForAddress(_interfaceHash, addr)
-                    == ERC1820_ACCEPT_MAGIC,
-                "Does not implement the interface"
-            );
+                    != ERC1820_ACCEPT_MAGIC
+            ) {
+                revert Unsupported();
+            }
         }
         interfaces[addr][_interfaceHash] = _implementer;
         emit InterfaceImplementerSet(addr, _interfaceHash, _implementer);
@@ -179,6 +183,7 @@ contract MockERC1820Registry is IERC1820Registry {
     {
         bytes4 erc165ID = ERC165ID;
 
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let x := mload(0x40) // Find empty storage location using "free memory pointer"
             mstore(x, erc165ID) // Place signature at beginning of empty storage

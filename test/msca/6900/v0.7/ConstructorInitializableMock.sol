@@ -18,35 +18,24 @@
  */
 pragma solidity 0.8.24;
 
-/**
- * @notice Throws when the selector is not found.
- */
-error NotFoundSelector();
+import {WalletStorageInitializable} from "../../../../src/msca/6900/v0.7/account/WalletStorageInitializable.sol";
+import {console} from "forge-std/src/console.sol";
 
-/**
- * @notice Throws when authorizer is invalid.
- */
-error InvalidAuthorizer();
+contract ConstructorInitializableMock is WalletStorageInitializable {
+    bool public initializerRan;
+    bool public onlyInitializingRan;
 
-error InvalidValidationFunctionId(uint8 functionId);
+    constructor() walletStorageInitializer {
+        console.logString("ConstructorInitializableMock constructor");
+        initialize();
+        initializeOnlyInitializing();
+    }
 
-error InvalidFunctionReference();
+    function initialize() public walletStorageInitializer {
+        initializerRan = true;
+    }
 
-error ItemAlreadyExists();
-
-error ItemDoesNotExist();
-
-error InvalidLimit();
-
-error InvalidExecutionFunction(bytes4 selector);
-
-error InvalidInitializationInput();
-
-error Create2FailedDeployment();
-
-error NotImplemented(bytes4 selector, uint8 functionId);
-
-error InvalidItem();
-
-// v2 NotImplemented
-error NotImplementedFunction(bytes4 selector, uint32 entityId);
+    function initializeOnlyInitializing() public onlyWalletStorageInitializing {
+        onlyInitializingRan = true;
+    }
+}

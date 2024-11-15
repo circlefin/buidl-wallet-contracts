@@ -117,6 +117,8 @@ library AddressDLLLib {
             results[count] = current;
             current = dll.next[current];
         }
+
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             mstore(results, count)
         }

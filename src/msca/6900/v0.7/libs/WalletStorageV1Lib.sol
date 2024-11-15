@@ -19,7 +19,7 @@
 pragma solidity 0.8.24;
 
 import {AddressDLL} from "../../shared/common/Structs.sol";
-import "../common/Structs.sol";
+import {ExecutionDetail, PermittedExternalCall, PluginDetail} from "../common/Structs.sol";
 
 /// @dev The same storage will be used for v1.x.y of MSCAs.
 library WalletStorageV1Lib {
@@ -54,6 +54,7 @@ library WalletStorageV1Lib {
      * @dev Function to read structured wallet storage.
      */
     function getLayout() internal pure returns (Layout storage walletStorage) {
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             walletStorage.slot := WALLET_STORAGE_SLOT
         }

@@ -64,5 +64,7 @@ contract DefaultCallbackHandler is IERC721Receiver, IERC1155Receiver, IERC777Rec
         uint256 amount,
         bytes calldata userData,
         bytes calldata operatorData
-    ) external pure override {}
+    ) external pure override 
+    // solhint-disable-next-line no-empty-blocks
+    {}
 }
