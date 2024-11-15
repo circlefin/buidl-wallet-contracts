@@ -19,7 +19,7 @@
 pragma solidity 0.8.24;
 
 import {EMPTY_FUNCTION_REFERENCE} from "../../../../../src/common/Constants.sol";
-import {UnauthorizedCaller} from "../../../../../src/msca/6900/shared/common/Errors.sol";
+import {UnauthorizedCaller} from "../../../../../src/common/Errors.sol";
 import {BaseMSCA} from "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
 import {UpgradableMSCA} from "../../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
 

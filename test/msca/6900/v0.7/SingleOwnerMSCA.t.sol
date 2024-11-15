@@ -18,31 +18,45 @@
  */
 pragma solidity 0.8.24;
 
+import {EIP1271_INVALID_SIGNATURE, EIP1271_VALID_SIGNATURE} from "../../../../src/common/Constants.sol";
+
+import {UnauthorizedCaller} from "../../../../src/common/Errors.sol";
+import {InvalidInitializationInput} from "../../../../src/msca/6900/shared/common/Errors.sol";
+import {InvalidValidationFunctionId} from "../../../../src/msca/6900/shared/common/Errors.sol";
 import {InvalidExecutionFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
-import "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
-import "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
-import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import "../../../../src/utils/ExecutionUtils.sol";
-import "../../../util/Mock1820Registry.sol";
-import "../../../util/TestERC1155.sol";
-import "../../../util/TestERC721.sol";
-import "../../../util/TestERC777.sol";
-import "../../../util/TestLiquidityPool.sol";
-import "../../../util/TestUtils.sol";
+import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
+import {SingleOwnerMSCA} from "../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
+import {
+    Call,
+    ExecutionFunctionConfig,
+    ExecutionHooks,
+    FunctionReference
+} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {SingleOwnerMSCAFactory} from "../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+
+import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {ExecutionUtils} from "../../../../src/utils/ExecutionUtils.sol";
+import {MockERC1820Registry} from "../../../util/Mock1820Registry.sol";
+import {TestERC1155} from "../../../util/TestERC1155.sol";
+import {TestERC721} from "../../../util/TestERC721.sol";
+import {TestERC777} from "../../../util/TestERC777.sol";
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {IERC1820Registry} from "@openzeppelin/contracts/interfaces/IERC1820Registry.sol";
 
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
 
-import {DefaultTokenCallbackPlugin} from
-    "../../../../src/msca/6900/v0.7/plugins/v1_0_0/utility/DefaultTokenCallbackPlugin.sol";
 import {TestUserOpAllPassValidator} from "./TestUserOpAllPassValidator.sol";
-import "./TestUserOpValidator.sol";
-import "./TestUserOpValidatorHook.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "forge-std/src/console.sol";
 
 contract SingleOwnerMSCATest is TestUtils {
     using FunctionReferenceLib for bytes21;
@@ -504,22 +518,17 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes memory initializingData = abi.encode(sendingOwnerAddr);
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         vm.deal(address(sender), 1 ether);
-        DefaultTokenCallbackPlugin defaultTokenCallbackPlugin = new DefaultTokenCallbackPlugin();
         // call from owner
         vm.startPrank(sendingOwnerAddr);
-        bytes32 manifest = keccak256(abi.encode(defaultTokenCallbackPlugin.pluginManifest()));
-        FunctionReference[] memory emptyFR = new FunctionReference[](0);
-        sender.installPlugin(address(defaultTokenCallbackPlugin), manifest, "", emptyFR);
-
         ExecutionFunctionConfig memory executionFunctionConfig =
             sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
+        assertEq(executionFunctionConfig.plugin, address(sender));
         vm.stopPrank();
 
         // okay to use a random address to view
         vm.startPrank(vm.addr(123));
         executionFunctionConfig = sender.getExecutionFunctionConfig(IERC721Receiver.onERC721Received.selector);
-        assertEq(executionFunctionConfig.plugin, address(defaultTokenCallbackPlugin));
+        assertEq(executionFunctionConfig.plugin, address(sender));
         vm.stopPrank();
     }
 
@@ -569,9 +578,13 @@ contract SingleOwnerMSCATest is TestUtils {
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
         address sendingOwnerAddr = makeAddr("testGetPreValidationHooksWithRuntimeValidation");
         bytes memory initializingData = abi.encode(sendingOwnerAddr);
+        // initialSetup:  true
+        // construction:  false
         SingleOwnerMSCA sender = factory.createAccount(sendingOwnerAddr, salt, initializingData);
         vm.deal(address(sender), 1 ether);
         // init from owner again
+        // initialSetup:  false
+        // construction:  false
         vm.startPrank(sendingOwnerAddr);
         vm.expectRevert(WalletStorageIsInitialized.selector);
         sender.initializeSingleOwnerMSCA(sendingOwnerAddr);
@@ -775,6 +788,7 @@ contract SingleOwnerMSCATest is TestUtils {
         vm.startPrank(address(sender));
         calls[0].target = address(testERC777);
         calls[0].value = 0;
+        // solhint-disable-next-line check-send-result
         calls[0].data = abi.encodeCall(testERC777.send, (recipientAddr, 9, ""));
         sender.executeBatch(calls);
         vm.stopPrank();

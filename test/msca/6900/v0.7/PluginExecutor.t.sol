@@ -18,26 +18,37 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../src/common/Constants.sol";
+import {PluginMetadata} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
+import {Call, FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {IPlugin} from "../../../../src/msca/6900/v0.7/interfaces/IPlugin.sol";
 
-import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import "../../../util/TestLiquidityPool.sol";
-import "../../../util/TestUtils.sol";
-import "./TestCircleMSCA.sol";
+import {IPluginExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IPluginExecutor.sol";
+import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {PluginManager} from "src/msca/6900/v0.7/managers/PluginManager.sol";
 
-import "./TestCircleMSCAFactory.sol";
-import "./TestPermitAnyExternalAddressPlugin.sol";
+import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {IEntryPoint, TestCircleMSCA, TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {TestPermitAnyExternalAddressPlugin} from "./TestPermitAnyExternalAddressPlugin.sol";
 
-import "./TestPermitAnyExternalAddressWithPostHookOnlyPlugin.sol";
+import {TestPermitAnyExternalAddressWithPostHookOnlyPlugin} from
+    "./TestPermitAnyExternalAddressWithPostHookOnlyPlugin.sol";
 
-import "./TestPermitAnyExternalAddressWithPreHookOnlyPlugin.sol";
-import "./TestTokenPlugin.sol";
-import "./TestTokenWithPostHookOnlyPlugin.sol";
-import "./TestTokenWithPreHookOnlyPlugin.sol";
-import "./TestUserOpValidator.sol";
-import "./TestUserOpValidatorHook.sol";
+import {TestPermitAnyExternalAddressWithPreHookOnlyPlugin} from
+    "./TestPermitAnyExternalAddressWithPreHookOnlyPlugin.sol";
+import {TestTokenPlugin} from "./TestTokenPlugin.sol";
+import {TestTokenWithPostHookOnlyPlugin} from "./TestTokenWithPostHookOnlyPlugin.sol";
+import {TestTokenWithPreHookOnlyPlugin} from "./TestTokenWithPreHookOnlyPlugin.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "forge-std/src/console.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {console} from "forge-std/src/console.sol";
+
+/* solhint-disable max-states-count */
 
 contract PluginExecutorTest is TestUtils {
     using FunctionReferenceLib for bytes21;
@@ -67,7 +78,7 @@ contract PluginExecutorTest is TestUtils {
     PluginManager private pluginManager = new PluginManager();
     uint256 internal ownerPrivateKey;
     address private ownerAddr;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
     TestCircleMSCAFactory private factory;
     SingleOwnerPlugin private singleOwnerPlugin;
     TestCircleMSCA private msca;

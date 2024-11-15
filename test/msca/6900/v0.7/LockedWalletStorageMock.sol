@@ -18,35 +18,11 @@
  */
 pragma solidity 0.8.24;
 
-/**
- * @notice Throws when the selector is not found.
- */
-error NotFoundSelector();
+import {ConstructorInitializableMock} from "./ConstructorInitializableMock.sol";
+import {DisableWalletStorageInitializerMock} from "./DisableWalletStorageInitializerMock.sol";
 
-/**
- * @notice Throws when authorizer is invalid.
- */
-error InvalidAuthorizer();
-
-error InvalidValidationFunctionId(uint8 functionId);
-
-error InvalidFunctionReference();
-
-error ItemAlreadyExists();
-
-error ItemDoesNotExist();
-
-error InvalidLimit();
-
-error InvalidExecutionFunction(bytes4 selector);
-
-error InvalidInitializationInput();
-
-error Create2FailedDeployment();
-
-error NotImplemented(bytes4 selector, uint8 functionId);
-
-error InvalidItem();
-
-// v2 NotImplemented
-error NotImplementedFunction(bytes4 selector, uint32 entityId);
+// 1. call _disableWalletStorageInitializers, initialized is set to type(uint8).max to prevent any future
+// reinitialization
+// 2. call walletStorageInitializer, the locked contract should not work because it's neither initialSetup nor deploying
+// solhint-disable-next-line no-empty-blocks
+contract LockedWalletStorageMock is DisableWalletStorageInitializerMock, ConstructorInitializableMock {}

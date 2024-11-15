@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import "../common/Structs.sol";
+import {FunctionReference} from "../common/Structs.sol";
 
 /**
  * @dev Implements https://eips.ethereum.org/EIPS/eip-6900. MSCAs must implement this interface to support installing

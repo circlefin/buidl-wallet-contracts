@@ -18,9 +18,6 @@
  */
 pragma solidity 0.8.24;
 
-/* solhint-disable reason-string */
-/* solhint-disable no-inline-assembly */
-
 import {UserOperation, UserOperationLib} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 
 enum ChargeMode {
@@ -99,6 +96,7 @@ library PaymasterUtils {
      * do it.
      */
     function calldataKeccak(bytes calldata data) internal pure returns (bytes32 ret) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let mem := mload(0x40)
             let len := data.length

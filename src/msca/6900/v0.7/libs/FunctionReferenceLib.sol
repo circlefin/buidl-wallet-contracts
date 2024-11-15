@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import "../common/Structs.sol";
+import {FunctionReference} from "../common/Structs.sol";
 
 library FunctionReferenceLib {
     function unpack(bytes21 frBytes) internal pure returns (FunctionReference memory) {

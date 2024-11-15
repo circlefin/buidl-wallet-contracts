@@ -19,6 +19,7 @@
 pragma solidity 0.8.24;
 
 import {DefaultCallbackHandler} from "../callback/DefaultCallbackHandler.sol";
+import {InvalidLength, UnauthorizedCaller} from "../common/Errors.sol";
 import {ExecutionUtils} from "../utils/ExecutionUtils.sol";
 import {BaseAccount} from "@account-abstraction/contracts/core/BaseAccount.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -44,7 +45,7 @@ abstract contract CoreAccount is
 {
     // bytes4(keccak256("isValidSignature(bytes32,bytes)")
     bytes4 internal constant EIP1271_MAGIC_VALUE = 0x1626ba7e;
-    IEntryPoint public immutable entryPointAddress;
+    IEntryPoint public immutable ENTRY_POINT_ADDRESS;
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
@@ -57,18 +58,21 @@ abstract contract CoreAccount is
 
     function _checkOwner() internal view override {
         // directly from EOA owner, or through the account itself (which gets redirected through execute())
-        require(msg.sender == owner() || msg.sender == address(this), "Caller is not the owner");
+        if (!(msg.sender == owner() || msg.sender == address(this))) {
+            revert UnauthorizedCaller();
+        }
     }
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     // for immutable values in implementations
     constructor(IEntryPoint _newEntryPoint) {
-        entryPointAddress = _newEntryPoint;
+        ENTRY_POINT_ADDRESS = _newEntryPoint;
         // lock the implementation contract so it can only be called from proxies
         _disableInitializers();
     }
 
     // for mutable values in proxies
+    // solhint-disable-next-line func-name-mixedcase
     function __CoreAccount_init(address _newOwner) internal onlyInitializing {
         __Ownable_init();
         transferOwnership(_newOwner);
@@ -77,7 +81,7 @@ abstract contract CoreAccount is
 
     /// @inheritdoc BaseAccount
     function entryPoint() public view virtual override returns (IEntryPoint) {
-        return entryPointAddress;
+        return ENTRY_POINT_ADDRESS;
     }
 
     /// @dev Please override this method
@@ -105,8 +109,9 @@ abstract contract CoreAccount is
         whenNotPaused
     {
         _requireFromEntryPointOrOwner();
-        require(dest.length == func.length, "wrong array lengths");
-        require(dest.length == value.length, "wrong array lengths");
+        if (dest.length != func.length || dest.length != value.length) {
+            revert InvalidLength();
+        }
         for (uint256 i = 0; i < dest.length; i++) {
             ExecutionUtils.callAndRevert(dest[i], value[i], func[i]);
         }
@@ -116,7 +121,9 @@ abstract contract CoreAccount is
      * @dev Require the function call went through EntryPoint or owner.
      */
     function _requireFromEntryPointOrOwner() internal view {
-        require(msg.sender == address(entryPoint()) || msg.sender == owner(), "account: not EntryPoint or Owner");
+        if (!(msg.sender == address(entryPoint()) || msg.sender == owner())) {
+            revert UnauthorizedCaller();
+        }
     }
 
     /**

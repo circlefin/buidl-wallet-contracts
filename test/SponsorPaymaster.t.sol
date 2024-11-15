@@ -18,13 +18,16 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/paymaster/v1/permissioned/SponsorPaymaster.sol";
+import {SponsorPaymaster} from "../src/paymaster/v1/permissioned/SponsorPaymaster.sol";
+import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {UserOperation, UserOperationLib} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "./util/TestUtils.sol";
+import {TestUtils} from "./util/TestUtils.sol";
 
-import "@account-abstraction/contracts/core/EntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract SponsorPaymasterTest is TestUtils {
     using UserOperationLib for UserOperation;
@@ -38,9 +41,9 @@ contract SponsorPaymasterTest is TestUtils {
     uint256 internal verifyingSigner2PrivateKey = 0xdef;
     address internal verifyingSigner1;
     address internal verifyingSigner2;
-    uint48 internal MOCK_VALID_UNTIL = 1691493273;
-    uint48 internal MOCK_VALID_AFTER = 1681493273;
-    bytes internal MOCK_OFFCHAIN_SIG = "0x123456";
+    uint48 internal constant MOCK_VALID_UNTIL = 1691493273;
+    uint48 internal constant MOCK_VALID_AFTER = 1681493273;
+    bytes internal constant MOCK_OFFCHAIN_SIG = "0x123456";
 
     function setUp() public {
         verifyingSigner1 = vm.addr(verifyingSigner1PrivateKey);

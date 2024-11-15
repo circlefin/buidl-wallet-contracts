@@ -18,20 +18,34 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
-import {PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE} from "../../../../../src/msca/6900/v0.7/common/Constants.sol";
-import "../../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
-import "../../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
-import "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {UnauthorizedCaller} from "../../../../../src/common/Errors.sol";
+import {BaseMSCA} from "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
 
-import "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/AddressBookPlugin.sol";
-import "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/IAddressBookPlugin.sol";
-import "../../../../../src/utils/ExecutionUtils.sol";
-import "../../../../util/TestLiquidityPool.sol";
-import "../../../../util/TestUtils.sol";
+import {UpgradableMSCA} from "../../../../../src/msca/6900/v0.7/account/UpgradableMSCA.sol";
+import {PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE} from "../../../../../src/msca/6900/v0.7/common/Constants.sol";
+import {
+    Call,
+    ExecutionFunctionConfig,
+    ExecutionHooks,
+    FunctionReference
+} from "../../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {UpgradableMSCAFactory} from "../../../../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
+import {IStandardExecutor} from "../../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {FunctionReferenceLib} from "../../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {PluginManager} from "../../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+import {ISingleOwnerPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {SingleOwnerPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {IPluginManager} from "src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+
+import {AddressBookPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/AddressBookPlugin.sol";
+import {IAddressBookPlugin} from "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/IAddressBookPlugin.sol";
+import {ExecutionUtils} from "../../../../../src/utils/ExecutionUtils.sol";
+import {TestLiquidityPool} from "../../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../../util/TestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "forge-std/src/console.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {console} from "forge-std/src/console.sol";
 
 // some common test cases related to plugin itself is covered in AddressBookPluginWithSemiMSCATest
 contract AddressBookPluginWithFullMSCATest is TestUtils {
@@ -56,14 +70,14 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
     PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
     UpgradableMSCAFactory private factory;
     AddressBookPlugin private addressBookPlugin;
     TestLiquidityPool private testLiquidityPool;
     address private addressBookPluginAddr;
     UpgradableMSCA private msca;
     address private mscaAddr;
-    bytes32 addressBookPluginManifest;
+    bytes32 private addressBookPluginManifest;
     SingleOwnerPlugin private singleOwnerPlugin;
     address private factoryOwner;
 
@@ -1044,7 +1058,7 @@ contract AddressBookPluginWithFullMSCATest is TestUtils {
         msca = factory.createAccount(addressToBytes32(ownerAddr), bytes32(0), _initializingData);
         console.log("address(msca) -> %s", address(msca));
         (bool sent,) = address(msca).call{value: 10e18}("");
-        require(sent, "Failed to send Ether");
+        assertTrue(sent);
         FunctionReference[] memory dependencies = new FunctionReference[](2);
         dependencies[0] = FunctionReference(
             address(singleOwnerPlugin), uint8(ISingleOwnerPlugin.FunctionId.RUNTIME_VALIDATION_OWNER_OR_SELF)

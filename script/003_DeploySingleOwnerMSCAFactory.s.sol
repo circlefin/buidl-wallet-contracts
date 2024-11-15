@@ -38,7 +38,7 @@ contract DeploySingleOwnerMSCAFactoryScript is Script {
             factory = SingleOwnerMSCAFactory(EXPECTED_FACTORY_ADDRESS);
             console.log("Found existing single owner MSCA factory at expected address: %s", address(factory));
         }
-        console.log("Account implementation address: %s", address(factory.accountImplementation()));
+        console.log("Account implementation address: %s", address(factory.ACCOUNT_IMPLEMENTATION()));
         vm.stopBroadcast();
     }
 }

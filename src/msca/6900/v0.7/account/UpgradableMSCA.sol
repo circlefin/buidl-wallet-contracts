@@ -18,6 +18,7 @@
  */
 pragma solidity 0.8.24;
 
+import {DefaultCallbackHandler} from "../../../../callback/DefaultCallbackHandler.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
 import {InvalidInitializationInput} from "../../shared/common/Errors.sol";
 import {FunctionReference} from "../common/Structs.sol";
@@ -26,23 +27,24 @@ import {BaseMSCA} from "./BaseMSCA.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
 /**
  * @dev Leverage {ERC1967Proxy} brought by UUPS proxies, when this contract is set as the implementation behind such a
  * proxy.
  * The {_authorizeUpgrade} function is overridden here so more granular ACLs to the upgrade mechanism should be enforced
  * by plugins.
  */
-contract UpgradableMSCA is BaseMSCA, UUPSUpgradeable {
+contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
     using ExecutionUtils for address;
 
     event UpgradableMSCAInitialized(address indexed account, address indexed entryPointAddress);
 
     constructor(IEntryPoint _newEntryPoint, PluginManager _newPluginManager)
         BaseMSCA(_newEntryPoint, _newPluginManager)
-    {
-        // lock the implementation contract so it can only be called from proxies
-        _disableWalletStorageInitializers();
-    }
+    {}
 
     /// @notice Initializes the account with a set of plugins
     /// @dev No dependencies can be injected with this installation. For a full installation, please use installPlugin.
@@ -66,10 +68,21 @@ contract UpgradableMSCA is BaseMSCA, UUPSUpgradeable {
                 PluginManager.install,
                 (plugins[i], manifestHashes[i], pluginInstallData[i], dependencies, address(this))
             );
-            address(pluginManager).delegateCall(data);
+            address(PLUGIN_MANAGER).delegateCall(data);
             emit PluginInstalled(plugins[i], manifestHashes[i], dependencies);
         }
-        emit UpgradableMSCAInitialized(address(this), address(entryPoint));
+        emit UpgradableMSCAInitialized(address(this), address(ENTRY_POINT));
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(BaseMSCA, DefaultCallbackHandler)
+        returns (bool)
+    {
+        // BaseMSCA has already implemented ERC165
+        return BaseMSCA.supportsInterface(interfaceId) || interfaceId == type(IERC721Receiver).interfaceId
+            || interfaceId == type(IERC1155Receiver).interfaceId || interfaceId == type(IERC1271).interfaceId;
     }
 
     /// @inheritdoc UUPSUpgradeable
@@ -92,5 +105,6 @@ contract UpgradableMSCA is BaseMSCA, UUPSUpgradeable {
      * @dev The function is overridden here so more granular ACLs to the upgrade mechanism should be enforced by
      * plugins.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 }

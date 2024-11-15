@@ -40,7 +40,7 @@ contract DeployECDSAAccountFactoryScript is Script {
             factory = ECDSAAccountFactory(EXPECTED_FACTORY_ADDRESS);
         }
         console.log("Factory address: %s", address(factory));
-        console.log("Account implementation address: %s", address(factory.accountImplementation()));
+        console.log("Account implementation address: %s", address(factory.ACCOUNT_IMPLEMENTATION()));
         vm.stopBroadcast();
     }
 }

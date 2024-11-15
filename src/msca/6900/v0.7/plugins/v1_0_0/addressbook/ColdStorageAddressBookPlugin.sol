@@ -18,6 +18,7 @@
  */
 pragma solidity 0.8.24;
 
+import {Unsupported} from "../../../../../../common//Errors.sol";
 import {
     PLUGIN_AUTHOR,
     PLUGIN_VERSION_1,
@@ -26,7 +27,6 @@ import {
 } from "../../../../../../common/Constants.sol";
 import {CastLib} from "../../../../../../libs/CastLib.sol";
 import {RecipientAddressLib} from "../../../../../../libs/RecipientAddressLib.sol";
-import {Unsupported} from "../../../../shared/common/Errors.sol";
 import {
     ManifestAssociatedFunction,
     ManifestAssociatedFunctionType,
