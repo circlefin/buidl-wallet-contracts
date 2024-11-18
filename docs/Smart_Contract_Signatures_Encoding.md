@@ -117,7 +117,7 @@ bde0b9f486b1960454e326375d0b1680243e031fd4fb3f070d9a3ef9871ccfd5 (r)
 ```
 
 
-Note: signature type += 32 if it's signing over the actual digest in multisig context.
+Note: signature type += 32 if it's signing over the actual digest in a multisig context.
 
 The constant parts need to be sorted so that the recovered signers are sorted ascending (natural order) by address (not checksummed).
 
