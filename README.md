@@ -71,14 +71,13 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
 `make anvil` (if using foundry stack). To get a list of pre-funded addresses, you can look at the beginning of the logs in the `anvil` Docker container, or reference <https://github.com/foundry-rs/foundry/blob/0d8302880b79fa9c3c4aa52ab446583dece19a34/crates/anvil/README.md?plain=1#L48>.
 
 ### Deploy & Verify
-#### SCA and Paymaster
+#### SCA
   1. Deployment
       * Run the command `env $(grep -v '^#' .env) yarn hardhat deploy --network <chain>` where `<chain>` is one of {`mumbai`, `goerli`}.
 
-        If you only want to deploy a specific set of smart contracts, you can add the `--tags` flag, for example: `env $(grep -v '^#' .env) yarn hardhat deploy --tags SponsorPaymaster --network goerli`
+        If you only want to deploy a specific set of smart contracts, you can add the `--tags` flag, for example: `env $(grep -v '^#' .env) yarn hardhat deploy --tags ECDSAAccountFactory --network goerli`
   2. Verification
       * ECDSA wallet factory `env $(grep -v '^#' .env) npx hardhat verify --network mumbai --constructor-args script/ecdsa_account_factory_constructor_args.js ECDSA_ACCOUNT_FACTORY_ADDRESS`
-      * Sponsor paymaster `env $(grep -v '^#' .env) npx hardhat verify --network goerli --constructor-args script/sponsor_paymaster_constructor_args.js STABLECOIN_PAYMASTER_ADDRESS`
       * Fallback: If the verification commands do not work for contracts deployed through the hardhat deployment scripts, you can still verify manually through etherscan's UI by submitting the standard input json. 
       
         You can find this file under `deployments/polygon/solcInputs` (you can try different blockchains but I'm unsure of results). Then submit the file that you think is the one for the contract you're trying to verify. It's a bit of guessing, but you can look at the source code to try and figure it out. You may also need to verify the proxies manually through etherscan after having verified the implementation.
