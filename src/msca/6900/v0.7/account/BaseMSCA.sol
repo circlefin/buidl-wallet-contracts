@@ -24,13 +24,14 @@ import {
     WALLET_AUTHOR,
     WALLET_VERSION_1
 } from "../../../../common/Constants.sol";
+
+import {UnauthorizedCaller} from "../../../../common/Errors.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
 import {
     InvalidAuthorizer,
     InvalidExecutionFunction,
     InvalidValidationFunctionId,
-    NotFoundSelector,
-    UnauthorizedCaller
+    NotFoundSelector
 } from "../../shared/common/Errors.sol";
 import {AddressDLL, ValidationData} from "../../shared/common/Structs.sol";
 import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
@@ -39,7 +40,16 @@ import {
     PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
     RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
 } from "../common/Constants.sol";
-import "../common/Structs.sol";
+import {
+    Call,
+    ExecutionDetail,
+    ExecutionFunctionConfig,
+    ExecutionHooks,
+    FunctionReference,
+    HookGroup,
+    PostExecHookToRun,
+    RepeatableBytes21DLL
+} from "../common/Structs.sol";
 import {IAccountLoupe} from "../interfaces/IAccountLoupe.sol";
 import {IPlugin} from "../interfaces/IPlugin.sol";
 import {IPluginExecutor} from "../interfaces/IPluginExecutor.sol";
@@ -86,11 +96,11 @@ abstract contract BaseMSCA is
     using ValidationDataLib for ValidationData;
     using SelectorRegistryLib for bytes4;
 
-    string public constant author = WALLET_AUTHOR;
-    string public constant version = WALLET_VERSION_1;
+    string public constant AUTHOR = WALLET_AUTHOR;
+    string public constant VERSION = WALLET_VERSION_1;
     // 4337 related immutable storage
-    IEntryPoint public immutable entryPoint;
-    PluginManager public immutable pluginManager;
+    IEntryPoint public immutable ENTRY_POINT;
+    PluginManager public immutable PLUGIN_MANAGER;
 
     error NotNativeFunctionSelector(bytes4 selector);
     error InvalidHookFunctionId(uint8 functionId);
@@ -120,8 +130,8 @@ abstract contract BaseMSCA is
     }
 
     constructor(IEntryPoint _newEntryPoint, PluginManager _newPluginManager) {
-        entryPoint = _newEntryPoint;
-        pluginManager = _newPluginManager;
+        ENTRY_POINT = _newEntryPoint;
+        PLUGIN_MANAGER = _newPluginManager;
         // lock the implementation contract so it can only be called from proxies
         _disableWalletStorageInitializers();
     }
@@ -131,10 +141,11 @@ abstract contract BaseMSCA is
     /// @notice Manage fallback calls made to the plugins.
     /// @dev Route calls to execution functions based on incoming msg.sig
     ///      If there's no plugin associated with this function selector, revert
+    // solhint-disable-next-line no-complex-fallback
     fallback(bytes calldata) external payable returns (bytes memory result) {
         // run runtime validation before we load the executionDetail because validation may update account state
-        if (msg.sender != address(entryPoint)) {
-            // entryPoint should go through validateUserOp flow which calls userOpValidationFunction
+        if (msg.sender != address(ENTRY_POINT)) {
+            // ENTRY_POINT should go through validateUserOp flow which calls userOpValidationFunction
             _processPreRuntimeHooksAndValidation(msg.sig);
         }
         // load the executionDetail before we run the preExecHooks because they may modify the plugins
@@ -151,11 +162,11 @@ abstract contract BaseMSCA is
     }
 
     /**
-     * @dev Return the entryPoint used by this account.
-     * subclass should return the current entryPoint used by this account.
+     * @dev Return the ENTRY_POINT used by this account.
+     * subclass should return the current ENTRY_POINT used by this account.
      */
     function getEntryPoint() external view returns (IEntryPoint) {
-        return entryPoint;
+        return ENTRY_POINT;
     }
 
     /**
@@ -168,7 +179,7 @@ abstract contract BaseMSCA is
         virtual
         returns (uint256 validationData)
     {
-        if (msg.sender != address(entryPoint)) {
+        if (msg.sender != address(ENTRY_POINT)) {
             revert UnauthorizedCaller();
         }
         validationData = _authenticateAndAuthorizeUserOp(userOp, userOpHash);
@@ -199,7 +210,7 @@ abstract contract BaseMSCA is
      * For a nonce of a specific key, use `entrypoint.getNonce(account, key)`
      */
     function getNonce() public view virtual returns (uint256) {
-        return entryPoint.getNonce(address(this), 0);
+        return ENTRY_POINT.getNonce(address(this), 0);
     }
 
     function installPlugin(
@@ -211,7 +222,7 @@ abstract contract BaseMSCA is
         bytes memory data = abi.encodeCall(
             PluginManager.install, (plugin, manifestHash, pluginInstallData, dependencies, address(this))
         );
-        address(pluginManager).delegateCall(data);
+        address(PLUGIN_MANAGER).delegateCall(data);
         emit PluginInstalled(plugin, manifestHash, dependencies);
     }
 
@@ -221,7 +232,7 @@ abstract contract BaseMSCA is
         validateNativeFunction
     {
         bytes memory data = abi.encodeCall(PluginManager.uninstall, (plugin, config, pluginUninstallData));
-        address(pluginManager).delegateCall(data);
+        address(PLUGIN_MANAGER).delegateCall(data);
         emit PluginUninstalled(plugin, true);
     }
 
@@ -313,17 +324,17 @@ abstract contract BaseMSCA is
     }
 
     /**
-     * Check current account deposit in the entryPoint.
+     * Check current account deposit in the ENTRY_POINT.
      */
     function getDeposit() public view returns (uint256) {
-        return entryPoint.balanceOf(address(this));
+        return ENTRY_POINT.balanceOf(address(this));
     }
 
     /**
-     * Deposit more funds for this account in the entryPoint.
+     * Deposit more funds for this account in the ENTRY_POINT.
      */
     function addDeposit() public payable {
-        entryPoint.depositTo{value: msg.value}(address(this));
+        ENTRY_POINT.depositTo{value: msg.value}(address(this));
     }
 
     /**
@@ -332,7 +343,7 @@ abstract contract BaseMSCA is
      * @param amount to withdraw
      */
     function withdrawDepositTo(address payable withdrawAddress, uint256 amount) public onlyFromEntryPointOrSelf {
-        entryPoint.withdrawTo(withdrawAddress, amount);
+        ENTRY_POINT.withdrawTo(withdrawAddress, amount);
     }
 
     /**
@@ -427,6 +438,7 @@ abstract contract BaseMSCA is
                     revert InvalidValidationFunctionId(preRuntimeValidationHooks[j].functionId);
                 }
                 IPlugin preRuntimeValidationHookPlugin = IPlugin(preRuntimeValidationHooks[j].plugin);
+                // solhint-disable no-empty-blocks
                 try preRuntimeValidationHookPlugin.preRuntimeValidationHook(
                     preRuntimeValidationHooks[j].functionId, msg.sender, msg.value, msg.data
                 ) {} catch (bytes memory revertReason) {
@@ -434,6 +446,7 @@ abstract contract BaseMSCA is
                         preRuntimeValidationHooks[j].plugin, preRuntimeValidationHooks[j].functionId, revertReason
                     );
                 }
+                // solhint-enable no-empty-blocks
             }
             if (nextHook.pack() == SENTINEL_BYTES21) {
                 break;
@@ -442,11 +455,13 @@ abstract contract BaseMSCA is
         }
         // call runtimeValidationFunction if it's not always allowed
         if (packedValidationFunction != RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE) {
+            // solhint-disable no-empty-blocks
             try IPlugin(validationFunction.plugin).runtimeValidationFunction(
                 validationFunction.functionId, msg.sender, msg.value, msg.data
             ) {} catch (bytes memory revertReason) {
                 revert RuntimeValidationFailed(validationFunction.plugin, validationFunction.functionId, revertReason);
             }
+            // solhint-enable no-empty-blocks
         }
     }
 
@@ -455,8 +470,8 @@ abstract contract BaseMSCA is
         if (!msg.sig._isNativeFunctionSelector()) {
             revert NotNativeFunctionSelector(msg.sig);
         }
-        if (msg.sender != address(entryPoint)) {
-            // entryPoint should go through validateUserOp flow which calls userOpValidationFunction
+        if (msg.sender != address(ENTRY_POINT)) {
+            // ENTRY_POINT should go through validateUserOp flow which calls userOpValidationFunction
             _processPreRuntimeHooksAndValidation(msg.sig);
         }
         return WalletStorageV1Lib.getLayout().executionDetails[msg.sig].executionHooks._processPreExecHooks(msg.data);
@@ -507,7 +522,7 @@ abstract contract BaseMSCA is
     }
 
     function _checkAccessRuleFromEPOrAcctItself() internal view {
-        if (msg.sender != address(entryPoint) && msg.sender != address(this)) {
+        if (msg.sender != address(ENTRY_POINT) && msg.sender != address(this)) {
             revert UnauthorizedCaller();
         }
     }

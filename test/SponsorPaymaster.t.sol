@@ -18,13 +18,20 @@
  */
 pragma solidity 0.8.24;
 
-import "../src/paymaster/v1/permissioned/SponsorPaymaster.sol";
+import {SponsorPaymaster} from "../src/paymaster/v1/permissioned/SponsorPaymaster.sol";
+import {_packValidationData} from "@account-abstraction/contracts/core/Helpers.sol";
 
-import "./util/TestUtils.sol";
+import {UserOperationLib} from "@account-abstraction/contracts/core/UserOperationLib.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+// import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {TestUtils} from "./util/TestUtils.sol";
 
-import "@account-abstraction/contracts/core/EntryPoint.sol";
-import "@account-abstraction/contracts/interfaces/IPaymaster.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract SponsorPaymasterTest is TestUtils {
@@ -40,11 +47,11 @@ contract SponsorPaymasterTest is TestUtils {
     uint256 internal verifyingSigner2PrivateKey = 0xdef;
     address internal verifyingSigner1;
     address internal verifyingSigner2;
-    uint48 internal MOCK_VALID_UNTIL = 1691493273;
-    uint48 internal MOCK_VALID_AFTER = 1681493273;
-    bytes internal MOCK_OFFCHAIN_SIG = "0x123456";
-    uint128 internal MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT = 1500;
-    uint128 internal MOCK_PAYMASTER_POST_OP_GAS_LIMIT = 3000;
+    uint48 internal constant MOCK_VALID_UNTIL = 1691493273;
+    uint48 internal constant MOCK_VALID_AFTER = 1681493273;
+    bytes internal constant MOCK_OFFCHAIN_SIG = "0x123456";
+    uint128 internal constant MOCK_PAYMASTER_VERIFICATION_GAS_LIMIT = 1500;
+    uint128 internal constant MOCK_PAYMASTER_POST_OP_GAS_LIMIT = 3000;
 
     function setUp() public {
         verifyingSigner1 = vm.addr(verifyingSigner1PrivateKey);
@@ -339,6 +346,13 @@ contract SponsorPaymasterTest is TestUtils {
         vm.startPrank(sponsorPaymaster.owner());
         sponsorPaymaster.unpause();
         assertEq(false, sponsorPaymaster.paused());
+        vm.stopPrank();
+    }
+
+    function testPostOp() public {
+        vm.startPrank(address(entryPoint));
+        // the context argument is empty because validateUserOp returns that
+        sponsorPaymaster.postOp(IPaymaster.PostOpMode.opSucceeded, "", 100, 100);
         vm.stopPrank();
     }
 

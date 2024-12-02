@@ -118,7 +118,7 @@ contract UpgradableMSCAFactoryTest is TestUtils {
         vm.expectEmit(true, true, false, false);
         emit AccountCreated(counterfactualAddr, addressToBytes32(ownerAddr), salt);
         UpgradableMSCA accountCreated = factory.createAccount(addressToBytes32(ownerAddr), salt, initializingData);
-        assertEq(address(accountCreated.entryPoint()), address(entryPoint));
+        assertEq(address(accountCreated.ENTRY_POINT()), address(entryPoint));
         assertEq(singleOwnerPlugin.getOwnerOf(address(accountCreated)), ownerAddr);
         // verify the address does not change
         assertEq(address(accountCreated), counterfactualAddr);

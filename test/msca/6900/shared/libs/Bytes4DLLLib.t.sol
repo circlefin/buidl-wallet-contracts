@@ -24,50 +24,13 @@ import {SENTINEL_BYTES4} from "../../../../../src/common/Constants.sol";
 import {Bytes4DLL} from "../../../../../src/msca/6900/shared/common/Structs.sol";
 import {Bytes4DLLLib} from "../../../../../src/msca/6900/shared/libs/Bytes4DLLLib.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
-
-contract TestDLL {
-    using Bytes4DLLLib for Bytes4DLL;
-
-    Bytes4DLL private bytes4DLL;
-
-    function append(bytes4 valueToAdd) external returns (bool) {
-        return bytes4DLL.append(valueToAdd);
-    }
-
-    function remove(bytes4 valueToRemove) external returns (bool) {
-        return bytes4DLL.remove(valueToRemove);
-    }
-
-    function size() external view returns (uint256) {
-        return bytes4DLL.size();
-    }
-
-    function contains(bytes4 value) external view returns (bool) {
-        return bytes4DLL.contains(value);
-    }
-
-    function getAll() external view returns (bytes4[] memory results) {
-        return bytes4DLL.getAll();
-    }
-
-    function getPaginated(bytes4 start, uint256 limit) external view returns (bytes4[] memory results, bytes4 next) {
-        return bytes4DLL.getPaginated(start, limit);
-    }
-
-    function getHead() external view returns (bytes4) {
-        return bytes4DLL.getHead();
-    }
-
-    function getTail() external view returns (bytes4) {
-        return bytes4DLL.getTail();
-    }
-}
+import {TestBytes4DLL} from "./TestBytes4DLL.sol";
 
 contract Bytes4DLLLibTest is TestUtils {
     using Bytes4DLLLib for Bytes4DLL;
 
     function testAddRemoveGetBytes4Values() public {
-        TestDLL values = new TestDLL();
+        TestBytes4DLL values = new TestBytes4DLL();
         // sentinel value is initialized
         assertEq(values.size(), 0);
         // try to remove sentinel stupidly
@@ -148,14 +111,14 @@ contract Bytes4DLLLibTest is TestUtils {
         // try out different limits, even bigger than totalValues
         bound(limit, 1, 30);
         bound(totalValues, 3, 30);
-        TestDLL dll = new TestDLL();
+        TestBytes4DLL dll = new TestBytes4DLL();
         for (uint32 i = 1; i <= totalValues; i++) {
             dll.append(bytes4(i));
         }
         bulkGetAndVerifyValues(dll, totalValues, limit);
     }
 
-    function bulkGetAndVerifyValues(TestDLL dll, uint256 totalValues, uint256 limit) private view {
+    function bulkGetAndVerifyValues(TestBytes4DLL dll, uint256 totalValues, uint256 limit) private view {
         bytes4[] memory results = new bytes4[](totalValues);
         bytes4 start = SENTINEL_BYTES4;
         uint32 count = 0;

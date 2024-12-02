@@ -31,8 +31,8 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
  */
 contract SingleOwnerMSCAFactory {
     // logic implementation
-    SingleOwnerMSCA public immutable accountImplementation;
-    IEntryPoint public immutable entryPoint;
+    SingleOwnerMSCA public immutable ACCOUNT_IMPLEMENTATION;
+    IEntryPoint public immutable ENTRY_POINT;
 
     event FactoryDeployed(address indexed factory, address accountImplementation, address entryPoint);
     event AccountCreated(address indexed proxy, address sender, bytes32 salt);
@@ -46,10 +46,10 @@ contract SingleOwnerMSCAFactory {
      *      of more complicated plugins, please call installPlugin via a separate tx/userOp after account deployment.
      */
     constructor(address _entryPointAddr, address _pluginManagerAddr) {
-        entryPoint = IEntryPoint(_entryPointAddr);
+        ENTRY_POINT = IEntryPoint(_entryPointAddr);
         PluginManager _pluginManager = PluginManager(_pluginManagerAddr);
-        accountImplementation = new SingleOwnerMSCA(entryPoint, _pluginManager);
-        emit FactoryDeployed(address(this), address(accountImplementation), _entryPointAddr);
+        ACCOUNT_IMPLEMENTATION = new SingleOwnerMSCA(ENTRY_POINT, _pluginManager);
+        emit FactoryDeployed(address(this), address(ACCOUNT_IMPLEMENTATION), _entryPointAddr);
     }
 
     /**
@@ -82,7 +82,7 @@ contract SingleOwnerMSCAFactory {
         account = SingleOwnerMSCA(
             payable(
                 new ERC1967Proxy{salt: mixedSalt}(
-                    address(accountImplementation), abi.encodeCall(SingleOwnerMSCA.initializeSingleOwnerMSCA, (owner))
+                    address(ACCOUNT_IMPLEMENTATION), abi.encodeCall(SingleOwnerMSCA.initializeSingleOwnerMSCA, (owner))
                 )
             )
         );
@@ -136,7 +136,7 @@ contract SingleOwnerMSCAFactory {
             abi.encodePacked(
                 type(ERC1967Proxy).creationCode,
                 abi.encode(
-                    address(accountImplementation), abi.encodeCall(SingleOwnerMSCA.initializeSingleOwnerMSCA, (_owner))
+                    address(ACCOUNT_IMPLEMENTATION), abi.encodeCall(SingleOwnerMSCA.initializeSingleOwnerMSCA, (_owner))
                 )
             )
         );

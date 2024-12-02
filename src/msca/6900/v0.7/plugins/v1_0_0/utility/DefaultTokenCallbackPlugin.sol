@@ -78,7 +78,9 @@ contract DefaultTokenCallbackPlugin is BasePlugin, IERC721Receiver, IERC1155Rece
         uint256 amount,
         bytes calldata userData,
         bytes calldata operatorData
-    ) external pure override {}
+    ) external pure override 
+    // solhint-disable-next-line no-empty-blocks
+    {}
 
     /// @inheritdoc BasePlugin
     function pluginManifest() external pure override returns (PluginManifest memory) {

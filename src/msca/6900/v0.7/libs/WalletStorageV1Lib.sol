@@ -19,12 +19,12 @@
 pragma solidity 0.8.24;
 
 import {AddressDLL} from "../../shared/common/Structs.sol";
-import "../common/Structs.sol";
+import {ExecutionDetail, PermittedExternalCall, PluginDetail} from "../common/Structs.sol";
 
 /// @dev The same storage will be used for v1.x.y of MSCAs.
 library WalletStorageV1Lib {
     // keccak256 hash of "circle.msca.v1.storage" subtracted by 1
-    bytes32 constant WALLET_STORAGE_SLOT = 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8;
+    bytes32 private constant WALLET_STORAGE_SLOT = 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8;
 
     struct Layout {
         // installed plugin addresses for quick query
@@ -54,6 +54,7 @@ library WalletStorageV1Lib {
      * @dev Function to read structured wallet storage.
      */
     function getLayout() internal pure returns (Layout storage walletStorage) {
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             walletStorage.slot := WALLET_STORAGE_SLOT
         }

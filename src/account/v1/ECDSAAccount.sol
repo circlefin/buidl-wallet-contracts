@@ -49,6 +49,7 @@ contract ECDSAAccount is CoreAccount, UUPSUpgradeable, BaseERC712CompliantAccoun
     /// @inheritdoc UUPSUpgradeable
     // The {_authorizeUpgrade} function must be overridden to include access restriction to the upgrade mechanism.
     // Authorize the owner to upgrade the contract.
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// @custom:oz-upgrades-unsafe-allow constructor

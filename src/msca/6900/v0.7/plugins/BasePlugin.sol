@@ -19,8 +19,7 @@
 pragma solidity 0.8.24;
 
 import {NotImplemented} from "../../shared/common/Errors.sol";
-import "../common/PluginManifest.sol";
-import "../common/Structs.sol";
+import {PluginManifest, PluginMetadata} from "../common/PluginManifest.sol";
 import {IPlugin} from "../interfaces/IPlugin.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";

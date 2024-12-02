@@ -27,27 +27,6 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
  * support open-ended execution.
  */
 abstract contract BaseModule is IModule, ERC165 {
-    error AlreadyInitialized();
-    error NotInitialized();
-
-    /// @dev Ensure the account has initialized this module
-    /// @param account the account to check
-    modifier isNotInitialized(address account) {
-        if (_isInitialized(account)) {
-            revert AlreadyInitialized();
-        }
-        _;
-    }
-
-    /// @dev Ensure the account has not initialized this module
-    /// @param account the account to check
-    modifier isInitialized(address account) {
-        if (!_isInitialized(account)) {
-            revert NotInitialized();
-        }
-        _;
-    }
-
     /// @dev Returns true if this contract implements the interface defined by
     /// `interfaceId`. See the corresponding
     /// https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
@@ -62,11 +41,4 @@ abstract contract BaseModule is IModule, ERC165 {
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return interfaceId == type(IModule).interfaceId || super.supportsInterface(interfaceId);
     }
-
-    /// @notice Check if the account has initialized this module yet
-    /// @dev This function should be overwritten for modules that have state-changing onInstall's
-    /// @param account The account to check
-    /// @return True if the account has initialized this module
-    // solhint-disable-next-line no-empty-blocks
-    function _isInitialized(address account) internal view virtual returns (bool) {}
 }

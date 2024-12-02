@@ -44,10 +44,7 @@ contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
 
     constructor(IEntryPoint _newEntryPoint, PluginManager _newPluginManager)
         BaseMSCA(_newEntryPoint, _newPluginManager)
-    {
-        // lock the implementation contract so it can only be called from proxies
-        _disableWalletStorageInitializers();
-    }
+    {}
 
     /// @notice Initializes the account with a set of plugins
     /// @dev No dependencies can be injected with this installation. For a full installation, please use installPlugin.
@@ -71,10 +68,10 @@ contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
                 PluginManager.install,
                 (plugins[i], manifestHashes[i], pluginInstallData[i], dependencies, address(this))
             );
-            address(pluginManager).delegateCall(data);
+            address(PLUGIN_MANAGER).delegateCall(data);
             emit PluginInstalled(plugins[i], manifestHashes[i], dependencies);
         }
-        emit UpgradableMSCAInitialized(address(this), address(entryPoint));
+        emit UpgradableMSCAInitialized(address(this), address(ENTRY_POINT));
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -103,5 +100,6 @@ contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
      * @dev The function is overridden here so more granular ACLs to the upgrade mechanism should be enforced by
      * plugins.
      */
+    // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override {}
 }

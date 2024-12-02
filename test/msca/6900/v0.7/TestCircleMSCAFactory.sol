@@ -18,12 +18,15 @@
  */
 pragma solidity 0.8.24;
 
-import {Create2FailedDeployment, InvalidLength} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import "./TestCircleMSCA.sol";
+import {InvalidLength} from "../../../../src/common/Errors.sol";
+import {Create2FailedDeployment} from "../../../../src/msca/6900/shared/common/Errors.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "@openzeppelin/contracts/utils/Create2.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {UpgradableMSCA} from "src/msca/6900/v0.7/account/UpgradableMSCA.sol";
+import {PluginManager} from "src/msca/6900/v0.7/managers/PluginManager.sol";
 
 /**
  * @dev Only for testing purpose. Account factory that creates the TestCircleMSCA with a set of plugins to be installed.
@@ -32,8 +35,8 @@ import "@openzeppelin/contracts/utils/Create2.sol";
  */
 contract TestCircleMSCAFactory is Ownable {
     // logic implementation
-    TestCircleMSCA public immutable accountImplementation;
-    IEntryPoint public immutable entryPoint;
+    TestCircleMSCA public immutable ACCOUNT_IMPLEMENTATION;
+    IEntryPoint public immutable ENTRY_POINT;
     mapping(address => bool) public isPluginAllowed;
 
     event AccountCreated(address indexed proxy, address sender, bytes32 salt);
@@ -42,8 +45,8 @@ contract TestCircleMSCAFactory is Ownable {
     error PluginIsNotAllowed(address plugin);
 
     constructor(address _owner, IEntryPoint _entryPoint, PluginManager _pluginManager) Ownable(_owner) {
-        accountImplementation = new TestCircleMSCA(_entryPoint, _pluginManager);
-        entryPoint = _entryPoint;
+        ACCOUNT_IMPLEMENTATION = new TestCircleMSCA(_entryPoint, _pluginManager);
+        ENTRY_POINT = _entryPoint;
     }
 
     function setPlugins(address[] calldata _plugins, bool[] calldata _permissions) external onlyOwner {
@@ -93,7 +96,7 @@ contract TestCircleMSCAFactory is Ownable {
         account = TestCircleMSCA(
             payable(
                 new ERC1967Proxy{salt: mixedSalt}(
-                    address(accountImplementation),
+                    address(ACCOUNT_IMPLEMENTATION),
                     abi.encodeCall(
                         UpgradableMSCA.initializeUpgradableMSCA, (_plugins, _manifestHashes, _pluginInstallData)
                     )
@@ -130,7 +133,7 @@ contract TestCircleMSCAFactory is Ownable {
      * @param _unstakeDelaySec - the unstake delay for this entity. Can only be increased.
      */
     function addStake(uint32 _unstakeDelaySec) public payable onlyOwner {
-        entryPoint.addStake{value: msg.value}(_unstakeDelaySec);
+        ENTRY_POINT.addStake{value: msg.value}(_unstakeDelaySec);
     }
 
     /**
@@ -138,7 +141,7 @@ contract TestCircleMSCAFactory is Ownable {
      * @notice This entity can't serve requests once unlocked, until it calls addStake again.
      */
     function unlockStake() public onlyOwner {
-        entryPoint.unlockStake();
+        ENTRY_POINT.unlockStake();
     }
 
     /**
@@ -147,7 +150,7 @@ contract TestCircleMSCAFactory is Ownable {
      * @param _withdrawAddress the address to send withdrawn value.
      */
     function withdrawStake(address payable _withdrawAddress) public onlyOwner {
-        entryPoint.withdrawStake(_withdrawAddress);
+        ENTRY_POINT.withdrawStake(_withdrawAddress);
     }
 
     /**
@@ -178,7 +181,7 @@ contract TestCircleMSCAFactory is Ownable {
             abi.encodePacked(
                 type(ERC1967Proxy).creationCode,
                 abi.encode(
-                    address(accountImplementation),
+                    address(ACCOUNT_IMPLEMENTATION),
                     abi.encodeCall(
                         UpgradableMSCA.initializeUpgradableMSCA, (_plugins, _manifestHashes, _pluginInstallData)
                     )

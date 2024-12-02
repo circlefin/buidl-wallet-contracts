@@ -25,12 +25,12 @@ import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/Pac
 import {console} from "forge-std/src/console.sol";
 
 abstract contract PluginGasProfileBaseTest is TestUtils {
-    uint256 constant OV_PER_ZERO_BYTE = 4;
-    uint256 constant OV_PER_NONZERO_BYTE = 16;
+    uint256 private constant OV_PER_ZERO_BYTE = 4;
+    uint256 private constant OV_PER_NONZERO_BYTE = 16;
     IEntryPoint public entryPoint = new EntryPoint();
     address payable public beneficiary = payable(address(makeAddr("bundler")));
-    string jsonObj;
-    uint256 sum;
+    string internal jsonObj;
+    uint256 internal sum;
     bool public writeGasProfileToFile;
 
     function testBenchmarkAll() external virtual;

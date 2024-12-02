@@ -18,10 +18,11 @@
  */
 pragma solidity 0.8.24;
 
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../util/TestUtils.sol";
-import "./TestRepeatableFunctionReferenceDLL.sol";
-import "forge-std/src/console.sol";
+import {SENTINEL_BYTES21} from "../../../../src/common/Constants.sol";
+import {FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {TestRepeatableFunctionReferenceDLL} from "./TestRepeatableFunctionReferenceDLL.sol";
+import {FunctionReferenceLib} from "src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
 
 contract HookFunctionReferenceDLLTest is TestUtils {
     using FunctionReferenceLib for bytes21;

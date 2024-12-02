@@ -22,7 +22,7 @@ import {EMPTY_FUNCTION_REFERENCE, SENTINEL_BYTES21} from "../../../../common/Con
 import {
     InvalidFunctionReference, InvalidLimit, ItemAlreadyExists, ItemDoesNotExist
 } from "../../shared/common/Errors.sol";
-import "../common/Structs.sol";
+import {Bytes21DLL, FunctionReference} from "../common/Structs.sol";
 import {FunctionReferenceLib} from "./FunctionReferenceLib.sol";
 
 /**
@@ -130,6 +130,7 @@ library FunctionReferenceDLLLib {
             results[count] = current.unpack();
             current = dll.next[current];
         }
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             mstore(results, count)
         }

@@ -4,6 +4,7 @@
     "compiler-version": ["error", "0.8.24"],
     "no-unused-vars": "off",
     "no-console": "off",
-    "func-name-mixedcase": "off"
+    "func-name-mixedcase": "off",
+    "func-visibility": ["error", { "ignoreConstructors": true }]
   }
 }

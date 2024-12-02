@@ -18,15 +18,10 @@
  */
 pragma solidity 0.8.24;
 
-import {
-    PLUGIN_AUTHOR,
-    PLUGIN_VERSION_1,
-    SIG_VALIDATION_FAILED,
-    SIG_VALIDATION_SUCCEEDED
-} from "../../../../../../common/Constants.sol";
+import {Unsupported} from "../../../../../../common//Errors.sol";
+import {PLUGIN_AUTHOR, PLUGIN_VERSION_1, SIG_VALIDATION_SUCCEEDED} from "../../../../../../common/Constants.sol";
 import {CastLib} from "../../../../../../libs/CastLib.sol";
 import {RecipientAddressLib} from "../../../../../../libs/RecipientAddressLib.sol";
-import {Unsupported} from "../../../../shared/common/Errors.sol";
 import {
     ManifestAssociatedFunction,
     ManifestAssociatedFunctionType,
@@ -154,6 +149,13 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
         }
     }
 
+    function _verifyAllowedTargetOrRecipient(address target, uint256 value, bytes memory data) internal view {
+        address recipient = _getTargetOrRecipient(target, value, data);
+        if (!_allowedRecipients.contains(msg.sender, CastLib.toSetValue(recipient))) {
+            revert UnauthorizedRecipient(msg.sender, recipient);
+        }
+    }
+
     /// @inheritdoc BasePlugin
     function preUserOpValidationHook(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
         external
@@ -170,9 +172,7 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
             // calldata length has already been checked in caller
             (address target, uint256 targetValue, bytes memory targetData) =
                 abi.decode(userOp.callData[4:], (address, uint256, bytes));
-            if (!_isRecipientAllowed(_getTargetOrRecipient(target, targetValue, targetData))) {
-                return SIG_VALIDATION_FAILED;
-            }
+            _verifyAllowedTargetOrRecipient(target, targetValue, targetData);
             return SIG_VALIDATION_SUCCEEDED;
         } else if (functionId == uint8(FunctionId.PRE_USER_OP_VALIDATION_HOOK_EXECUTE_BATCH_ADDRESS_BOOK)) {
             // This functionality is exclusively compatible with the IStandardExecutor.executeBatch as delineated in the
@@ -182,9 +182,7 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
             Call[] memory calls = abi.decode(userOp.callData[4:], (Call[]));
             uint256 length = calls.length;
             for (uint256 i = 0; i < length; ++i) {
-                if (!_isRecipientAllowed(_getTargetOrRecipient(calls[i].target, calls[i].value, calls[i].data))) {
-                    return SIG_VALIDATION_FAILED;
-                }
+                _verifyAllowedTargetOrRecipient(calls[i].target, calls[i].value, calls[i].data);
             }
             return SIG_VALIDATION_SUCCEEDED;
         }
@@ -192,7 +190,7 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function preRuntimeValidationHook(uint8 functionId, address sender, uint256 value, bytes calldata data)
+    function preRuntimeValidationHook(uint8 functionId, address, uint256 value, bytes calldata data)
         external
         view
         override
@@ -205,10 +203,7 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
             // here.
             (address target, uint256 targetValue, bytes memory targetData) =
                 abi.decode(data[4:], (address, uint256, bytes));
-            address recipient = _getTargetOrRecipient(target, targetValue, targetData);
-            if (!_isRecipientAllowed(recipient)) {
-                revert UnauthorizedRecipient(sender, recipient);
-            }
+            _verifyAllowedTargetOrRecipient(target, targetValue, targetData);
             return;
         } else if (functionId == uint8(FunctionId.PRE_RUNTIME_VALIDATION_HOOK_EXECUTE_BATCH_ADDRESS_BOOK)) {
             // This functionality is exclusively compatible with the IStandardExecutor.executeBatch as delineated in the
@@ -218,10 +213,7 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
             Call[] memory calls = abi.decode(data[4:], (Call[]));
             uint256 length = calls.length;
             for (uint256 i = 0; i < length; ++i) {
-                address recipient = _getTargetOrRecipient(calls[i].target, calls[i].value, calls[i].data);
-                if (!_isRecipientAllowed(recipient)) {
-                    revert UnauthorizedRecipient(sender, recipient);
-                }
+                _verifyAllowedTargetOrRecipient(calls[i].target, calls[i].value, calls[i].data);
             }
             return;
         }
@@ -362,10 +354,6 @@ contract ColdStorageAddressBookPlugin is BasePlugin, IAddressBookPlugin {
                 revert FailToAddRecipient(msg.sender, recipientsToAdd[i]);
             }
         }
-    }
-
-    function _isRecipientAllowed(address recipient) internal view returns (bool) {
-        return _allowedRecipients.contains(msg.sender, CastLib.toSetValue(recipient));
     }
 
     function _getAllowedRecipients(address account) internal view returns (address[] memory) {
