@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.0...v2.1.1) (2024-12-06)
+
+
+### Bug Fixes
+
+* linting warnings and initializer logic ([#52](https://github.com/circlefin/buidl-wallet-contracts/issues/52)) ([41d69cb](https://github.com/circlefin/buidl-wallet-contracts/commit/41d69cb8ab2a99d109ab2faffadf9df65d74779d))
+
 ## [2.1.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.0.0...v2.1.0) (2024-11-07)
 
 
