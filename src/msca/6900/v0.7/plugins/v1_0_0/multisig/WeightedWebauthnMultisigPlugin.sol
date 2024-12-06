@@ -454,6 +454,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             // 0. load the signatures from CheckNSignatureInput struct
             // 1. load contractSignature content starting from the correct memory offset
             // 2. calculate total length including the content and the prefix storing the length
+            // solhint-disable-next-line no-inline-assembly
             assembly ("memory-safe") {
                 let signatures := mload(add(input, 0x60))
                 contractSignature := add(add(signatures, sigDynamicPartOffset), 0x20)
@@ -504,6 +505,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             // 0. load the signatures from CheckNSignatureInput struct
             // 1. load the content starting from the correct memory offset
             // 2. calculate total length including the content and the prefix storing the length
+            // solhint-disable-next-line no-inline-assembly
             assembly ("memory-safe") {
                 let signatures := mload(add(input, 0x60))
                 sigDynamicPartBytes := add(add(signatures, sigDynamicPartOffset), 0x20)

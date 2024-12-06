@@ -18,9 +18,6 @@
  */
 pragma solidity 0.8.24;
 
-/* solhint-disable reason-string */
-/* solhint-disable no-inline-assembly */
-
 import {UserOperationLib} from "@account-abstraction/contracts/core/UserOperationLib.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
@@ -86,6 +83,7 @@ library PaymasterUtils {
      * do it.
      */
     function calldataKeccak(bytes calldata data) internal pure returns (bytes32 ret) {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let mem := mload(0x40)
             let len := data.length

@@ -43,7 +43,23 @@ abstract contract WalletStorageInitializable {
      * Emits an {WalletStorageInitialized} event.
      */
     modifier walletStorageInitializer() {
-        bool isTopLevelCall = _setWalletStorageInitializing();
+        bool isTopLevelCall = !WalletStorageV1Lib.getLayout().initializing;
+        uint8 initialized = WalletStorageV1Lib.getLayout().initialized;
+
+        // Allowed calls:
+        // - initialSetup: the contract is not in the initializing state and no previous version was
+        //                 initialized
+        // - deploying: the contract is initialized at version 1 (no reininitialization) and the
+        //                 current contract is just being deployed
+        bool initialSetup = initialized == 0 && isTopLevelCall;
+        bool deploying = initialized == 1 && address(this).code.length == 0;
+        if (!initialSetup && !deploying) {
+            revert WalletStorageIsInitialized();
+        }
+        WalletStorageV1Lib.getLayout().initialized = 1;
+        if (isTopLevelCall) {
+            WalletStorageV1Lib.getLayout().initializing = true;
+        }
         _;
         if (isTopLevelCall) {
             WalletStorageV1Lib.getLayout().initializing = false;
@@ -78,18 +94,5 @@ abstract contract WalletStorageInitializable {
             WalletStorageV1Lib.getLayout().initialized = type(uint8).max;
             emit WalletStorageInitialized();
         }
-    }
-
-    function _setWalletStorageInitializing() internal returns (bool) {
-        bool isTopLevelCall = !WalletStorageV1Lib.getLayout().initializing;
-        uint8 initialized = WalletStorageV1Lib.getLayout().initialized;
-        if (!(isTopLevelCall && initialized < 1) || (address(this).code.length <= 0 && initialized == 1)) {
-            revert WalletStorageIsInitialized();
-        }
-        WalletStorageV1Lib.getLayout().initialized = 1;
-        if (isTopLevelCall) {
-            WalletStorageV1Lib.getLayout().initializing = true;
-        }
-        return isTopLevelCall;
     }
 }

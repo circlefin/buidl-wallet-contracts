@@ -18,15 +18,11 @@
  */
 pragma solidity 0.8.24;
 
-import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
+import {ConstructorInitializableMock} from "./ConstructorInitializableMock.sol";
+import {DisableWalletStorageInitializerMock} from "./DisableWalletStorageInitializerMock.sol";
 
-interface ISingleSignerValidationModule is IValidationModule {
-    event SignerTransferred(
-        address indexed account, uint32 indexed entityId, address indexed newSigner, address previousSigner
-    );
-
-    /// @dev Transfers signer of the account validation to a new signer.
-    /// @param entityId The entityId for the account and the signer.
-    /// @param newSigner The address of the new signer.
-    function transferSigner(uint32 entityId, address newSigner) external;
-}
+// 1. call _disableWalletStorageInitializers, initialized is set to type(uint8).max to prevent any future
+// reinitialization
+// 2. call walletStorageInitializer, the locked contract should not work because it's neither initialSetup nor deploying
+// solhint-disable-next-line no-empty-blocks
+contract LockedWalletStorageMock is DisableWalletStorageInitializerMock, ConstructorInitializableMock {}

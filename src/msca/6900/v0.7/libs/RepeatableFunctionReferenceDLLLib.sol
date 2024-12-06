@@ -20,7 +20,7 @@ pragma solidity 0.8.24;
 
 import {EMPTY_FUNCTION_REFERENCE, SENTINEL_BYTES21} from "../../../../common/Constants.sol";
 import {InvalidFunctionReference, InvalidLimit, ItemDoesNotExist} from "../../shared/common/Errors.sol";
-import "../common/Structs.sol";
+import {FunctionReference, RepeatableBytes21DLL} from "../common/Structs.sol";
 import {FunctionReferenceLib} from "./FunctionReferenceLib.sol";
 
 /**
@@ -176,6 +176,7 @@ library RepeatableFunctionReferenceDLLLib {
             results[count] = current.unpack();
             current = dll.next[current];
         }
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             mstore(results, count)
         }

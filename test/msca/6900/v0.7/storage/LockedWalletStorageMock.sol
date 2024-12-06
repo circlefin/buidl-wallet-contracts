@@ -18,14 +18,11 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../../../util/TestUtils.sol";
-import {console} from "forge-std/src/console.sol";
+import {ConstructorInitializableMock} from "./ConstructorInitializableMock.sol";
+import {DisableWalletStorageInitializerMock} from "./DisableWalletStorageInitializerMock.sol";
 
-contract WalletStorageLibTest is TestUtils {
-    function testWalletStorageSlot() public pure {
-        bytes32 hash = keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v0_8.storage"))) - 1));
-        console.logString("hash: ");
-        console.logBytes32(hash);
-        assertEq(hash, 0x45b8c59e88d59f48fa992cc87612124331f3e8b18f76fa4c146925e98c37c228);
-    }
-}
+// 1. call _disableWalletStorageInitializers, initialized is set to type(uint8).max to prevent any future
+// reinitialization
+// 2. call walletStorageInitializer, the locked contract should not work because it's neither initialSetup nor deploying
+// solhint-disable-next-line no-empty-blocks
+contract LockedWalletStorageMock is DisableWalletStorageInitializerMock, ConstructorInitializableMock {}

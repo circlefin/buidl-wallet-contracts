@@ -25,13 +25,10 @@ import {
     SENTINEL_BYTES32,
     SENTINEL_BYTES4
 } from "../../../../common/Constants.sol";
+
+import {UnauthorizedCaller} from "../../../../common/Errors.sol";
 import {ExecutionUtils} from "../../../../utils/ExecutionUtils.sol";
-import {
-    InvalidAuthorizer,
-    InvalidExecutionFunction,
-    NotFoundSelector,
-    UnauthorizedCaller
-} from "../../shared/common/Errors.sol";
+import {InvalidAuthorizer, InvalidExecutionFunction, NotFoundSelector} from "../../shared/common/Errors.sol";
 import {AddressDLL, Bytes32DLL, Bytes4DLL, ValidationData} from "../../shared/common/Structs.sol";
 import {AddressDLLLib} from "../../shared/libs/AddressDLLLib.sol";
 import {Bytes32DLLLib} from "../../shared/libs/Bytes32DLLLib.sol";
@@ -192,6 +189,7 @@ abstract contract BaseMSCA is
     /// @notice Manage fallback calls made to the modules.
     /// @dev Route calls to execution functions based on incoming msg.sig
     ///      If there's no module associated with this function selector, revert
+    // solhint-disable-next-line no-complex-fallback
     fallback(bytes calldata) external payable returns (bytes memory result) {
         address executionFunctionModule = WalletStorageLib.getLayout().executionStorage[msg.sig].module;
         // valid module address should not be address(0)
@@ -628,24 +626,28 @@ abstract contract BaseMSCA is
         // validation function
         authorizationData = authorizationData.getFinalSegment();
         (address module, uint32 entityId) = validationFunction.unpack();
+        // solhint-disable no-empty-blocks
         try IValidationModule(module).validateRuntime(
             address(this), entityId, msg.sender, msg.value, data, authorizationData
         ) {} catch {
             bytes memory revertReason = ExecutionUtils.fetchReturnData();
             revert RuntimeValidationFailed(module, entityId, revertReason);
         }
+        // solhint-enable no-empty-blocks
     }
 
     function _runPreRuntimeValidationHook(bytes32 hook, bytes calldata data, bytes memory currentAuthorization)
         internal
     {
         (address hookModule, uint32 hookEntityId) = hook.toHookConfig().unpackValidationHook().unpack();
+        // solhint-disable no-empty-blocks
         try IValidationHookModule(hookModule).preRuntimeValidationHook(
             hookEntityId, msg.sender, msg.value, data, currentAuthorization
         ) {} catch {
             bytes memory revertReason = ExecutionUtils.fetchReturnData();
             revert PreRuntimeValidationHookFailed(hookModule, hookEntityId, revertReason);
         }
+        // solhint-enable no-empty-blocks
     }
 
     function _installExecution(address module, ExecutionManifest calldata manifest, bytes calldata moduleInstallData)
@@ -927,13 +929,14 @@ abstract contract BaseMSCA is
                 (bytes32[] memory hooks, bytes32 nextHook) = validationHooks.getPaginated(startHook, 50);
                 for (uint256 j = 0; j < hooks.length; ++j) {
                     (address module, uint32 entityId) = hooks[j].toHookConfig().unpackValidationHook().unpack();
-                    // solhint-disable-next-line no-empty-blocks
+                    // solhint-disable no-empty-blocks
                     try IValidationHookModule(module).preRuntimeValidationHook(
                         entityId, msg.sender, msg.value, msg.data, ""
                     ) {} catch {
                         bytes memory revertReason = ExecutionUtils.fetchReturnData();
                         revert PreRuntimeValidationHookFailed(module, entityId, revertReason);
                     }
+                    // solhint-enable no-empty-blocks
                 }
                 if (nextHook == SENTINEL_BYTES32) {
                     break;

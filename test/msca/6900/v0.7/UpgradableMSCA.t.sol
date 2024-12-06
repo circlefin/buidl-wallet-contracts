@@ -86,7 +86,7 @@ contract UpgradableMSCATest is TestUtils {
     PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
     TestERC1155 private testERC1155;
     TestERC721 private testERC721;
     TestLiquidityPool private testLiquidityPool;

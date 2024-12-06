@@ -19,8 +19,14 @@
 pragma solidity 0.8.24;
 
 import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
-import "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
-import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
+import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestFunction,
+    PluginManifest
+} from "src/msca/6900/v0.7/common/PluginManifest.sol";
 
 /// This hook cannot be installed due to expecting being installed with hook dependencies
 contract TestUserOpValidatorWithDependencyHook is BasePlugin {

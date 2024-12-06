@@ -24,15 +24,16 @@ import {
     SIG_VALIDATION_FAILED,
     SIG_VALIDATION_SUCCEEDED
 } from "../../../../../common/Constants.sol";
-import {UnauthorizedCaller} from "../../../shared/common/Errors.sol";
+import {UnauthorizedCaller} from "../../../../../common/Errors.sol";
 
 import {BaseModule} from "../BaseModule.sol";
 import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
 import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 import {BaseERC712CompliantModule} from "../../../shared/erc712/BaseERC712CompliantModule.sol";
-import {ISingleSignerValidationModule} from "./ISingleSignerValidationModule.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -42,11 +43,11 @@ import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/Signa
  * signature.
  * `entityId` is required.
  */
-contract SingleSignerValidationModule is ISingleSignerValidationModule, BaseModule, BaseERC712CompliantModule {
+contract SingleSignerValidationModule is IValidationModule, BaseModule, BaseERC712CompliantModule {
     using MessageHashUtils for bytes32;
 
-    // include author and version in the name for convenience
-    string public constant MODULE_ID = "Circle_Single_Signer_Validation_Module_V1";
+    // A string in the format "vendor.module.semver". The vendor and module names MUST NOT contain a period character.
+    string public constant MODULE_ID = "circle.single-signer-validation-module.2.0.0";
     bytes32 private constant _HASHED_MODULE_ID = keccak256(bytes(MODULE_ID));
     bytes32 private constant _MODULE_TYPEHASH = keccak256("SingleSignerValidationMessage(bytes message)");
     // entityId => account => signer
@@ -55,9 +56,13 @@ contract SingleSignerValidationModule is ISingleSignerValidationModule, BaseModu
     // `account` is included in the parameter of validateRuntime/validateSignature or userOp.sender of validateUserOp
     mapping(uint32 entityId => mapping(address account => address)) public signers;
 
-    /**
-     * @inheritdoc ISingleSignerValidationModule
-     */
+    event SignerTransferred(
+        address indexed account, uint32 indexed entityId, address indexed newSigner, address previousSigner
+    );
+
+    /// @dev Transfers signer of the account validation to a new signer.
+    /// @param entityId The entityId for the account and the signer.
+    /// @param newSigner The address of the new signer.
     function transferSigner(uint32 entityId, address newSigner) external {
         _transferSigner(entityId, newSigner);
     }
@@ -127,7 +132,7 @@ contract SingleSignerValidationModule is ISingleSignerValidationModule, BaseModu
 
     /// @inheritdoc IModule
     function moduleId() external pure returns (string memory) {
-        return "circle.single-signer-validation-module.2.0.0";
+        return MODULE_ID;
     }
 
     /// @inheritdoc BaseModule

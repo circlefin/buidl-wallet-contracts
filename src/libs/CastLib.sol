@@ -28,6 +28,7 @@ library CastLib {
     function toAddressArray(SetValue[] memory values) internal pure returns (address[] memory addresses) {
         bytes32[] memory valuesBytes;
 
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             valuesBytes := values
         }
@@ -37,6 +38,7 @@ library CastLib {
             valuesBytes[i] >>= 96;
         }
 
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             addresses := valuesBytes
         }

@@ -18,21 +18,29 @@
  */
 pragma solidity 0.8.24;
 
-import {EMPTY_FUNCTION_REFERENCE} from "../../../../src/common/Constants.sol";
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
-import "../../../util/TestLiquidityPool.sol";
-import "../../../util/TestUtils.sol";
-import "./TestCircleMSCA.sol";
+import {EMPTY_FUNCTION_REFERENCE, PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../src/common/Constants.sol";
+import {UnauthorizedCaller} from "../../../../src/common/Errors.sol";
+import {PluginMetadata} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
+import {FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
 
-import "./TestCircleMSCAFactory.sol";
-import "./TestTokenPlugin.sol";
-import "./TestUserOpValidator.sol";
-import "./TestUserOpValidatorHook.sol";
+import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
 
-import "./TestUserOpValidatorWithDependencyHook.sol";
+import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {TestCircleMSCA} from "./TestCircleMSCA.sol";
+
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {TestTokenPlugin} from "./TestTokenPlugin.sol";
+
+import {TestUserOpValidatorWithDependencyHook} from "./TestUserOpValidatorWithDependencyHook.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import "forge-std/src/console.sol";
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {console} from "forge-std/src/console.sol";
 
 /// Tests for install/uninstall
 contract PluginManagerTest is TestUtils {
@@ -56,7 +64,7 @@ contract PluginManagerTest is TestUtils {
     PluginManager private pluginManager = new PluginManager();
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
     TestCircleMSCAFactory private factory;
     SingleOwnerPlugin private singleOwnerPlugin;
     TestCircleMSCA private msca;
@@ -120,7 +128,7 @@ contract PluginManagerTest is TestUtils {
         // install from a random address, should be rejected
         // UnauthorizedCaller is caught by the caller and converted to RuntimeValidationFailed
         vm.startPrank(address(1));
-        bytes memory revertReason = abi.encodeWithSelector(bytes4(keccak256("UnauthorizedCaller()")));
+        bytes memory revertReason = abi.encodeWithSelector(UnauthorizedCaller.selector);
         // function id from manifest
         uint8 functionId = uint8(ISingleOwnerPlugin.FunctionId.RUNTIME_VALIDATION_OWNER_OR_SELF);
         vm.expectRevert(

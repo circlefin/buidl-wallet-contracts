@@ -29,7 +29,6 @@ import {
     WebAuthnData,
     WebAuthnSigDynamicPart
 } from "../../../../../src/common/CommonStructs.sol";
-import "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/IWeightedMultisigPlugin.sol";
 
 import {
     EIP1271_INVALID_SIGNATURE,

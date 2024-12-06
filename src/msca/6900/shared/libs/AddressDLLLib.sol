@@ -26,8 +26,8 @@ import {AddressDLL} from "../common/Structs.sol";
  *      Item is expected to be unique.
  */
 library AddressDLLLib {
-    address constant SENTINEL_ADDRESS = address(0x0);
-    uint160 constant SENTINEL_ADDRESS_UINT = 0;
+    address private constant SENTINEL_ADDRESS = address(0x0);
+    uint160 private constant SENTINEL_ADDRESS_UINT = 0;
 
     event AddressAdded(address indexed addr);
     event AddressRemoved(address indexed addr);
@@ -117,6 +117,8 @@ library AddressDLLLib {
             results[count] = current;
             current = dll.next[current];
         }
+
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             mstore(results, count)
         }

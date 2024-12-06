@@ -26,8 +26,20 @@ import {
     PRE_HOOK_ALWAYS_DENY_FUNCTION_REFERENCE,
     RUNTIME_VALIDATION_ALWAYS_ALLOW_FUNCTION_REFERENCE
 } from "../common/Constants.sol";
-import "../common/PluginManifest.sol";
-import "../common/Structs.sol";
+import {
+    ManifestAssociatedFunctionType,
+    ManifestExecutionHook,
+    ManifestExternalCallPermission,
+    ManifestFunction,
+    PluginManifest
+} from "../common/PluginManifest.sol";
+import {
+    Bytes21DLL,
+    FunctionReference,
+    HookGroup,
+    PermittedExternalCall,
+    RepeatableBytes21DLL
+} from "../common/Structs.sol";
 import {IPlugin} from "../interfaces/IPlugin.sol";
 import {FunctionReferenceDLLLib} from "../libs/FunctionReferenceDLLLib.sol";
 import {FunctionReferenceLib} from "../libs/FunctionReferenceLib.sol";
@@ -49,7 +61,7 @@ contract PluginManager {
     using SelectorRegistryLib for bytes4;
 
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable state-variable-assignment
-    address private immutable __self = address(this);
+    address private immutable SELF = address(this);
 
     enum AssociatedFunctionType {
         HOOK,
@@ -71,7 +83,7 @@ contract PluginManager {
     error InvalidExecutionSelector(address plugin, bytes4 selector);
 
     modifier onlyDelegated() {
-        if (address(this) == __self) {
+        if (address(this) == SELF) {
             revert OnlyDelegated();
         }
         _;

@@ -18,9 +18,9 @@
  */
 pragma solidity 0.8.24;
 
-import "../ECDSAAccount.sol";
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "@openzeppelin/contracts/utils/Create2.sol";
+import {ECDSAAccount, IEntryPoint} from "../ECDSAAccount.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 
 /**
  * @dev Account factory that creates the upgradeable account signed and verified by ECDSA.
@@ -29,10 +29,10 @@ contract ECDSAAccountFactory {
     event AccountCreated(address indexed proxy, address indexed owner);
 
     // logic implementation
-    ECDSAAccount public immutable accountImplementation;
+    ECDSAAccount public immutable ACCOUNT_IMPLEMENTATION;
 
     constructor(IEntryPoint _entryPoint) {
-        accountImplementation = new ECDSAAccount(_entryPoint);
+        ACCOUNT_IMPLEMENTATION = new ECDSAAccount(_entryPoint);
     }
 
     /**
@@ -76,7 +76,7 @@ contract ECDSAAccountFactory {
         account = ECDSAAccount(
             payable(
                 new ERC1967Proxy{salt: _salt}(
-                    address(accountImplementation), abi.encodeCall(ECDSAAccount.initialize, (_owner))
+                    address(ACCOUNT_IMPLEMENTATION), abi.encodeCall(ECDSAAccount.initialize, (_owner))
                 )
             )
         );
@@ -92,7 +92,7 @@ contract ECDSAAccountFactory {
         bytes32 code = keccak256(
             abi.encodePacked(
                 type(ERC1967Proxy).creationCode,
-                abi.encode(address(accountImplementation), abi.encodeCall(ECDSAAccount.initialize, (_owner)))
+                abi.encode(address(ACCOUNT_IMPLEMENTATION), abi.encodeCall(ECDSAAccount.initialize, (_owner)))
             )
         );
         // call computeAddress(salt, bytecodeHash, address(this))

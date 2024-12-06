@@ -21,6 +21,7 @@ pragma solidity 0.8.24;
 import {ECDSAAccountFactory} from "../src/account/v1/factory/ECDSAAccountFactory.sol";
 
 import {ECDSAAccount} from "../src/account/v1/ECDSAAccount.sol";
+import {InvalidLength, UnauthorizedCaller} from "../src/common/Errors.sol";
 import {TestERC1155} from "./util/TestERC1155.sol";
 import {TestERC721} from "./util/TestERC721.sol";
 import {TestLiquidityPool} from "./util/TestLiquidityPool.sol";
@@ -64,7 +65,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
     uint256 internal eoaPrivateKey;
     address private ownerAddr;
     ECDSAAccountFactory private ecdsaAccountFactory;
-    address payable beneficiary; // e.g. bundler
+    address payable private beneficiary; // e.g. bundler
     TestLiquidityPool private testLiquidityPool;
     TestERC1155 private testERC1155;
     TestERC721 private testERC721;
@@ -404,7 +405,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
 
         // upgrade via random address
         vm.startPrank(address(1));
-        vm.expectRevert(bytes("Caller is not the owner"));
+        vm.expectRevert(UnauthorizedCaller.selector);
         proxy.upgradeToAndCall(v2ImplAddr, "");
         vm.stopPrank();
     }
@@ -460,7 +461,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         value[1] = 10;
 
         vm.startPrank(ownerAddr);
-        vm.expectRevert(bytes("wrong array lengths"));
+        vm.expectRevert(InvalidLength.selector);
         proxy.executeBatch(dest, value, func);
         vm.stopPrank();
 
@@ -474,7 +475,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         func2[1] = transferCallData;
 
         vm.startPrank(ownerAddr);
-        vm.expectRevert(bytes("wrong array lengths"));
+        vm.expectRevert(InvalidLength.selector);
         proxy.executeBatch(dest2, value2, func2);
         vm.stopPrank();
     }
@@ -613,7 +614,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
 
         // only owner can withdraw
         vm.startPrank(randomAddr);
-        vm.expectRevert("Caller is not the owner");
+        vm.expectRevert(UnauthorizedCaller.selector);
         proxy.withdrawDepositTo(payable(randomAddr), 1);
         vm.stopPrank();
     }
@@ -661,7 +662,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         address sender = address(proxy);
         (address randomAddr) = makeAddr("randomAccount");
         vm.startPrank(randomAddr);
-        vm.expectRevert("Caller is not the owner");
+        vm.expectRevert(UnauthorizedCaller.selector);
         proxy.pause();
         vm.stopPrank();
 
@@ -760,7 +761,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         assertEq(sender.balance, 900000000000000000);
         // hacker
         vm.startPrank(vm.addr(123));
-        vm.expectRevert(bytes("account: not EntryPoint or Owner"));
+        vm.expectRevert(UnauthorizedCaller.selector);
         senderAccount.execute(recipient, 100, "");
         vm.stopPrank();
     }
@@ -782,7 +783,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
         assertEq(sender.balance, 900000000000000000);
         // hacker
         vm.startPrank(vm.addr(456));
-        vm.expectRevert(bytes("account: not EntryPoint or Owner"));
+        vm.expectRevert(UnauthorizedCaller.selector);
         senderAccount.execute(recipient, 100, "");
         vm.stopPrank();
     }
@@ -807,7 +808,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
 
         // hacker
         vm.startPrank(vm.addr(123));
-        vm.expectRevert(bytes("account: not EntryPoint or Owner"));
+        vm.expectRevert(UnauthorizedCaller.selector);
         senderAccount.execute(liquidityPoolSpenderAddr, 0, transferCallData);
         vm.stopPrank();
     }
@@ -832,7 +833,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
 
         // hacker
         vm.startPrank(vm.addr(123));
-        vm.expectRevert(bytes("account: not EntryPoint or Owner"));
+        vm.expectRevert(UnauthorizedCaller.selector);
         senderAccount.execute(liquidityPoolSpenderAddr, 0, transferCallData);
         vm.stopPrank();
     }
@@ -857,7 +858,7 @@ contract ECDSAAccountAndFactoryTest is TestUtils {
 
         // hacker
         vm.startPrank(vm.addr(123));
-        vm.expectRevert(bytes("account: not EntryPoint or Owner"));
+        vm.expectRevert(UnauthorizedCaller.selector);
         senderAccount.execute(liquidityPoolSpenderAddr, 0, transferCallData);
         vm.stopPrank();
     }

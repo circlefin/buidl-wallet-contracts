@@ -18,8 +18,6 @@
  */
 pragma solidity 0.8.24;
 
-// solhint-disable no-inline-assembly
-
 /**
  * Utility functions helpful when making different kinds of contract calls in Solidity.
  * For inline assembly, please refer to https://docs.soliditylang.org/en/latest/assembly.html
@@ -30,6 +28,7 @@ library ExecutionUtils {
         internal
         returns (bool success, bytes memory returnData)
     {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             success := call(gas(), to, value, add(data, 0x20), mload(data), 0, 0)
             let len := returndatasize()
@@ -42,6 +41,7 @@ library ExecutionUtils {
     }
 
     function revertWithData(bytes memory returnData) internal pure {
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             revert(add(returnData, 32), mload(returnData))
         }
@@ -65,6 +65,7 @@ library ExecutionUtils {
 
     /// @dev Return data or revert.
     function delegateCall(address to, bytes memory data) internal returns (bytes memory) {
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returnData) = to.delegatecall(data);
         if (!success) {
             // bubble up revert reason
@@ -83,6 +84,7 @@ library ExecutionUtils {
     /// ensuring the memory is pushed to the nearest multiple of 32 bytes. This avoids unaligned memory access,
     /// which can lead to inefficiencies.
     function fetchReturnData() internal pure returns (bytes memory returnData) {
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             // allocate memory for the return data starting at the free memory pointer
             returnData := mload(0x40)

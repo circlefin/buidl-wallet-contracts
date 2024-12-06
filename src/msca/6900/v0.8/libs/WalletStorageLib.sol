@@ -43,6 +43,7 @@ library WalletStorageLib {
      * @dev Function to read structured wallet storage.
      */
     function getLayout() internal pure returns (Layout storage walletStorage) {
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             walletStorage.slot := WALLET_STORAGE_SLOT
         }

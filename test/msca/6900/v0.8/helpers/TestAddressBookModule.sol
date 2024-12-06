@@ -21,8 +21,8 @@ pragma solidity 0.8.24;
 import {SIG_VALIDATION_SUCCEEDED} from "../../../../../src/common/Constants.sol";
 import {CastLib} from "../../../../../src/libs/CastLib.sol";
 
+import {Unsupported} from "../../../../../src/common/Errors.sol";
 import {RecipientAddressLib} from "../../../../../src/libs/RecipientAddressLib.sol";
-import {Unsupported} from "../../../../../src/msca/6900/shared/common/Errors.sol";
 
 import {BaseModule} from "../../../../../src/msca/6900/v0.8/modules/BaseModule.sol";
 import {IAddressBookModule} from "../../../../../src/msca/6900/v0.8/modules/addressbook/IAddressBookModule.sol";

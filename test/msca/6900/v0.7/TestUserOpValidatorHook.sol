@@ -23,7 +23,7 @@ import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol"
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
 contract TestValidatorHook is BasePlugin {
-    ValidationData expectedValidationData;
+    ValidationData private expectedValidationData;
 
     constructor(ValidationData memory _expectedValidationData) {
         expectedValidationData = _expectedValidationData;

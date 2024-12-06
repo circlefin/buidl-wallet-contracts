@@ -41,6 +41,7 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {UpgradableMSCA} from "../../../../../src/msca/6900/v0.8/account/UpgradableMSCA.sol";
 import {UpgradableMSCAFactory} from "../../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
 
+import {EIP1271_INVALID_SIGNATURE, EIP1271_VALID_SIGNATURE} from "../../../../../src/common/Constants.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {console} from "forge-std/src/console.sol";
@@ -60,6 +61,10 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         bool success,
         uint256 actualGasCost,
         uint256 actualGasUsed
+    );
+
+    event SignerTransferred(
+        address indexed account, uint32 indexed entityId, address indexed newSigner, address previousSigner
     );
 
     error FailedOpWithRevert(uint256 opIndex, string reason, bytes inner);
@@ -173,10 +178,12 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         assertEq(executionData.skipRuntimeValidation, false);
         assertEq(executionData.allowGlobalValidation, true);
         assertEq(executionData.executionHooks.length, 0);
+
+        assertEq(singleSignerValidationModule.moduleId(), "circle.single-signer-validation-module.2.0.0");
     }
 
     /// fail because transferSigner was not installed in validation module
-    function testTransferSigner() public {
+    function testTransferSignerWhenFunctionUninstalled() public {
         address sender = address(msca1);
         // it should start with the deployed signerAddr
         assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr1), signerAddr1);
@@ -206,7 +213,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
 
         // eoaPrivateKey from singleSignerValidationModule
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey1, userOp);
-        userOp.signature = encodeSignature(new PreValidationHookData[](0), signerValidation, signature, false);
+        userOp.signature = encodeSignature(new PreValidationHookData[](0), signerValidation, signature, true);
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
@@ -262,15 +269,64 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
         // eoaPrivateKey from singleSignerValidationModule
         bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey2, userOp);
+        // global validation enabled
         userOp.signature = encodeSignature(new PreValidationHookData[](0), signerValidation, signature, true);
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = userOp;
-        vm.startPrank(address(entryPoint));
+        vm.expectEmit(true, true, true, true);
+        emit SignerTransferred(mscaAddr2, uint32(0), address(newSigner), signerAddr2);
         vm.expectEmit(true, true, true, false);
         emit UserOperationEvent(userOpHash, sender, address(0), acctNonce, true, 179020250000000, 158425);
+        vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
         // now it's the new signer
         assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), address(newSigner));
         vm.stopPrank();
+    }
+
+    function testTransferSignerViaRuntime() public {
+        // it should start with the deployed signerAddr
+        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), signerAddr2);
+        // could be any address, I'm using UpgradableMSCA for simplicity
+        UpgradableMSCA newSigner = new UpgradableMSCA(entryPoint);
+        // deployment was done in setUp
+        assertTrue(mscaAddr2.code.length != 0);
+        // start with balance
+        vm.deal(mscaAddr2, 10 ether);
+        bytes memory transferSignerCallData =
+            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint8(0), address(newSigner)));
+        bytes memory executeCallData =
+            abi.encodeCall(IModularAccount.execute, (address(singleSignerValidationModule), 0, transferSignerCallData));
+
+        vm.startPrank(mscaAddr2);
+        vm.expectEmit(true, true, true, true);
+        emit SignerTransferred(mscaAddr2, uint32(0), address(newSigner), signerAddr2);
+        msca2.executeWithRuntimeValidation(
+            executeCallData, encodeSignature(new PreValidationHookData[](0), signerValidation, bytes(""), true)
+        );
+        // now it's the new signer
+        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), address(newSigner));
+        vm.stopPrank();
+    }
+
+    /// you can find more negative test cases in UpgradableMSCATest
+    function testValidateSignature() public view {
+        // it should start with the deployed signerAddr
+        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), signerAddr2);
+        // deployment was done in setUp
+        assertTrue(mscaAddr2.code.length != 0);
+        // raw message hash
+        bytes memory rawMessage = abi.encodePacked("circle internet");
+        bytes32 messageHash = keccak256(rawMessage);
+        bytes32 replaySafeMessageHash = singleSignerValidationModule.getReplaySafeMessageHash(mscaAddr2, messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(eoaPrivateKey2, replaySafeMessageHash);
+        bytes memory signature =
+            encode1271Signature(new PreValidationHookData[](0), signerValidation, abi.encodePacked(r, s, v));
+        assertEq(msca2.isValidSignature(messageHash, signature), bytes4(EIP1271_VALID_SIGNATURE));
+
+        // invalid signature
+        signature =
+            encode1271Signature(new PreValidationHookData[](0), signerValidation, abi.encodePacked(r, s, uint32(0)));
+        assertEq(msca2.isValidSignature(messageHash, signature), bytes4(EIP1271_INVALID_SIGNATURE));
     }
 }

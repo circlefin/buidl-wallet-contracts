@@ -19,11 +19,6 @@
 pragma solidity 0.8.24;
 
 /**
- * @notice Throws when the caller is unexpected.
- */
-error UnauthorizedCaller();
-
-/**
  * @notice Throws when the selector is not found.
  */
 error NotFoundSelector();
@@ -48,10 +43,6 @@ error InvalidExecutionFunction(bytes4 selector);
 error InvalidInitializationInput();
 
 error Create2FailedDeployment();
-
-error InvalidLength();
-
-error Unsupported();
 
 error NotImplemented(bytes4 selector, uint8 functionId);
 

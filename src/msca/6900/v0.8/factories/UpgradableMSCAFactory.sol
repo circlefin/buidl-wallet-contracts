@@ -18,7 +18,8 @@
  */
 pragma solidity 0.8.24;
 
-import {Create2FailedDeployment, InvalidLength} from "../../shared/common/Errors.sol";
+import {InvalidLength} from "../../../../common/Errors.sol";
+import {Create2FailedDeployment} from "../../shared/common/Errors.sol";
 import {UpgradableMSCA} from "../account/UpgradableMSCA.sol";
 
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";

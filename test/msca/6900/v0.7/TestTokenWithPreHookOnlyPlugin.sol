@@ -19,17 +19,26 @@
 pragma solidity 0.8.24;
 
 import {PLUGIN_AUTHOR, PLUGIN_VERSION_1, SIG_VALIDATION_SUCCEEDED} from "../../../../src/common/Constants.sol";
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {NotImplemented} from "../../../../src/msca/6900/shared/common/Errors.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestExecutionHook,
+    ManifestExternalCallPermission,
+    ManifestFunction,
+    PluginManifest,
+    PluginMetadata,
+    SelectorPermission
+} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 
-import "../../../../src/msca/6900/v0.7/interfaces/IPluginExecutor.sol";
-import "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
-import "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {IPluginExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IPluginExecutor.sol";
+import {IStandardExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
 
-import "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
-import "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
-import "../../../util/TestLiquidityPool.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "forge-std/src/console.sol";
+import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
+import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {console} from "forge-std/src/console.sol";
 
 /**
  * @dev Plugin for tests only with only pre hooks.
@@ -50,12 +59,12 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
     }
 
     string public constant NAME = "Test Token Plugin With Pre Hook Only";
-    string constant NOT_FROZEN_PERM = "NOT_FROZEN_PERM"; // msg.sender should be able to
+    string private constant NOT_FROZEN_PERM = "NOT_FROZEN_PERM"; // msg.sender should be able to
 
     mapping(address => uint256) internal _balances;
     // use constants generated from tests here so manifest can stay pure
-    address public constant longLiquidityPoolAddr = 0x7bff7C664bFeF913FB04473CC610D41F35E2A3F9;
-    address public constant shortLiquidityPoolAddr = 0x241BB07f7eBB2CDC08Ccb8130088a8C3761cf197;
+    address public constant LONG_LIQUIDITY_POOL_ADDR = 0x7bff7C664bFeF913FB04473CC610D41F35E2A3F9;
+    address public constant SHORT_LIQUIDITY_POOL_ADDR = 0x241BB07f7eBB2CDC08Ccb8130088a8C3761cf197;
 
     /// executeFromPlugin is allowed
     /// airdrop from wallet to owner
@@ -91,10 +100,10 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
     // mint to both liquidity pools
     function mintToken(uint256 value) external {
         IPluginExecutor(msg.sender).executeFromPluginExternal(
-            longLiquidityPoolAddr, 0, abi.encodeCall(TestLiquidityPool.mint, (msg.sender, value))
+            LONG_LIQUIDITY_POOL_ADDR, 0, abi.encodeCall(TestLiquidityPool.mint, (msg.sender, value))
         );
         IPluginExecutor(msg.sender).executeFromPluginExternal(
-            shortLiquidityPoolAddr, 0, abi.encodeCall(TestLiquidityPool.mint, (msg.sender, value))
+            SHORT_LIQUIDITY_POOL_ADDR, 0, abi.encodeCall(TestLiquidityPool.mint, (msg.sender, value))
         );
     }
 
@@ -102,14 +111,14 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
     // supply to only long liquidity pool
     function supplyLiquidity(address to, uint256 value) external {
         IPluginExecutor(msg.sender).executeFromPluginExternal(
-            longLiquidityPoolAddr, 0, abi.encodeCall(TestLiquidityPool.supplyLiquidity, (msg.sender, to, value))
+            LONG_LIQUIDITY_POOL_ADDR, 0, abi.encodeCall(TestLiquidityPool.supplyLiquidity, (msg.sender, to, value))
         );
     }
 
     // externalFromPluginExternal is not allowed
     function supplyLiquidityBad(address to, uint256 value) external {
         IPluginExecutor(msg.sender).executeFromPluginExternal(
-            shortLiquidityPoolAddr, 0, abi.encodeCall(TestLiquidityPool.supplyLiquidity, (msg.sender, to, value))
+            SHORT_LIQUIDITY_POOL_ADDR, 0, abi.encodeCall(TestLiquidityPool.supplyLiquidity, (msg.sender, to, value))
         );
     }
 
@@ -240,13 +249,13 @@ contract TestTokenWithPreHookOnlyPlugin is BasePlugin {
         manifest.permittedExternalCalls = new ManifestExternalCallPermission[](2);
         // access only mint function in shortLiquidityPool
         manifest.permittedExternalCalls[0] = ManifestExternalCallPermission({
-            externalAddress: shortLiquidityPoolAddr,
+            externalAddress: SHORT_LIQUIDITY_POOL_ADDR,
             permitAnySelector: false,
             selectors: permittedExternalCallsSelectors
         });
         // access all the functions in longLiquidityPool
         manifest.permittedExternalCalls[1] = ManifestExternalCallPermission({
-            externalAddress: longLiquidityPoolAddr,
+            externalAddress: LONG_LIQUIDITY_POOL_ADDR,
             permitAnySelector: true,
             selectors: new bytes4[](0)
         });

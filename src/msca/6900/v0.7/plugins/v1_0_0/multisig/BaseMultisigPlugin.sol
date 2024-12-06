@@ -127,6 +127,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
     /// @return minimal user op hash
     function _getMinimalUserOpDigest(PackedUserOperation calldata userOp) internal view returns (bytes32) {
         address sender;
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             sender := calldataload(userOp)
         }
@@ -152,6 +153,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
 
     /// @param data calldata to hash
     function _calldataKeccak(bytes calldata data) internal pure returns (bytes32 ret) {
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             let mem := mload(0x40)
             let len := data.length
@@ -177,6 +179,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
         pure
         returns (uint8 v, bytes32 r, bytes32 s)
     {
+        // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             let signaturePos := mul(0x41, pos)
             r := mload(add(signatures, add(signaturePos, 0x20)))

@@ -18,17 +18,25 @@
  */
 pragma solidity 0.8.24;
 
+import {SIG_VALIDATION_SUCCEEDED} from "../../../../src/common/Constants.sol";
 import {PLUGIN_AUTHOR, PLUGIN_VERSION_1, SIG_VALIDATION_SUCCEEDED} from "../../../../src/common/Constants.sol";
-import "../../../../src/msca/6900/v0.7/common/Structs.sol";
+import {InvalidLength} from "../../../../src/common/Errors.sol";
+import {
+    ManifestAssociatedFunction,
+    ManifestAssociatedFunctionType,
+    ManifestExecutionHook,
+    ManifestFunction,
+    PluginManifest,
+    PluginMetadata
+} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 
-import "../../../../src/msca/6900/v0.7/interfaces/IPluginExecutor.sol";
-import "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
-import "../../../../src/msca/6900/v0.7/interfaces/IStandardExecutor.sol";
+import {IPluginExecutor} from "../../../../src/msca/6900/v0.7/interfaces/IPluginExecutor.sol";
 
-import "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
-import "../../../util/TestLiquidityPool.sol";
-import "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import "forge-std/src/console.sol";
+import {NotImplemented} from "../../../../src/msca/6900/shared/common/Errors.sol";
+import {BasePlugin} from "../../../../src/msca/6900/v0.7/plugins/BasePlugin.sol";
+import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
+import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+import {console} from "forge-std/src/console.sol";
 
 /**
  * @dev Plugin for tests only. This plugin permits any external contract calls with post hook only.
@@ -101,7 +109,9 @@ contract TestPermitAnyExternalAddressWithPostHookOnlyPlugin is BasePlugin {
     function postExecutionHook(uint8 functionId, bytes calldata preExecHookData) external pure override {
         console.logString("postExecutionHook data:");
         console.logBytes(preExecHookData);
-        require(preExecHookData.length == 0, "postOnlyHook should not have data");
+        if (preExecHookData.length != 0) {
+            revert InvalidLength();
+        }
         if (functionId == uint8(FunctionId.POST_EXECUTION_HOOK)) {
             return;
         } else if (functionId == uint8(FunctionId.POST_PERMITTED_CALL_EXECUTION_HOOK)) {
