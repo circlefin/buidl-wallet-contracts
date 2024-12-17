@@ -24,8 +24,12 @@ library ValidationDataLib {
     error WrongTimeBounds();
 
     /**
-     * @dev Intercept the time bounds [validAfter, validUntil], as well as signature validation result (favoring the
-     * failure).
+     * @dev Intercept the time bounds `[validAfter, validUntil]` and the signature validation result,
+     * prioritizing the invalid authorizer (`!=0 && !=1`), followed by prioritizing failure (`==1`),
+     * and finally returning success (`==0`). Please note that both `authorizer(2)` and `authorizer(3)` are invalid,
+     * and calling this function with `(2, 3)` ensures that only one invalid authorizer will be returned.
+     * @notice address(0) is a successful validation, address(1) is a failed validation,
+     * and address(2), address(3) and others are invalid authorizers (also failed).
      */
     function _intersectValidationData(ValidationData memory a, uint256 uintb)
         internal
@@ -40,10 +44,16 @@ library ValidationDataLib {
             revert WrongTimeBounds();
         }
         // 0 is successful validation
-        if (a.authorizer == address(0)) {
+        if (!_isValidAuthorizer(a.authorizer)) {
+            validationData.authorizer = a.authorizer;
+        } else if (!_isValidAuthorizer(b.authorizer)) {
             validationData.authorizer = b.authorizer;
         } else {
-            validationData.authorizer = a.authorizer;
+            if (a.authorizer == address(0)) {
+                validationData.authorizer = b.authorizer;
+            } else {
+                validationData.authorizer = a.authorizer;
+            }
         }
         if (a.validAfter > b.validAfter) {
             validationData.validAfter = a.validAfter;
@@ -56,7 +66,9 @@ library ValidationDataLib {
             validationData.validUntil = b.validUntil;
         }
         // make sure the caller (e.g. entryPoint) reverts
-        if (validationData.validAfter >= validationData.validUntil) {
+        // set to address(1) if and only if the authorizer is address(0) (successful validation)
+        // we don't want to set to address(1) if the authorizer is invalid such as address(2)
+        if (validationData.validAfter >= validationData.validUntil && validationData.authorizer == address(0)) {
             validationData.authorizer = address(1);
         }
         return validationData;
@@ -81,5 +93,9 @@ library ValidationDataLib {
 
     function _packValidationData(ValidationData memory data) internal pure returns (uint256) {
         return uint160(data.authorizer) | (uint256(data.validUntil) << 160) | (uint256(data.validAfter) << (160 + 48));
+    }
+
+    function _isValidAuthorizer(address authorizer) internal pure returns (bool) {
+        return authorizer == address(0) || authorizer == address(1);
     }
 }

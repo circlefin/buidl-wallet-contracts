@@ -46,16 +46,18 @@ contract WalletStorageV1LibTest is TestUtils {
         beneficiary = payable(address(makeAddr("bundler")));
     }
 
-    function testWalletStorageSlot() public {
-        bytes32 hash = keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v1.storage"))) - 1));
-        assertEq(hash, 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8);
+    function testWalletStorageSlot() public pure {
+        bytes32 hash = keccak256(abi.encode(uint256(keccak256("circle.msca.v1.storage")) - 1));
+        bytes32 alignedHash = hash & ~bytes32(uint256(0xff));
+        assertEq(alignedHash, 0x1f5beaddce7d7c52c0db456127db41c33d65f252d3a09b925e817276761a6a00);
     }
 
+    // this test is very similar to AddressDLLLibTest, but under the context of plugin and wallet
     function testAddRemoveGetPlugins() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testAddRemoveGetPlugins");
         TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // sentinel address is initialized
-        assertTrue(msca.containsPlugin(SENTINEL_ADDRESS));
+        // sentinel address is not considered as the value of the list
+        assertFalse(msca.containsPlugin(SENTINEL_ADDRESS));
         // try to remove sentinel stupidly
         bytes4 selector = bytes4(keccak256("InvalidAddress()"));
         vm.expectRevert(abi.encodeWithSelector(selector));
@@ -116,9 +118,9 @@ contract WalletStorageV1LibTest is TestUtils {
     function testAddRemoveGetPreUserOpValidationHooks() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testAddRemoveGetPreUserOpValidationHooks");
         TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // sentinel hook is initialized
+        // sentinel hook is not part of the list
         bytes4 selector = bytes4(0xb61d27f6);
-        assertEq(msca.containsPreUserOpValidationHook(selector, SENTINEL_BYTES21.unpack()), 1);
+        assertEq(msca.containsPreUserOpValidationHook(selector, SENTINEL_BYTES21.unpack()), 0);
         // try to remove sentinel stupidly
         bytes4 errorSelector = bytes4(keccak256("InvalidFunctionReference()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
@@ -223,7 +225,7 @@ contract WalletStorageV1LibTest is TestUtils {
         bulkGetPlugins(msca, totalPlugins, limit);
     }
 
-    function bulkGetPlugins(TestCircleMSCA msca, uint256 totalPlugins, uint256 limit) private {
+    function bulkGetPlugins(TestCircleMSCA msca, uint256 totalPlugins, uint256 limit) private view {
         address[] memory results = new address[](totalPlugins);
         address start = address(0x0);
         uint256 count = 0;
@@ -256,6 +258,7 @@ contract WalletStorageV1LibTest is TestUtils {
 
     function bulkGetPreUserOpValidationHooks(TestCircleMSCA msca, bytes4 selector, uint256 totalHooks, uint256 limit)
         private
+        view
     {
         FunctionReference[] memory results = new FunctionReference[](totalHooks);
         FunctionReference memory start = SENTINEL_BYTES21.unpack();

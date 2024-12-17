@@ -27,7 +27,7 @@ import {Base64Url} from "@fcl/utils/Base64Url.sol";
 contract WebAuthnTest is TestUtils {
     bytes private challenge = abi.encode(0xf631058a3ba1116acce12396fad0a125b5041c43f8e15723709f81aa8d5f4ccf);
 
-    function testSafari() public {
+    function testSafari() public view {
         uint256 x = 28573233055232466711029625910063034642429572463461595413086259353299906450061;
         uint256 y = 39367742072897599771788408398752356480431855827262528811857788332151452825281;
         WebAuthnData memory auth = WebAuthnData({
@@ -48,7 +48,7 @@ contract WebAuthnTest is TestUtils {
         assertTrue(WebAuthnLib.verify(challenge, auth, r, s, x, y));
     }
 
-    function testChrome() public {
+    function testChrome() public view {
         uint256 x = 28573233055232466711029625910063034642429572463461595413086259353299906450061;
         uint256 y = 39367742072897599771788408398752356480431855827262528811857788332151452825281;
         WebAuthnData memory auth = WebAuthnData({

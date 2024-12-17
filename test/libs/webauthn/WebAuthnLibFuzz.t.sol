@@ -33,7 +33,7 @@ contract WebAuthnFuzzTest is TestUtils {
     string internal constant TEST_FILE = "/test/fixtures/assertions_fixture.json";
 
     /// @dev `WebAuthn.verify` should return `false` when `s` is above P256_N_DIV_2.
-    function testVerify_ShouldReturnFalse_WhenSAboveP256_N_DIV_2() public {
+    function testVerify_ShouldReturnFalse_WhenSAboveP256_N_DIV_2() public view {
         string memory rootPath = vm.projectRoot();
         string memory path = string.concat(rootPath, TEST_FILE);
         string memory json = vm.readFile(path);
@@ -69,7 +69,7 @@ contract WebAuthnFuzzTest is TestUtils {
     }
 
     /// @dev `WebAuthn.verify` should return `false` when the `up` flag is not set.
-    function testVerify_ShouldReturnFalse_WhenTheUpFlagIsNotSet() public {
+    function testVerify_ShouldReturnFalse_WhenTheUpFlagIsNotSet() public view {
         string memory rootPath = vm.projectRoot();
         string memory path = string.concat(rootPath, TEST_FILE);
         string memory json = vm.readFile(path);
@@ -106,7 +106,7 @@ contract WebAuthnFuzzTest is TestUtils {
 
     /// @dev `WebAuthn.verify` should return `false` when `requireUV` is `true` but the
     ///       authenticator did not set the `uv` flag.
-    function testVerify_ShouldReturnFalse_WhenUserVerificationIsRequiredButTestWasNotPerformed() public {
+    function testVerify_ShouldReturnFalse_WhenUserVerificationIsRequiredButTestWasNotPerformed() public view {
         string memory rootPath = vm.projectRoot();
         string memory path = string.concat(rootPath, TEST_FILE);
         string memory json = vm.readFile(path);
@@ -146,7 +146,7 @@ contract WebAuthnFuzzTest is TestUtils {
 
     /// @dev `WebAuthn.verify` should return `true` when `s` is below `P256_N_DIV_2` and `requireUserVerification`
     ///       "matches" with the `uv` flag set by the authenticator.
-    function testVerify_ShouldReturnTrue_WhenSBelowP256_N_DIV_2() public {
+    function testVerify_ShouldReturnTrue_WhenSBelowP256_N_DIV_2() public view {
         string memory rootPath = vm.projectRoot();
         string memory path = string.concat(rootPath, TEST_FILE);
         string memory json = vm.readFile(path);

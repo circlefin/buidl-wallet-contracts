@@ -110,8 +110,6 @@ contract PluginManager {
         if (manifestHash != keccak256(abi.encode(pluginManifest))) {
             revert InvalidPluginManifestHash();
         }
-        // store the plugin manifest hash
-        storageLayout.pluginDetails[plugin].manifestHash = manifestHash;
         uint256 length = pluginManifest.interfaceIds.length;
         for (uint256 i = 0; i < length; ++i) {
             storageLayout.supportedInterfaces[pluginManifest.interfaceIds[i]] += 1;
@@ -131,11 +129,11 @@ contract PluginManager {
             if (dependencyPluginAddr == msca) {
                 continue;
             }
-            if (!ERC165Checker.supportsInterface(dependencyPluginAddr, pluginManifest.dependencyInterfaceIds[i])) {
+            // verify that the dependency is installed, which also prevents self-dependencies
+            if (storageLayout.pluginDetails[dependencyPluginAddr].manifestHash == bytes32(0)) {
                 revert InvalidPluginDependency(dependencyPluginAddr);
             }
-            // the dependency plugin needs to be installed first
-            if (!storageLayout.installedPlugins.contains(dependencyPluginAddr)) {
+            if (!ERC165Checker.supportsInterface(dependencyPluginAddr, pluginManifest.dependencyInterfaceIds[i])) {
                 revert InvalidPluginDependency(dependencyPluginAddr);
             }
             // each dependency’s record MUST also be updated to reflect that it has a new dependent
@@ -297,6 +295,8 @@ contract PluginManager {
             }
         }
 
+        // store the plugin manifest hash at the end, which serves to prevent self-dependencies
+        storageLayout.pluginDetails[plugin].manifestHash = manifestHash;
         // call onInstall to initialize plugin data for the modular account
         // solhint-disable-next-line no-empty-blocks
         try IPlugin(plugin).onInstall(pluginInstallData) {}
@@ -544,7 +544,8 @@ contract PluginManager {
         FunctionReference memory startFR = EMPTY_FUNCTION_REFERENCE.unpack();
         FunctionReference[] memory dependencies;
         for (uint256 i = 0; i < length; ++i) {
-            (dependencies, startFR) = pluginDependencies.getPaginated(startFR, 100);
+            // if the max length of dependencies is reached, the loop will break early
+            (dependencies, startFR) = pluginDependencies.getPaginated(startFR, 10);
             for (uint256 j = 0; j < dependencies.length; ++j) {
                 storageLayout.pluginDetails[dependencies[j].plugin].dependentCounter -= 1;
                 storageLayout.pluginDetails[plugin].dependencies.remove(dependencies[j]);

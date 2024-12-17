@@ -115,6 +115,11 @@ contract TestTokenPlugin is BasePlugin {
         return true;
     }
 
+    function callExecuteFromPluginExternal(bytes calldata data) external returns (bool) {
+        IPluginExecutor(msg.sender).executeFromPluginExternal(LONG_LIQUIDITY_POOL_ADDR, 0, data);
+        return true;
+    }
+
     // externalFromPluginExternal is allowed
     // supply to only long liquidity pool
     function supplyLiquidity(address to, uint256 value) external {
@@ -160,6 +165,7 @@ contract TestTokenPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.PRE_USER_OP_VALIDATION_HOOK_PASS1)) {
             return SIG_VALIDATION_SUCCEEDED;
         } else if (functionId == uint8(FunctionId.PRE_USER_OP_VALIDATION_HOOK_PASS2)) {
@@ -175,6 +181,7 @@ contract TestTokenPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.USER_OP_VALIDATION)) {
             return SIG_VALIDATION_SUCCEEDED;
         }
@@ -187,6 +194,7 @@ contract TestTokenPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.PRE_RUNTIME_VALIDATION_HOOK_PASS1)) {
             return;
         } else if (functionId == uint8(FunctionId.PRE_RUNTIME_VALIDATION_HOOK_PASS2)) {
@@ -201,6 +209,7 @@ contract TestTokenPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.RUNTIME_VALIDATION)) {
             return;
         }
@@ -245,7 +254,7 @@ contract TestTokenPlugin is BasePlugin {
     function pluginManifest() external pure override returns (PluginManifest memory) {
         PluginManifest memory manifest;
         /// executionFunctions
-        manifest.executionFunctions = new bytes4[](7);
+        manifest.executionFunctions = new bytes4[](8);
         // Execution functions defined in this plugin to be installed on the MSCA.
         manifest.executionFunctions[0] = this.transferToken.selector;
         manifest.executionFunctions[1] = this.balanceOf.selector;
@@ -254,6 +263,7 @@ contract TestTokenPlugin is BasePlugin {
         manifest.executionFunctions[4] = this.mintToken.selector;
         manifest.executionFunctions[5] = this.supplyLiquidity.selector;
         manifest.executionFunctions[6] = this.supplyLiquidityBad.selector;
+        manifest.executionFunctions[7] = this.callExecuteFromPluginExternal.selector;
 
         /// permittedExecutionSelectors
         // Native functions or execution functions already installed on the MSCA that this plugin will be

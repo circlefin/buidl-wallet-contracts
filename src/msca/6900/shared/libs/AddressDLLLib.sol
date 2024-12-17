@@ -45,7 +45,11 @@ library AddressDLLLib {
      * @dev Check if an item exists or not. O(1).
      */
     function contains(AddressDLL storage dll, address item) internal view returns (bool) {
-        return getHead(dll) == item || dll.next[item] != address(0) || dll.prev[item] != address(0);
+        if (item == SENTINEL_ADDRESS) {
+            // SENTINEL_ADDRESS is not a valid item
+            return false;
+        }
+        return getHead(dll) == item || dll.next[item] != SENTINEL_ADDRESS || dll.prev[item] != SENTINEL_ADDRESS;
     }
 
     /**
@@ -109,7 +113,7 @@ library AddressDLLLib {
         }
         address[] memory results = new address[](limit);
         address current = start;
-        if (start == address(0)) {
+        if (start == SENTINEL_ADDRESS) {
             current = getHead(dll);
         }
         uint256 count = 0;
@@ -131,17 +135,11 @@ library AddressDLLLib {
     function getAll(AddressDLL storage dll) internal view returns (address[] memory results) {
         uint256 totalCount = size(dll);
         results = new address[](totalCount);
-        uint256 accumulatedCount = 0;
-        address startAddr = address(0x0);
-        for (uint256 i = 0; i < totalCount; ++i) {
-            (address[] memory currentResults, address nextAddr) = getPaginated(dll, startAddr, 10);
-            for (uint256 j = 0; j < currentResults.length; ++j) {
-                results[accumulatedCount++] = currentResults[j];
-            }
-            if (nextAddr == SENTINEL_ADDRESS) {
-                break;
-            }
-            startAddr = nextAddr;
+        address current = getHead(dll);
+        uint256 count = 0;
+        for (; count < totalCount && uint160(current) > SENTINEL_ADDRESS_UINT; ++count) {
+            results[count] = current;
+            current = dll.next[current];
         }
         return results;
     }

@@ -693,7 +693,7 @@ contract UpgradableMSCATest is TestUtils {
         implMSCA.upgradeTo(v2ImplAddr);
     }
 
-    function testEncodeAndHashPluginManifest() public {
+    function testEncodeAndHashPluginManifest() public pure {
         PluginManifest memory manifest;
         manifest.permitAnyExternalAddress = true;
         bytes4[] memory dependencyInterfaceIds = new bytes4[](1);
@@ -1106,6 +1106,53 @@ contract UpgradableMSCATest is TestUtils {
         entryPoint.handleOps(ops, beneficiary);
         // verify the account has been deployed
         assertTrue(sender.code.length > 0);
+        vm.stopPrank();
+    }
+
+    function testOneHookPassesButTheOtherHookFailWithInvalidAuthorizer() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testOneHookPassesButTheOtherHookFailWithInvalidAuthorizer");
+        TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
+        // 0xb61d27f6
+        bytes4 functionSelector = bytes4(0xb61d27f6);
+        // 2 is invalid
+        ValidationData memory expectValidatorToFail = ValidationData(0, 1691493273, address(2));
+        FunctionReference memory userOpValidator =
+            FunctionReference(address(new TestUserOpValidator(expectValidatorToFail)), 3);
+        FunctionReference memory runtimeValidator;
+        address executionPlugin = vm.addr(1);
+        ExecutionFunctionConfig memory executionFunctionConfig =
+            ExecutionFunctionConfig(executionPlugin, userOpValidator, runtimeValidator);
+        msca.initExecutionDetail(functionSelector, executionFunctionConfig);
+
+        ValidationData memory expectValidatorHookToPass = ValidationData(1, 3, address(0));
+        FunctionReference memory preUserOpValidationHook1 =
+            FunctionReference(address(new TestValidatorHook(expectValidatorHookToPass)), 3);
+
+        ValidationData memory expectValidatorHookToFail = ValidationData(2, 4, address(1));
+        FunctionReference memory preUserOpValidationHook2 =
+            FunctionReference(address(new TestValidatorHook(expectValidatorHookToFail)), 3);
+        msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook1);
+        msca.setPreUserOpValidationHook(functionSelector, preUserOpValidationHook2);
+        UserOperation memory userOp = buildPartialUserOp(
+            address(msca),
+            28,
+            "0x",
+            "0xb61d27f600000000000000000000000007865c6e87b9f70255377e024ace6630c1eaa37f000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044a9059cbb0000000000000000000000009005be081b8ec2a31258878409e88675cd79137600000000000000000000000000000000000000000000000000000000001e848000000000000000000000000000000000000000000000000000000000",
+            83353,
+            102865,
+            45484,
+            516219199704,
+            1130000000,
+            "0x79cbffe6dd3c3cb46aab6ef51f1a4accb5567f4e0000000000000000000000000000000000000000000000000000000064d223990000000000000000000000000000000000000000000000000000000064398d19"
+        );
+
+        vm.startPrank(address(entryPoint));
+        bytes32 userOpHash = entryPoint.getUserOpHash(userOp);
+        bytes memory signature = signUserOpHash(entryPoint, vm, eoaPrivateKey, userOp);
+        userOp.signature = signature;
+        bytes4 selector = bytes4(keccak256("InvalidAuthorizer()"));
+        vm.expectRevert(abi.encodeWithSelector(selector));
+        msca.validateUserOp(userOp, userOpHash, 0);
         vm.stopPrank();
     }
 

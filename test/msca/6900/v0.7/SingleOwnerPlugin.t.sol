@@ -47,6 +47,7 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import {MessageHashUtils} from "../../../../src/libs/MessageHashUtils.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import {console} from "forge-std/src/console.sol";
 
@@ -130,7 +131,7 @@ contract SingleOwnerPluginTest is TestUtils {
     }
 
     /// SingleOwnerPlugin is installed in setUp function, this test is just verifying details
-    function testSingleOwnerPluginDetailsInstalledDuringAccountDeployment() public {
+    function testSingleOwnerPluginDetailsInstalledDuringAccountDeployment() public view {
         address sender = address(msca1);
         // deployment was done in setUp
         assertTrue(sender.code.length != 0);
@@ -436,5 +437,28 @@ contract SingleOwnerPluginTest is TestUtils {
             abi.encodeWithSelector(NotImplemented.selector, BasePlugin.postExecutionHook.selector, functionId)
         );
         singleOwnerPlugin.postExecutionHook(functionId, data);
+    }
+
+    // they are also tested during signature signing
+    function testRelaySafeMessageHash() public view {
+        bytes32 hash = keccak256("hello");
+        address account = address(msca1);
+        bytes32 replaySafeHash = singleOwnerPlugin.getReplaySafeMessageHash(account, hash);
+        bytes32 expected = MessageHashUtils.toTypedDataHash({
+            domainSeparator: keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
+                    ),
+                    keccak256(abi.encodePacked("Single Owner Plugin")),
+                    keccak256(abi.encodePacked("1.0.0")),
+                    block.chainid,
+                    address(singleOwnerPlugin),
+                    bytes32(bytes20(account))
+                )
+            ),
+            structHash: keccak256(abi.encode(keccak256("CircleSingleOwnerPluginMessage(bytes32 hash)"), hash))
+        });
+        assertEq(replaySafeHash, expected);
     }
 }

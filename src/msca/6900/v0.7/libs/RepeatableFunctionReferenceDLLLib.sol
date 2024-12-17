@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {EMPTY_FUNCTION_REFERENCE, SENTINEL_BYTES21} from "../../../../common/Constants.sol";
+import {SENTINEL_BYTES21} from "../../../../common/Constants.sol";
 import {InvalidFunctionReference, InvalidLimit, ItemDoesNotExist} from "../../shared/common/Errors.sol";
 import {FunctionReference, RepeatableBytes21DLL} from "../common/Structs.sol";
 import {FunctionReferenceLib} from "./FunctionReferenceLib.sol";
@@ -49,7 +49,8 @@ library RepeatableFunctionReferenceDLLLib {
     {
         bytes21 item = fr.pack();
         if (item == SENTINEL_BYTES21) {
-            return 1;
+            // sentinel should not considered as the value of the list
+            return 0;
         }
         return dll.counter[item];
     }
@@ -191,18 +192,11 @@ library RepeatableFunctionReferenceDLLLib {
     function getAll(RepeatableBytes21DLL storage dll) internal view returns (FunctionReference[] memory results) {
         uint256 totalUniqueCount = getUniqueItems(dll);
         results = new FunctionReference[](totalUniqueCount);
-        uint256 accumulatedCount = 0;
-        FunctionReference memory startFR = EMPTY_FUNCTION_REFERENCE.unpack();
-        for (uint256 i = 0; i < totalUniqueCount; ++i) {
-            (FunctionReference[] memory currentResults, FunctionReference memory nextFR) =
-                getPaginated(dll, startFR, 10);
-            for (uint256 j = 0; j < currentResults.length; ++j) {
-                results[accumulatedCount++] = currentResults[j];
-            }
-            if (nextFR.pack() == SENTINEL_BYTES21) {
-                break;
-            }
-            startFR = nextFR;
+        bytes21 current = getHeadWithoutUnpack(dll);
+        uint256 count = 0;
+        for (; count < totalUniqueCount && current > SENTINEL_BYTES21; ++count) {
+            results[count] = current.unpack();
+            current = dll.next[current];
         }
         return results;
     }

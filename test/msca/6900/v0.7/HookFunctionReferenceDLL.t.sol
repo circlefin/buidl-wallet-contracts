@@ -30,8 +30,8 @@ contract HookFunctionReferenceDLLTest is TestUtils {
 
     function testAddRemoveGetPreValidationHooks() public {
         TestRepeatableFunctionReferenceDLL dll = new TestRepeatableFunctionReferenceDLL();
-        // sentinel hook is initialized
-        assertEq(dll.getRepeatedCountOfPreValidationHook(SENTINEL_BYTES21.unpack()), 1);
+        // sentinel hook is not part of the list
+        assertEq(dll.getRepeatedCountOfPreValidationHook(SENTINEL_BYTES21.unpack()), 0);
         // try to remove sentinel stupidly
         bytes4 errorSelector = bytes4(keccak256("InvalidFunctionReference()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
@@ -143,6 +143,7 @@ contract HookFunctionReferenceDLLTest is TestUtils {
 
     function bulkGetPreValidationHooks(TestRepeatableFunctionReferenceDLL dll, uint256 totalHooks, uint256 limit)
         private
+        view
     {
         FunctionReference[] memory results = new FunctionReference[](totalHooks);
         FunctionReference memory start = SENTINEL_BYTES21.unpack();

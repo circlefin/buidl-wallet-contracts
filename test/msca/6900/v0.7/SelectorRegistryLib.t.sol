@@ -18,18 +18,13 @@
  */
 pragma solidity 0.8.24;
 
-import {TestUtils} from "../util/TestUtils.sol";
-import {SetValueLibCaller} from "./SetValueLibCaller.sol";
-import {SetValue} from "@modular-account-libs/libraries/Constants.sol";
+import {SelectorRegistryLib} from "../../../../src/msca/6900/v0.7/libs/SelectorRegistryLib.sol";
 
-contract SetValueLibTest is TestUtils {
-    SetValueLibCaller private setValueLibCaller = new SetValueLibCaller();
+import {TestUtils} from "../../../util/TestUtils.sol";
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 
-    function testFuzz_toBytes30Array(SetValue[] memory values) public view {
-        bytes30[] memory res = setValueLibCaller.toBytes30Array(values);
-        uint256 len = res.length;
-        for (uint256 i = 0; i < len; ++i) {
-            assertEq(SetValue.unwrap(values[i]), res[i]);
-        }
+contract SelectorRegistryLibTest is TestUtils {
+    function testValidateUserOpSelector() public pure {
+        assertTrue(SelectorRegistryLib._isNativeFunctionSelector(IAccount.validateUserOp.selector));
     }
 }

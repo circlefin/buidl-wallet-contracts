@@ -24,7 +24,6 @@ import {UnauthorizedCaller} from "../../../../src/common/Errors.sol";
 import {InvalidInitializationInput} from "../../../../src/msca/6900/shared/common/Errors.sol";
 import {InvalidValidationFunctionId} from "../../../../src/msca/6900/shared/common/Errors.sol";
 import {InvalidExecutionFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
 import {SingleOwnerMSCA} from "../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
 import {
     Call,
@@ -87,6 +86,7 @@ contract SingleOwnerMSCATest is TestUtils {
     );
 
     error FailedOp(uint256 opIndex, string reason);
+    error NotFoundSelector();
 
     event UserOperationRevertReason(
         bytes32 indexed userOpHash, address indexed sender, uint256 nonce, bytes revertReason
@@ -732,9 +732,7 @@ contract SingleOwnerMSCATest is TestUtils {
         testLiquidityPool.mint(senderAddr, 2000000);
         address recipient = address(0x9005Be081B8EC2A31258878409E88675Cd791376);
         // execute ERC20 token contract directly
-        address liquidityPoolSpenderAddr = address(testLiquidityPool);
         bytes memory tokenTransferCallData = abi.encodeCall(testLiquidityPool.transfer, (recipient, 1000000));
-        address factoryAddr = address(factory);
         UserOperation memory userOp = buildPartialUserOp(
             senderAddr,
             acctNonce,
@@ -801,8 +799,7 @@ contract SingleOwnerMSCATest is TestUtils {
         (address nativeOwnerAddr, uint256 nativeOwnerPrivateKey) =
             makeAddrAndKey("testTransferWithEmptyValidation_native");
         address semiMSCA = createSemiAccount(nativeOwnerAddr, nativeOwnerPrivateKey);
-        (address ownerInPluginAddr, uint256 ownerInPluginPrivateKey) =
-            makeAddrAndKey("testTransferWithEmptyValidation_plugin");
+        (address ownerInPluginAddr,) = makeAddrAndKey("testTransferWithEmptyValidation_plugin");
         installSingleOwnerPlugin(semiMSCA, nativeOwnerPrivateKey, ownerInPluginAddr);
         // renounce native ownership using native owner private key
         renounceNativeOwner(semiMSCA, nativeOwnerPrivateKey);
@@ -814,6 +811,14 @@ contract SingleOwnerMSCATest is TestUtils {
         vm.expectRevert(abi.encodeWithSelector(InvalidValidationFunctionId.selector, 0));
         address(semiMSCA).callWithReturnDataOrRevert(0, executeBadCallData);
         vm.stopPrank();
+    }
+
+    function testShortCalldataIntoFallback() public {
+        // deployment was done in setUp
+        SingleOwnerMSCA msca = factory.createAccount(address(this), 0, abi.encode(address(this)));
+        // fail early even before InvalidValidationFunctionId is reverted
+        vm.expectRevert(NotFoundSelector.selector);
+        address(msca).callWithReturnDataOrRevert(0, bytes("aaa"));
     }
 
     function createSemiAccount(address ownerAddr, uint256 eoaPrivateKey) internal returns (address) {
@@ -984,22 +989,5 @@ contract SingleOwnerMSCATest is TestUtils {
         entryPoint.handleOps(ops, beneficiary);
         assertEq(SingleOwnerMSCA(payable(semiMSCA)).getNativeOwner(), address(0));
         vm.stopPrank();
-    }
-
-    /**
-     * @dev Unpack into the deserialized packed format from validAfter | validUntil | authorizer.
-     */
-    function _unpackValidationData(uint256 validationDataInt)
-        internal
-        pure
-        returns (ValidationData memory validationData)
-    {
-        address authorizer = address(uint160(validationDataInt));
-        uint48 validUntil = uint48(validationDataInt >> 160);
-        if (validUntil == 0) {
-            validUntil = type(uint48).max;
-        }
-        uint48 validAfter = uint48(validationDataInt >> (48 + 160));
-        return ValidationData(validAfter, validUntil, authorizer);
     }
 }
