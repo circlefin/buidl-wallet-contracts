@@ -27,10 +27,22 @@ import {TestBytes32DLL} from "./TestBytes32DLL.sol";
 contract Bytes32DLLLibTest is TestUtils {
     using Bytes32DLLLib for Bytes32DLL;
 
+    function testSentinelBytes32() public {
+        TestBytes32DLL dll = new TestBytes32DLL();
+        assertEq(dll.getHead(), SENTINEL_BYTES32);
+        assertEq(dll.getTail(), SENTINEL_BYTES32);
+        // sentinel should not considered as the value of the list
+        assertFalse(dll.contains(SENTINEL_BYTES32));
+        // add one item
+        assertTrue(dll.append(bytes32(uint256(1))));
+        // sentinel should not considered as the value of the list
+        assertFalse(dll.contains(SENTINEL_BYTES32));
+    }
+
     function testAddRemoveGetBytes32Values() public {
         TestBytes32DLL values = new TestBytes32DLL();
-        // sentinel value is initialized
         assertEq(values.size(), 0);
+        assertEq(values.getAll().length, 0);
         // try to remove sentinel stupidly
         bytes4 errorSelector = bytes4(keccak256("InvalidItem()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
@@ -71,6 +83,7 @@ contract Bytes32DLLLibTest is TestUtils {
         assertEq(values.getHead(), value1);
         assertEq(values.getTail(), value4);
         bytes32[] memory results = values.getAll();
+        assertEq(results.length, 4);
         assertEq(results[0], value1);
         assertEq(results[1], value2);
         assertEq(results[2], value3);

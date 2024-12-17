@@ -19,26 +19,31 @@
 pragma solidity 0.8.24;
 
 import {EMPTY_FUNCTION_REFERENCE, PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../src/common/Constants.sol";
-import {UnauthorizedCaller} from "../../../../src/common/Errors.sol";
-import {PluginMetadata} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
+
 import {FunctionReference} from "../../../../src/msca/6900/v0.7/common/Structs.sol";
-import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
 import {FunctionReferenceLib} from "../../../../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
+import {CircularDependencyMock} from "./CircularDependencyMock.sol";
+import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
+import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+
+import {IPluginManager} from "../../../../src/msca/6900/v0.7/interfaces/IPluginManager.sol";
+
+import {PluginMetadata} from "../../../../src/msca/6900/v0.7/common/PluginManifest.sol";
 import {PluginManager} from "../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
-
 import {ISingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/ISingleOwnerPlugin.sol";
+
 import {SingleOwnerPlugin} from "../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
+import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+
 import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
-import {TestUtils} from "../../../util/TestUtils.sol";
 import {TestCircleMSCA} from "./TestCircleMSCA.sol";
 
-import {TestCircleMSCAFactory} from "./TestCircleMSCAFactory.sol";
+import {UnauthorizedCaller} from "../../../../src/common/Errors.sol";
+import {TestUtils} from "../../../util/TestUtils.sol";
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
-
 import {TestUserOpValidatorWithDependencyHook} from "./TestUserOpValidatorWithDependencyHook.sol";
-import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
+
 import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
 import {console} from "forge-std/src/console.sol";
 
@@ -59,6 +64,7 @@ contract PluginManagerTest is TestUtils {
         uint256 actualGasCost,
         uint256 actualGasUsed
     );
+    event PluginInstalled(address indexed plugin, bytes32 manifestHash, FunctionReference[] dependencies);
 
     IEntryPoint private entryPoint = new EntryPoint();
     PluginManager private pluginManager = new PluginManager();
@@ -282,6 +288,20 @@ contract PluginManagerTest is TestUtils {
         bytes4 errorSelector = bytes4(keccak256("HookDependencyNotPermitted()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
         msca.installPlugin(address(testValidatorHook), manifestHash, "", dependencies);
+        vm.stopPrank();
+    }
+
+    function testInstallSelfReferentialPlugin() public {
+        CircularDependencyMock circularDependencyMock = new CircularDependencyMock();
+        FunctionReference[] memory dependencies = new FunctionReference[](1);
+        dependencies[0] = FunctionReference(
+            address(circularDependencyMock), uint8(CircularDependencyMock.FunctionId.RUNTIME_VALIDATION_SELF)
+        );
+        bytes32 manifestHash = keccak256(abi.encode(circularDependencyMock.pluginManifest()));
+        vm.startPrank(address(msca));
+        bytes4 errorSelector = bytes4(keccak256("InvalidPluginDependency(address)"));
+        vm.expectRevert(abi.encodeWithSelector(errorSelector, address(circularDependencyMock)));
+        msca.installPlugin(address(circularDependencyMock), manifestHash, "", dependencies);
         vm.stopPrank();
     }
 }

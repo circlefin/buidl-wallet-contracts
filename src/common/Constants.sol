@@ -29,7 +29,6 @@ uint256 constant SIG_VALIDATION_SUCCEEDED = 0;
 // any values less than or equal to this will not be allowed in storage
 bytes21 constant SENTINEL_BYTES21 = bytes21(0);
 bytes23 constant SENTINEL_BYTES23 = bytes23(0);
-bytes4 constant SENTINEL_BYTES4 = bytes4(0);
 bytes32 constant SENTINEL_BYTES32 = bytes32(0);
 
 // empty or unset function reference

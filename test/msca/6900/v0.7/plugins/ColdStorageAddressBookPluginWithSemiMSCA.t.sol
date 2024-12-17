@@ -121,7 +121,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         testERC721 = new TestERC721("721", "$$$");
     }
 
-    function testPluginMetadataItself() public {
+    function testPluginMetadataItself() public view {
         PluginMetadata memory pluginMetadata = addressBookPlugin.pluginMetadata();
         assertEq(pluginMetadata.name, "Cold Storage Address Book Plugin");
         assertEq(pluginMetadata.version, PLUGIN_VERSION_1);
@@ -521,7 +521,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         address randomRecipient = vm.addr(1);
         vm.startPrank(ownerAddr);
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, randomRecipient);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, randomRecipient);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -548,7 +548,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         // call from random address
         vm.startPrank(vm.addr(123));
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, vm.addr(123), randomRecipient);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, randomRecipient);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -793,7 +793,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         // now execute w/o allowed recipient
         vm.startPrank(ownerAddr);
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, recipientAddr);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, recipientAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -827,7 +827,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         bytes memory data = abi.encodeCall(testLiquidityPool.transfer, (recipientAddr, 2));
         vm.startPrank(ownerAddr);
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, recipientAddr);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, recipientAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -1106,7 +1106,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         ops[0] = userOp;
         vm.startPrank(address(entryPoint));
         bytes4 errorSelector = bytes4(keccak256("FailedOp(uint256,string)"));
-        vm.expectRevert(abi.encodeWithSelector(errorSelector, 0, "AA24 signature error"));
+        vm.expectRevert(abi.encodeWithSelector(errorSelector, 0, "AA23 reverted (or OOG)"));
         entryPoint.handleOps(ops, beneficiary);
         vm.stopPrank();
         // verify recipient balance
@@ -1316,7 +1316,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
         addressBookPlugin.postExecutionHook(functionId, data);
     }
 
-    function testFuzz_getRecipientForSCCalls(uint256 rand) public {
+    function testFuzz_getRecipientForSCCalls(uint256 rand) public view {
         rand = bound(rand, 1, 3);
         address expectedRecipient = vm.addr(1);
         uint256 amount = 1;

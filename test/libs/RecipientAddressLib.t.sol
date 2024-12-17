@@ -77,13 +77,13 @@ contract RecipientAddressLibTest is TestUtils {
         testERC20 = new TestLiquidityPool("20", "$$$");
     }
 
-    function testFuzz_getERC20TokenRecipientForTransfer(address expectedRecipient, uint256 amount) public {
+    function testFuzz_getERC20TokenRecipientForTransfer(address expectedRecipient, uint256 amount) public view {
         bytes memory data = abi.encodeCall(testERC20.transfer, (expectedRecipient, amount));
         address recipient = recipientAddressLib.getERC20TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
     }
 
-    function testFuzz_getERC20TokenRecipientForApprove(address expectedRecipient, uint256 amount) public {
+    function testFuzz_getERC20TokenRecipientForApprove(address expectedRecipient, uint256 amount) public view {
         bytes memory data = abi.encodeCall(testERC20.approve, (expectedRecipient, amount));
         address recipient = recipientAddressLib.getERC20TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
@@ -91,31 +91,38 @@ contract RecipientAddressLibTest is TestUtils {
 
     function testFuzz_getERC20TokenRecipientForTransferFrom(address expectedRecipient, address from, uint256 amount)
         public
+        view
     {
         bytes memory data = abi.encodeCall(testERC20.transferFrom, (from, expectedRecipient, amount));
         address recipient = recipientAddressLib.getERC20TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
     }
 
-    function testFuzz_getERC20TokenRecipientForIncreaseAllowance(address expectedRecipient, uint256 amount) public {
+    function testFuzz_getERC20TokenRecipientForIncreaseAllowance(address expectedRecipient, uint256 amount)
+        public
+        view
+    {
         bytes memory data = abi.encodeWithSelector(ERC20_INCREASE_ALLOWANCE, expectedRecipient, amount);
         address recipient = recipientAddressLib.getERC20TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
     }
 
-    function testFuzz_getERC20TokenRecipientForDecreaseAllowance(address expectedRecipient, uint256 amount) public {
+    function testFuzz_getERC20TokenRecipientForDecreaseAllowance(address expectedRecipient, uint256 amount)
+        public
+        view
+    {
         bytes memory data = abi.encodeWithSelector(ERC20_DECREASE_ALLOWANCE, expectedRecipient, amount);
         address recipient = recipientAddressLib.getERC20TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
     }
 
-    function testFuzz_getERC20TokenRecipientForUnknownSelector(address expectedRecipient, uint256 amount) public {
+    function testFuzz_getERC20TokenRecipientForUnknownSelector(address expectedRecipient, uint256 amount) public view {
         bytes memory data = abi.encodeCall(testERC20.mint, (expectedRecipient, amount));
         address recipient = recipientAddressLib.getERC20TokenRecipient(data);
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC1155TokenRecipientForSafeApproval(address expectedRecipient, bool approved) public {
+    function testFuzz_getERC1155TokenRecipientForSafeApproval(address expectedRecipient, bool approved) public view {
         bytes memory data = abi.encodeCall(testERC1155.setApprovalForAll, (expectedRecipient, approved));
         address recipient = recipientAddressLib.getERC1155TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
@@ -127,7 +134,7 @@ contract RecipientAddressLibTest is TestUtils {
         uint256 tokenId,
         uint256 amount,
         bytes memory callData
-    ) public {
+    ) public view {
         bytes memory data =
             abi.encodeCall(testERC1155.safeTransferFrom, (from, expectedRecipient, tokenId, amount, callData));
         address recipient = recipientAddressLib.getERC1155TokenRecipient(data);
@@ -140,7 +147,7 @@ contract RecipientAddressLibTest is TestUtils {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory callData
-    ) public {
+    ) public view {
         bytes memory data =
             abi.encodeCall(testERC1155.safeBatchTransferFrom, (from, expectedRecipient, ids, amounts, callData));
         address recipient = recipientAddressLib.getERC1155TokenRecipient(data);
@@ -152,19 +159,19 @@ contract RecipientAddressLibTest is TestUtils {
         uint256 tokenId,
         uint256 amount,
         bytes memory callData
-    ) public {
+    ) public view {
         bytes memory data = abi.encodeCall(testERC1155.mint, (expectedRecipient, tokenId, amount, callData));
         address recipient = recipientAddressLib.getERC1155TokenRecipient(data);
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC721TokenRecipientForSafeApproval(address expectedRecipient, bool approved) public {
+    function testFuzz_getERC721TokenRecipientForSafeApproval(address expectedRecipient, bool approved) public view {
         bytes memory data = abi.encodeCall(testERC721.setApprovalForAll, (expectedRecipient, approved));
         address recipient = recipientAddressLib.getERC721TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
     }
 
-    function testFuzz_getERC721TokenRecipientForApproval(address expectedRecipient, uint256 tokenId) public {
+    function testFuzz_getERC721TokenRecipientForApproval(address expectedRecipient, uint256 tokenId) public view {
         bytes memory data = abi.encodeCall(testERC721.approve, (expectedRecipient, tokenId));
         address recipient = recipientAddressLib.getERC721TokenRecipient(data);
         assertEq(recipient, expectedRecipient);
@@ -174,7 +181,7 @@ contract RecipientAddressLibTest is TestUtils {
         address expectedRecipient,
         address from,
         uint256 tokenId
-    ) public {
+    ) public view {
         bytes memory data =
             abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", from, expectedRecipient, tokenId);
         address recipient = recipientAddressLib.getERC721TokenRecipient(data);
@@ -190,7 +197,7 @@ contract RecipientAddressLibTest is TestUtils {
         address from,
         uint256 tokenId,
         bytes memory callData
-    ) public {
+    ) public view {
         bytes memory data = abi.encodeWithSignature(
             "safeTransferFrom(address,address,uint256,bytes)", from, expectedRecipient, tokenId, callData
         );
@@ -198,13 +205,16 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, expectedRecipient);
     }
 
-    function testFuzz_getERC721TokenRecipientForUnknownSelector(address expectedRecipient, uint256 tokenId) public {
+    function testFuzz_getERC721TokenRecipientForUnknownSelector(address expectedRecipient, uint256 tokenId)
+        public
+        view
+    {
         bytes memory data = abi.encodeWithSignature("safeMint(address,uint256)", expectedRecipient, tokenId);
         address recipient = recipientAddressLib.getERC721TokenRecipient(data);
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC20TokenRecipientForTransferWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC20TokenRecipientForTransferWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(testERC20.transfer.selector, randomBytes);
@@ -212,7 +222,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC20TokenRecipientForApproveWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC20TokenRecipientForApproveWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(testERC20.approve.selector, randomBytes);
@@ -220,7 +230,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC20TokenRecipientForIncreaseAllowanceWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC20TokenRecipientForIncreaseAllowanceWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(ERC20_INCREASE_ALLOWANCE, randomBytes);
@@ -228,7 +238,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC20TokenRecipientForDecreaseAllowanceWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC20TokenRecipientForDecreaseAllowanceWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(ERC20_DECREASE_ALLOWANCE, randomBytes);
@@ -236,7 +246,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC20TokenRecipientForTransferFromWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC20TokenRecipientForTransferFromWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_FROM_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(testERC20.transferFrom.selector, randomBytes);
@@ -244,7 +254,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC1155TokenRecipientForSafeApprovalWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC1155TokenRecipientForSafeApprovalWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(testERC1155.setApprovalForAll.selector, randomBytes);
@@ -252,7 +262,10 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC1155TokenRecipientForSafeTransferFromWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC1155TokenRecipientForSafeTransferFromWithRandomBytes(bytes memory randomBytes)
+        public
+        view
+    {
         // 4 accounts for function selector
         vm.assume(
             randomBytes.length < (RecipientAddressLib.TRANSFER_FROM_WITH_BYTES_MIN_LEN - 4) && randomBytes.length > 0
@@ -264,6 +277,7 @@ contract RecipientAddressLibTest is TestUtils {
 
     function testFuzz_getERC1155TokenRecipientForSafeBatchTransferFromWithRandomBytes(bytes memory randomBytes)
         public
+        view
     {
         // 4 accounts for function selector
         vm.assume(
@@ -275,7 +289,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC721TokenRecipientForSafeApprovalWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC721TokenRecipientForSafeApprovalWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(testERC721.setApprovalForAll.selector, randomBytes);
@@ -283,7 +297,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC721TokenRecipientForApprovalWithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC721TokenRecipientForApprovalWithRandomBytes(bytes memory randomBytes) public view {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_OR_APPROVE_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data = abi.encodePacked(testERC721.approve.selector, randomBytes);
@@ -291,7 +305,10 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC721TokenRecipientForSafeTransferFrom1WithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC721TokenRecipientForSafeTransferFrom1WithRandomBytes(bytes memory randomBytes)
+        public
+        view
+    {
         // 4 accounts for function selector
         vm.assume(randomBytes.length < (RecipientAddressLib.TRANSFER_FROM_MIN_LEN - 4) && randomBytes.length > 0);
         bytes memory data =
@@ -304,7 +321,10 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testFuzz_getERC721TokenRecipientForSafeTransferFrom2WithRandomBytes(bytes memory randomBytes) public {
+    function testFuzz_getERC721TokenRecipientForSafeTransferFrom2WithRandomBytes(bytes memory randomBytes)
+        public
+        view
+    {
         // 4 accounts for function selector
         vm.assume(
             randomBytes.length < (RecipientAddressLib.TRANSFER_FROM_WITHOUT_AMOUNT_WITH_BYTES_MIN_LEN - 4)
@@ -316,15 +336,10 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(recipient, address(0));
     }
 
-    function testMinLengthsForERC20() public {
+    function testMinLengthsForERC20() public view {
         address expectedRecipient = vm.addr(123);
         uint256 amount = 1;
         address from = vm.addr(456);
-        uint256 tokenId = 0;
-        uint256[] memory ids;
-        uint256[] memory amounts;
-        bytes memory callData;
-        bool approved;
 
         bytes memory data = abi.encodeCall(testERC20.transfer, (expectedRecipient, amount));
         console.log("ERC20.transfer MIN LEN", data.length);
@@ -339,14 +354,10 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(data.length, RecipientAddressLib.TRANSFER_FROM_MIN_LEN);
     }
 
-    function testMinLengthsForERC721() public {
+    function testMinLengthsForERC721() public view {
         address expectedRecipient = vm.addr(123);
-        uint256 amount = 1;
         address from = vm.addr(456);
         uint256 tokenId = 0;
-        uint256[] memory ids;
-        uint256[] memory amounts;
-        bytes memory callData;
         bool approved;
 
         bytes memory data = abi.encodeCall(testERC721.setApprovalForAll, (expectedRecipient, approved));
@@ -362,7 +373,7 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(data.length, RecipientAddressLib.TRANSFER_FROM_MIN_LEN);
     }
 
-    function testMinLengthsForERC1155() public {
+    function testMinLengthsForERC1155() public view {
         address expectedRecipient = vm.addr(123);
         uint256 amount = 1;
         address from = vm.addr(456);
@@ -385,15 +396,11 @@ contract RecipientAddressLibTest is TestUtils {
         assertEq(data.length, RecipientAddressLib.BATCH_TRANSFER_FROM_WITH_BYTES_MIN_LEN);
     }
 
-    function testMinLengthsForSafeTransferFrom() public {
+    function testMinLengthsForSafeTransferFrom() public pure {
         address expectedRecipient = vm.addr(123);
-        uint256 amount = 1;
         address from = vm.addr(456);
         uint256 tokenId = 0;
-        uint256[] memory ids;
-        uint256[] memory amounts;
         bytes memory callData;
-        bool approved;
 
         bytes memory data =
             abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", from, expectedRecipient, tokenId);

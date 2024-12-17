@@ -18,33 +18,44 @@
  */
 pragma solidity 0.8.24;
 
-/* solhint-disable one-contract-per-file */
-
-import {SENTINEL_BYTES4} from "../../../../../src/common/Constants.sol";
-import {Bytes4DLL} from "../../../../../src/msca/6900/shared/common/Structs.sol";
-import {Bytes4DLLLib} from "../../../../../src/msca/6900/shared/libs/Bytes4DLLLib.sol";
+import {AddressDLL} from "../../../../../src/msca/6900/shared/common/Structs.sol";
+import {AddressDLLLib} from "../../../../../src/msca/6900/shared/libs/AddressDLLLib.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
-import {TestBytes4DLL} from "./TestBytes4DLL.sol";
+import {TestAddressDLL} from "./TestAddressDLL.sol";
 
-contract Bytes4DLLLibTest is TestUtils {
-    using Bytes4DLLLib for Bytes4DLL;
+contract AddressDLLLibTest is TestUtils {
+    address internal constant SENTINEL_ADDRESS = address(0x0);
 
-    function testAddRemoveGetBytes4Values() public {
-        TestBytes4DLL values = new TestBytes4DLL();
-        // sentinel value is initialized
+    using AddressDLLLib for AddressDLL;
+
+    function testSentinelAddress() public {
+        TestAddressDLL dll = new TestAddressDLL();
+        assertEq(dll.getHead(), SENTINEL_ADDRESS);
+        assertEq(dll.getTail(), SENTINEL_ADDRESS);
+        // sentinel should not considered as the value of the list
+        assertFalse(dll.contains(SENTINEL_ADDRESS));
+        // add one item
+        assertTrue(dll.append(address(1)));
+        // sentinel should not considered as the value of the list
+        assertFalse(dll.contains(SENTINEL_ADDRESS));
+    }
+
+    function testAddRemoveGetAddressValues() public {
+        TestAddressDLL values = new TestAddressDLL();
         assertEq(values.size(), 0);
+        assertEq(values.getAll().length, 0);
         // try to remove sentinel stupidly
-        bytes4 errorSelector = bytes4(keccak256("InvalidBytes4()"));
+        bytes4 errorSelector = bytes4(keccak256("InvalidAddress()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
-        values.remove(SENTINEL_BYTES4);
-        assertEq(values.getHead(), SENTINEL_BYTES4);
-        assertEq(values.getTail(), SENTINEL_BYTES4);
+        values.remove(SENTINEL_ADDRESS);
+        assertEq(values.getHead(), SENTINEL_ADDRESS);
+        assertEq(values.getTail(), SENTINEL_ADDRESS);
         // sentinel doesn't count
         assertEq(values.size(), 0);
-        bytes4 value1 = 0x11111111;
-        bytes4 value2 = 0x22222222;
-        bytes4 value3 = 0x33333333;
-        bytes4 value4 = 0x44444444;
+        address value1 = address(1);
+        address value2 = address(2);
+        address value3 = address(3);
+        address value4 = address(4);
         assertTrue(values.append(value1));
         assertTrue(values.contains(value1));
         assertEq(values.getHead(), value1);
@@ -52,8 +63,8 @@ contract Bytes4DLLLibTest is TestUtils {
         // remove it
         assertTrue(values.remove(value1));
         assertEq(values.size(), 0);
-        assertEq(values.getHead(), SENTINEL_BYTES4);
-        assertEq(values.getTail(), SENTINEL_BYTES4);
+        assertEq(values.getHead(), SENTINEL_ADDRESS);
+        assertEq(values.getTail(), SENTINEL_ADDRESS);
         assertFalse(values.contains(value1));
         // add value1 and value2
         assertTrue(values.append(value1));
@@ -72,7 +83,8 @@ contract Bytes4DLLLibTest is TestUtils {
         assertEq(values.size(), 4);
         assertEq(values.getHead(), value1);
         assertEq(values.getTail(), value4);
-        bytes4[] memory results = values.getAll();
+        address[] memory results = values.getAll();
+        assertEq(results.length, 4);
         assertEq(results[0], value1);
         assertEq(results[1], value2);
         assertEq(results[2], value3);
@@ -95,8 +107,8 @@ contract Bytes4DLLLibTest is TestUtils {
         // now remove value2
         assertTrue(values.remove(value2));
         assertEq(values.size(), 0);
-        assertEq(values.getHead(), SENTINEL_BYTES4);
-        assertEq(values.getTail(), SENTINEL_BYTES4);
+        assertEq(values.getHead(), SENTINEL_ADDRESS);
+        assertEq(values.getTail(), SENTINEL_ADDRESS);
         // now remove value2 again, should revert
         errorSelector = bytes4(keccak256("ItemDoesNotExist()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
@@ -104,37 +116,37 @@ contract Bytes4DLLLibTest is TestUtils {
         // get zero value every time
         errorSelector = bytes4(keccak256("InvalidLimit()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));
-        values.getPaginated(SENTINEL_BYTES4, 0);
+        values.getPaginated(SENTINEL_ADDRESS, 0);
     }
 
-    function testFuzz_bulkGetValues(uint8 limit, uint8 totalValues) public {
+    function testFuzz_bulkGetAddresses(uint8 limit, uint8 totalValues) public {
         // try out different limits, even bigger than totalValues
         bound(limit, 1, 30);
         bound(totalValues, 3, 30);
-        TestBytes4DLL dll = new TestBytes4DLL();
+        TestAddressDLL dll = new TestAddressDLL();
         for (uint32 i = 1; i <= totalValues; i++) {
-            dll.append(bytes4(i));
+            dll.append(address(uint160(i)));
         }
-        bulkGetAndVerifyValues(dll, totalValues, limit);
+        bulkGetAndVerifyAddresses(dll, totalValues, limit);
     }
 
-    function bulkGetAndVerifyValues(TestBytes4DLL dll, uint256 totalValues, uint256 limit) private view {
-        bytes4[] memory results = new bytes4[](totalValues);
-        bytes4 start = SENTINEL_BYTES4;
+    function bulkGetAndVerifyAddresses(TestAddressDLL dll, uint256 totalValues, uint256 limit) private view {
+        address[] memory results = new address[](totalValues);
+        address start = SENTINEL_ADDRESS;
         uint32 count = 0;
         uint256 j = 0;
-        bytes4[] memory values;
-        bytes4 next;
+        address[] memory values;
+        address next;
         while (count < totalValues && limit != 0) {
             (values, next) = dll.getPaginated(start, limit);
             for (uint256 i = 0; i < values.length; ++i) {
                 results[count] = values[i];
-                // starts from bytes4(1)
-                assertEq(results[j], bytes4(count + 1));
+                // starts from address(1)
+                assertEq(results[j], address(uint160(count + 1)));
                 count++;
                 j++;
             }
-            if (next == SENTINEL_BYTES4) {
+            if (next == SENTINEL_ADDRESS) {
                 break;
             }
             start = next;

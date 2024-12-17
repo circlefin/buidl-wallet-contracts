@@ -24,6 +24,8 @@ import {IPlugin} from "../interfaces/IPlugin.sol";
 import {IPluginExecutor} from "../interfaces/IPluginExecutor.sol";
 import {IPluginManager} from "../interfaces/IPluginManager.sol";
 import {IStandardExecutor} from "../interfaces/IStandardExecutor.sol";
+
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 import {IAggregator} from "@account-abstraction/contracts/interfaces/IAggregator.sol";
 import {IPaymaster} from "@account-abstraction/contracts/interfaces/IPaymaster.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -40,7 +42,6 @@ library SelectorRegistryLib {
     bytes4 internal constant TRANSFER_NATIVE_OWNERSHIP = bytes4(keccak256("transferNativeOwnership(address)"));
     bytes4 internal constant RENOUNCE_NATIVE_OWNERSHIP = bytes4(keccak256("renounceNativeOwnership()"));
     bytes4 internal constant GET_NATIVE_OWNER = bytes4(keccak256("getNativeOwner()"));
-    bytes4 internal constant VALIDATE_USER_OP = bytes4(keccak256("validateUserOp(UserOperation,bytes32,uint256)"));
     bytes4 internal constant GET_ENTRYPOINT = bytes4(keccak256("getEntryPoint()"));
     bytes4 internal constant GET_NONCE = bytes4(keccak256("getNonce()"));
 
@@ -62,7 +63,7 @@ library SelectorRegistryLib {
         || selector == IAccountLoupe.getExecutionFunctionConfig.selector
             || selector == IAccountLoupe.getExecutionHooks.selector
             || selector == IAccountLoupe.getPreValidationHooks.selector
-            || selector == IAccountLoupe.getInstalledPlugins.selector || selector == VALIDATE_USER_OP
+            || selector == IAccountLoupe.getInstalledPlugins.selector || selector == IAccount.validateUserOp.selector
             || selector == GET_ENTRYPOINT || selector == GET_NONCE || selector == INITIALIZE_UPGRADABLE_MSCA
             || selector == INITIALIZE_SINGLE_OWNER_MSCA || selector == TRANSFER_NATIVE_OWNERSHIP
             || selector == RENOUNCE_NATIVE_OWNERSHIP || selector == GET_NATIVE_OWNER

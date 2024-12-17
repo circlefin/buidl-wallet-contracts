@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {EMPTY_FUNCTION_REFERENCE, SENTINEL_BYTES21} from "../../../../common/Constants.sol";
+import {SENTINEL_BYTES21} from "../../../../common/Constants.sol";
 import {
     InvalidFunctionReference, InvalidLimit, ItemAlreadyExists, ItemDoesNotExist
 } from "../../shared/common/Errors.sol";
@@ -48,6 +48,9 @@ library FunctionReferenceDLLLib {
     }
 
     function contains(Bytes21DLL storage dll, bytes21 item) internal view returns (bool) {
+        if (item == SENTINEL_BYTES21) {
+            return false;
+        }
         return getHeadWithoutUnpack(dll) == item || dll.next[item] != SENTINEL_BYTES21
             || dll.prev[item] != SENTINEL_BYTES21;
     }
@@ -143,18 +146,11 @@ library FunctionReferenceDLLLib {
     function getAll(Bytes21DLL storage dll) internal view returns (FunctionReference[] memory results) {
         uint256 totalCount = size(dll);
         results = new FunctionReference[](totalCount);
-        uint256 accumulatedCount = 0;
-        FunctionReference memory startFR = EMPTY_FUNCTION_REFERENCE.unpack();
-        for (uint256 i = 0; i < totalCount; ++i) {
-            (FunctionReference[] memory currentResults, FunctionReference memory nextFR) =
-                getPaginated(dll, startFR, 10);
-            for (uint256 j = 0; j < currentResults.length; ++j) {
-                results[accumulatedCount++] = currentResults[j];
-            }
-            if (nextFR.pack() == SENTINEL_BYTES21) {
-                break;
-            }
-            startFR = nextFR;
+        bytes21 current = getHeadWithoutUnpack(dll);
+        uint256 count = 0;
+        for (; count < totalCount && current > SENTINEL_BYTES21; ++count) {
+            results[count] = current.unpack();
+            current = dll.next[current];
         }
         return results;
     }

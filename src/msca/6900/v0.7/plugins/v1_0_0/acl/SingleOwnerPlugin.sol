@@ -266,7 +266,12 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC7
     }
 
     /// @inheritdoc BaseERC712CompliantModule
-    function _getModuleIdHash() internal pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(_NAME, PLUGIN_VERSION_1));
+    function _getModuleNameHash() internal pure override returns (bytes32) {
+        return keccak256(abi.encodePacked(_NAME));
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleVersionHash() internal pure override returns (bytes32) {
+        return keccak256(abi.encodePacked(PLUGIN_VERSION_1));
     }
 }

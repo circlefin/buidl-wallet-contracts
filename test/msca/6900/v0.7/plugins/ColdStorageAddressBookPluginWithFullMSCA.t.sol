@@ -515,7 +515,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         vm.deal(mscaAddr, 1 ether);
         vm.startPrank(ownerAddr);
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, randomRecipient);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, randomRecipient);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -545,7 +545,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         // call from random address
         vm.startPrank(vm.addr(123));
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, vm.addr(123), randomRecipient);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, randomRecipient);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -789,7 +789,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         // now execute w/o allowed recipient
         vm.startPrank(ownerAddr);
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, recipientAddr);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, recipientAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -825,7 +825,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         bytes memory data = abi.encodeCall(testLiquidityPool.transfer, (recipientAddr, 2));
         vm.startPrank(ownerAddr);
         bytes memory revertReason =
-            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, recipientAddr);
+            abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, recipientAddr);
         vm.expectRevert(
             abi.encodeWithSelector(
                 BaseMSCA.PreRuntimeValidationHookFailed.selector, address(addressBookPlugin), 1, revertReason
@@ -1241,7 +1241,7 @@ contract ColdStorageAddressBookPluginWithFullMSCATest is TestUtils {
         console.log("address(msca).balance -> %s", address(msca).balance);
         console.log("user4.balance -> %s", address(user4).balance);
 
-        revertReason = abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, ownerAddr, user4);
+        revertReason = abi.encodeWithSelector(IAddressBookPlugin.UnauthorizedRecipient.selector, mscaAddr, user4);
         // 3: PRE_RUNTIME_VALIDATION_HOOK_EXECUTE_BATCH_ADDRESS_BOOK
         vm.expectRevert(
             abi.encodeWithSelector(

@@ -63,23 +63,24 @@ contract TestERC777 is IERC777 {
     // solhint-disable-next-line no-empty-blocks
     function burn(uint256 amount, bytes calldata data) external {}
 
-    function granularity() external view returns (uint256) {
+    function granularity() external pure returns (uint256) {
         return 0;
     }
 
-    function isOperatorFor(address operator, address tokenHolder) external view returns (bool) {
+    function isOperatorFor(address operator, address tokenHolder) external pure returns (bool) {
+        (operator, tokenHolder);
         return false;
     }
 
-    function name() external view returns (string memory) {
+    function name() external pure returns (string memory) {
         return "777";
     }
 
-    function symbol() external view returns (string memory) {
+    function symbol() external pure returns (string memory) {
         return "777";
     }
 
-    function totalSupply() external view returns (uint256) {
+    function totalSupply() external pure returns (uint256) {
         return 1000;
     }
 
@@ -89,7 +90,7 @@ contract TestERC777 is IERC777 {
     // solhint-disable-next-line no-empty-blocks
     function revokeOperator(address) external {}
 
-    function defaultOperators() external view returns (address[] memory a) {
+    function defaultOperators() external pure returns (address[] memory a) {
         return new address[](0);
     }
 

@@ -148,6 +148,7 @@ contract TestTokenWithPostHookOnlyPlugin is BasePlugin {
         override
         returns (uint256 validationData)
     {
+        (userOp, userOpHash);
         if (functionId == uint8(FunctionId.USER_OP_VALIDATION)) {
             return SIG_VALIDATION_SUCCEEDED;
         }
@@ -160,6 +161,7 @@ contract TestTokenWithPostHookOnlyPlugin is BasePlugin {
         pure
         override
     {
+        (sender, value, data);
         if (functionId == uint8(FunctionId.RUNTIME_VALIDATION)) {
             return;
         }
@@ -167,7 +169,7 @@ contract TestTokenWithPostHookOnlyPlugin is BasePlugin {
     }
 
     /// @inheritdoc BasePlugin
-    function postExecutionHook(uint8 functionId, bytes calldata preExecHookData) external view override {
+    function postExecutionHook(uint8 functionId, bytes calldata preExecHookData) external pure override {
         console.logString("postExecutionHook data:");
         console.logBytes(preExecHookData);
         if (preExecHookData.length != 0) {

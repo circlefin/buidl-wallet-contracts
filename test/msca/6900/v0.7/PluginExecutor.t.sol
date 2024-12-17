@@ -39,6 +39,7 @@ import {TestPermitAnyExternalAddressPlugin} from "./TestPermitAnyExternalAddress
 import {TestPermitAnyExternalAddressWithPostHookOnlyPlugin} from
     "./TestPermitAnyExternalAddressWithPostHookOnlyPlugin.sol";
 
+import {ExecutionUtils} from "../../../../src/utils/ExecutionUtils.sol";
 import {TestPermitAnyExternalAddressWithPreHookOnlyPlugin} from
     "./TestPermitAnyExternalAddressWithPreHookOnlyPlugin.sol";
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
@@ -53,6 +54,7 @@ import {console} from "forge-std/src/console.sol";
 contract PluginExecutorTest is TestUtils {
     using FunctionReferenceLib for bytes21;
     using FunctionReferenceLib for FunctionReference;
+    using ExecutionUtils for address;
     // upgrade
 
     event Upgraded(address indexed newImplementation);
@@ -73,6 +75,8 @@ contract PluginExecutorTest is TestUtils {
     // hook events
     event PreExecutionHookCalled(uint8 indexed functionId, address sender, uint256 value, bytes data);
     event PostExecutionHookCalled(uint8 indexed functionId, bytes preExecHookData);
+
+    error NotFoundSelector();
 
     IEntryPoint private entryPoint = new EntryPoint();
     PluginManager private pluginManager = new PluginManager();
@@ -1176,6 +1180,26 @@ contract PluginExecutorTest is TestUtils {
         // verify the amount has been increased by mint
         assertEq(longLiquidityPool.balanceOf(mscaAddr), 234);
         assertEq(shortLiquidityPool.balanceOf(mscaAddr), 234);
+        vm.stopPrank();
+    }
+
+    function testShortCalldataIntoExecuteFromPluginToExternal() public {
+        // deployment was done in setUp
+        assertTrue(address(msca).code.length != 0);
+        bytes32 manifestHash = keccak256(abi.encode(testTokenPlugin.pluginManifest()));
+        // airdrop 1000 tokens
+        bytes memory pluginInstallData = abi.encode(1000);
+        FunctionReference[] memory dependencies = new FunctionReference[](1);
+        vm.startPrank(address(msca));
+        // import SingleOwnerPlugin as dependency
+        dependencies[0] =
+            FunctionReference(address(singleOwnerPlugin), uint8(ISingleOwnerPlugin.FunctionId.USER_OP_VALIDATION_OWNER));
+        msca.installPlugin(address(testTokenPlugin), manifestHash, pluginInstallData, dependencies);
+
+        // fail early even before InvalidValidationFunctionId is reverted
+        vm.expectRevert(NotFoundSelector.selector);
+        bytes memory data = abi.encodeCall(testTokenPlugin.callExecuteFromPluginExternal, (bytes("aaa")));
+        address(msca).callWithReturnDataOrRevert(0, data);
         vm.stopPrank();
     }
 }
