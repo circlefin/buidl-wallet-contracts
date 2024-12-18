@@ -23,16 +23,13 @@ import {ExecutionDetail, PermittedExternalCall, PluginDetail} from "../common/St
 
 /// @dev The same storage will be used for v1.x.y of MSCAs.
 library WalletStorageV1Lib {
-    // @notice On 12/16/2024, storage was aligned to 256 as a potential optimization in anticipation of gas schedule
-    // changes following the Verkle state tree migration. This adjustment accounts for scenarios where groups
-    // of 256 storage slots may become warm simultaneously and will only apply to newly deployed accounts.
-    // For more details, please refer to https://eips.ethereum.org/EIPS/eip-7201.
-    // Old value: 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8, which is calculated by
-    // keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v1.storage"))) - 1));
-    // New value:
-    // 1. id = "circle.msca.v1.storage"
-    // 2. keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 internal constant WALLET_STORAGE_SLOT = 0x1f5beaddce7d7c52c0db456127db41c33d65f252d3a09b925e817276761a6a00;
+    // @notice When we initially calculated the storage slot, EIP-7201 was still under active discussion,
+    // so we didn’t fully adopt the storage alignment proposed by the EIP, which reduces gas costs
+    // for subsequent operations, as a single cold storage access warms all 256 slots within the group.
+    // To avoid introducing breaking changes and the complexity of migration, we chose not to make changes midway.
+    // For v2 accounts, which will feature a different storage layout, we will adopt EIP-7201.
+    // keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v1.storage"))) - 1))
+    bytes32 internal constant WALLET_STORAGE_SLOT = 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8;
 
     struct Layout {
         // installed plugin addresses for quick query
