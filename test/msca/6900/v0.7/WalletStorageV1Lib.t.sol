@@ -47,9 +47,8 @@ contract WalletStorageV1LibTest is TestUtils {
     }
 
     function testWalletStorageSlot() public pure {
-        bytes32 hash = keccak256(abi.encode(uint256(keccak256("circle.msca.v1.storage")) - 1));
-        bytes32 alignedHash = hash & ~bytes32(uint256(0xff));
-        assertEq(alignedHash, 0x1f5beaddce7d7c52c0db456127db41c33d65f252d3a09b925e817276761a6a00);
+        bytes32 hash = keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v1.storage"))) - 1));
+        assertEq(hash, 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8);
     }
 
     // this test is very similar to AddressDLLLibTest, but under the context of plugin and wallet
