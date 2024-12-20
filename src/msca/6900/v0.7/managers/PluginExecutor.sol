@@ -77,9 +77,6 @@ library PluginExecutor {
         internal
         returns (bytes memory)
     {
-        if (data.length < 4) {
-            revert NotFoundSelector();
-        }
         if (target == address(this) || ERC165Checker.supportsInterface(target, type(IPlugin).interfaceId)) {
             revert ExecuteFromPluginToExternalNotPermitted();
         }

@@ -115,8 +115,8 @@ contract TestTokenPlugin is BasePlugin {
         return true;
     }
 
-    function callExecuteFromPluginExternal(bytes calldata data) external returns (bool) {
-        IPluginExecutor(msg.sender).executeFromPluginExternal(LONG_LIQUIDITY_POOL_ADDR, 0, data);
+    function callExecuteFromPluginExternal(uint256 value, bytes calldata data) external returns (bool) {
+        IPluginExecutor(msg.sender).executeFromPluginExternal(LONG_LIQUIDITY_POOL_ADDR, value, data);
         return true;
     }
 
@@ -517,6 +517,7 @@ contract TestTokenPlugin is BasePlugin {
             })
         });
 
+        manifest.canSpendNativeToken = true;
         manifest.dependencyInterfaceIds = new bytes4[](1);
         manifest.dependencyInterfaceIds[0] = type(ISingleOwnerPlugin).interfaceId;
         return manifest;
