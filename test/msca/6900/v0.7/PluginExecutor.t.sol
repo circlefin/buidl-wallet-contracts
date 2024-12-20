@@ -1186,6 +1186,8 @@ contract PluginExecutorTest is TestUtils {
     function testShortCalldataIntoExecuteFromPluginToExternal() public {
         // deployment was done in setUp
         assertTrue(address(msca).code.length != 0);
+        // start with balance
+        vm.deal(address(msca), 10 ether);
         bytes32 manifestHash = keccak256(abi.encode(testTokenPlugin.pluginManifest()));
         // airdrop 1000 tokens
         bytes memory pluginInstallData = abi.encode(1000);
@@ -1195,11 +1197,11 @@ contract PluginExecutorTest is TestUtils {
         dependencies[0] =
             FunctionReference(address(singleOwnerPlugin), uint8(ISingleOwnerPlugin.FunctionId.USER_OP_VALIDATION_OWNER));
         msca.installPlugin(address(testTokenPlugin), manifestHash, pluginInstallData, dependencies);
-
-        // fail early even before InvalidValidationFunctionId is reverted
-        vm.expectRevert(NotFoundSelector.selector);
-        bytes memory data = abi.encodeCall(testTokenPlugin.callExecuteFromPluginExternal, (bytes("aaa")));
+        address externalTarget = testTokenPlugin.LONG_LIQUIDITY_POOL_ADDR();
+        uint256 initialBal = externalTarget.balance;
+        bytes memory data = abi.encodeCall(testTokenPlugin.callExecuteFromPluginExternal, (1, bytes("")));
         address(msca).callWithReturnDataOrRevert(0, data);
+        assertEq(externalTarget.balance, initialBal + 1);
         vm.stopPrank();
     }
 }
