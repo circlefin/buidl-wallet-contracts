@@ -8,6 +8,7 @@ Mandatory section.
 
 ### Checklist
 - [ ] Did you add new tests and confirm all tests pass? (`yarn test`)
+- [ ] Did you ensure any new Solidity source code files meet minimum test coverage requirements? (`yarn coverage`)
 - [ ] Did you update relevant docs? (docs are found in the `docs` folder)
 - [ ] Do your commits follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard?
 - [ ] Does your PR title also follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) standard?
