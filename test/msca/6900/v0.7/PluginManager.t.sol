@@ -114,7 +114,7 @@ contract PluginManagerTest is TestUtils {
         vm.stopPrank();
     }
 
-    /// try to install a random smart contract that doesnt' implement the plugin interface
+    /// try to install a random smart contract that doesn't implement the plugin interface
     /// try to install it from owner and non-owner separately
     function testInstallSCButNotPlugin() public {
         // try to install testLiquidityPool, which is not a plugin
