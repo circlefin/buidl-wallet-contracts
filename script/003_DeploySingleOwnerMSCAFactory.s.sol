@@ -27,12 +27,14 @@ contract DeploySingleOwnerMSCAFactoryScript is Script {
     address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(SINGLE_OWNER_MSCA_FACTORY_ADDRESS);
 
     function run() public {
+        uint256 saltInt = 1;
+        bytes32 salt = bytes32(saltInt);
         address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
         SingleOwnerMSCAFactory factory;
         if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
-            factory = new SingleOwnerMSCAFactory{salt: 0}(entryPoint, PLUGIN_MANAGER);
+            factory = new SingleOwnerMSCAFactory{salt: salt}(entryPoint, PLUGIN_MANAGER);
             console.log("New single owner MSCA factory address: %s", address(factory));
         } else {
             factory = SingleOwnerMSCAFactory(EXPECTED_FACTORY_ADDRESS);
