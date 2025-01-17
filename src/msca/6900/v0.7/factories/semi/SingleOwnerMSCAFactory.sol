@@ -20,8 +20,6 @@ pragma solidity 0.8.24;
 
 import {Create2FailedDeployment, InvalidInitializationInput} from "../../../shared/common/Errors.sol";
 import {SingleOwnerMSCA} from "../../account/semi/SingleOwnerMSCA.sol";
-import {PluginManager} from "../../managers/PluginManager.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 
@@ -32,9 +30,8 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 contract SingleOwnerMSCAFactory {
     // logic implementation
     SingleOwnerMSCA public immutable ACCOUNT_IMPLEMENTATION;
-    IEntryPoint public immutable ENTRY_POINT;
 
-    event FactoryDeployed(address indexed factory, address accountImplementation, address entryPoint);
+    event FactoryDeployed(address indexed factory, address accountImplementation);
     event AccountCreated(address indexed proxy, address sender, bytes32 salt);
 
     /**
@@ -45,11 +42,9 @@ contract SingleOwnerMSCAFactory {
      *      during the deployment. No hooks can be injected during the account deployment, so for a future installation
      *      of more complicated plugins, please call installPlugin via a separate tx/userOp after account deployment.
      */
-    constructor(address _entryPointAddr, address _pluginManagerAddr) {
-        ENTRY_POINT = IEntryPoint(_entryPointAddr);
-        PluginManager _pluginManager = PluginManager(_pluginManagerAddr);
-        ACCOUNT_IMPLEMENTATION = new SingleOwnerMSCA(ENTRY_POINT, _pluginManager);
-        emit FactoryDeployed(address(this), address(ACCOUNT_IMPLEMENTATION), _entryPointAddr);
+    constructor(address _singleOwnerMSCAImplAddr) {
+        ACCOUNT_IMPLEMENTATION = SingleOwnerMSCA(payable(_singleOwnerMSCAImplAddr));
+        emit FactoryDeployed(address(this), address(ACCOUNT_IMPLEMENTATION));
     }
 
     /**
