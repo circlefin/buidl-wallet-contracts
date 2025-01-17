@@ -111,7 +111,7 @@ contract SingleOwnerMSCATest is TestUtils {
         testERC1155 = new TestERC1155("getrich.com");
         testERC721 = new TestERC721("getrich", "$$$");
         testLiquidityPool = new TestLiquidityPool("getrich", "$$$");
-        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
+        factory = new SingleOwnerMSCAFactory(address(new SingleOwnerMSCA(entryPoint, pluginManager)));
         // mock ERC1820Registry contract, could also use etch though, but I'm implementing a simplified registry
         erc1820Registry = new MockERC1820Registry();
         testERC777 = new TestERC777(erc1820Registry);
