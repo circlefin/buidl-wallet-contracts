@@ -95,7 +95,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
 
     function setUp() public {
         beneficiary = payable(address(makeAddr("bundler")));
-        factory = new SingleOwnerMSCAFactory(address(new SingleOwnerMSCA(entryPoint, pluginManager)));
+        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
         addressBookPlugin = new ColdStorageAddressBookPlugin();
 
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("ColdStorageAddressBookPluginWithSemiMSCATest");

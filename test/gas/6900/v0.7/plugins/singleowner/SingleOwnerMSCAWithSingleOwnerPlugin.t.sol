@@ -20,9 +20,11 @@ pragma solidity 0.8.24;
 
 import {FunctionReference} from "../../../../../../src/msca/6900/v0.7/common/Structs.sol";
 
-import {SingleOwnerMSCA} from "../../../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
-import {SingleOwnerMSCAFactory} from "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
-import {PluginManager} from "../../../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
+import {
+    PluginManager,
+    SingleOwnerMSCA,
+    SingleOwnerMSCAFactory
+} from "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
 import {SingleOwnerPlugin} from "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
 import {PluginGasProfileBaseTest, UserOperation} from "../../../../PluginGasProfileBase.t.sol";
 
@@ -54,7 +56,7 @@ contract SingleOwnerMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
     function setUp() public override {
         super.setUp();
         accountAndPluginType = "SingleOwnerMSCAWithSingleOwnerPlugin";
-        factory = new SingleOwnerMSCAFactory(address(new SingleOwnerMSCA(entryPoint, pluginManager)));
+        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
         singleOwnerPlugin = new SingleOwnerPlugin();
         singleOwnerPluginAddr = address(singleOwnerPlugin);
     }
