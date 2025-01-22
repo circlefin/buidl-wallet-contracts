@@ -78,8 +78,7 @@ contract WalletMigrationTest is TestUtils {
         testERC1155 = new TestERC1155("getrich.com");
         testERC721 = new TestERC721("getrich", "$$$");
         testERC20 = new TestLiquidityPool("getrich", "$$$");
-        SingleOwnerMSCA singleOwnerMSCA = new SingleOwnerMSCA(entryPoint, pluginManager);
-        singleOwnerMSCAFactory = new SingleOwnerMSCAFactory(address(singleOwnerMSCA));
+        singleOwnerMSCAFactory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
         ecdsaAccountFactory = new ECDSAAccountFactory(entryPoint);
     }
 

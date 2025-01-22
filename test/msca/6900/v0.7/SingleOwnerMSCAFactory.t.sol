@@ -56,7 +56,7 @@ contract SingleOwnerMSCAFactoryTest is TestUtils {
     address payable private beneficiary; // e.g. bundler
 
     function setUp() public {
-        factory = new SingleOwnerMSCAFactory(address(new SingleOwnerMSCA(entryPoint, pluginManager)));
+        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
         testLiquidityPool = new TestLiquidityPool("getrich", "$$$");
         beneficiary = payable(address(makeAddr("bundler")));
     }
