@@ -65,6 +65,9 @@ contract UpgradableMSCAFactory is Ownable2Step {
             revert InvalidLength();
         }
         for (uint256 i = 0; i < _modules.length; ++i) {
+            if (_modules[i] == address(0)) {
+                revert ModuleIsNotAllowed(_modules[i]);
+            }
             isModuleAllowed[_modules[i]] = _permissions[i];
         }
     }
@@ -149,6 +152,7 @@ contract UpgradableMSCAFactory is Ownable2Step {
         bytes[] memory _hooks
     ) internal view returns (address addr, bytes32 mixedSalt) {
         address module = _validationConfig.module();
+        // would not allow address(0), indicating that at least one validation required
         if (!isModuleAllowed[module]) {
             revert ModuleIsNotAllowed(module);
         }

@@ -48,6 +48,8 @@ import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/Pac
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {console} from "forge-std/src/console.sol";
 
 /// Tests for SingleOwnerPlugin
@@ -436,5 +438,27 @@ contract SingleOwnerPluginTest is TestUtils {
             abi.encodeWithSelector(NotImplemented.selector, BasePlugin.postExecutionHook.selector, functionId)
         );
         singleOwnerPlugin.postExecutionHook(functionId, data);
+    }
+
+    // they are also tested during signature signing
+    function testFuzz_relaySafeMessageHash(bytes32 hash) public view {
+        address account = address(msca1);
+        bytes32 replaySafeHash = singleOwnerPlugin.getReplaySafeMessageHash(account, hash);
+        bytes32 expected = MessageHashUtils.toTypedDataHash({
+            domainSeparator: keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
+                    ),
+                    keccak256(abi.encodePacked("Single Owner Plugin")),
+                    keccak256(abi.encodePacked("1.0.0")),
+                    block.chainid,
+                    address(singleOwnerPlugin),
+                    bytes32(bytes20(account))
+                )
+            ),
+            structHash: keccak256(abi.encode(keccak256("CircleSingleOwnerPluginMessage(bytes32 hash)"), hash))
+        });
+        assertEq(replaySafeHash, expected);
     }
 }

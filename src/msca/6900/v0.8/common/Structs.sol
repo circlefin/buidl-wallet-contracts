@@ -19,7 +19,7 @@
 pragma solidity 0.8.24;
 
 import {Bytes32DLL, Bytes4DLL} from "../../shared/common/Structs.sol";
-import {ModuleEntity} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {ModuleEntity, ValidationFlags} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
 // Standard executor
 struct Call {
@@ -38,12 +38,12 @@ struct PostExecHookToRun {
 
 /// @notice Represents stored data associated with a specific validation function.
 struct ValidationStorage {
-    // Whether or not this validation can be used as a global validation function.
-    bool isGlobal;
-    // Whether or not this validation is allowed to validate ERC-1271 signatures.
-    bool isSignatureValidation;
-    // Whether or not this validation is allowed to validate ERC-4337 user operations.
-    bool isUserOpValidation;
+    // ValidationFlags layout:
+    // 0b00000___ // unused
+    // 0b_____A__ // isGlobal
+    // 0b______B_ // isSignatureValidation
+    // 0b_______C // isUserOpValidation
+    ValidationFlags validationFlags;
     // The validation hooks for this validation function.
     Bytes32DLL validationHooks;
     // Execution hooks to run with this validation function.

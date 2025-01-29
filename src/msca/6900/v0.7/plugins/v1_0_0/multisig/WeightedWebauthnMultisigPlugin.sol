@@ -51,8 +51,10 @@ import {AddressBytesLib} from "../../../../../../libs/AddressBytesLib.sol";
 import {PublicKeyLib} from "../../../../../../libs/PublicKeyLib.sol";
 import {WebAuthnLib} from "../../../../../../libs/WebAuthnLib.sol";
 
+import {InvalidPublicKey} from "../../../../../../common/Errors.sol";
 import {BaseERC712CompliantModule} from "../../../../shared/erc712/BaseERC712CompliantModule.sol";
 import {IStandardExecutor} from "../../../interfaces/IStandardExecutor.sol";
+import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 /// @title Weighted Multisig Plugin That Supports Additional Webauthn Authentication
@@ -66,8 +68,13 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     using AddressBytesLib for address;
 
     string internal constant _NAME = "Weighted Multisig Webauthn Plugin";
+    // keccak256("Weighted Multisig Webauthn Plugin")
+    bytes32 private constant _HASHED_NAME = 0xbb3dcb6be63dc1bed586f19f310ff9be992f42a915600fdf31872f5f02d4e705;
+    // keccak256("1.0.0")
+    bytes32 private constant _HASHED_MODULE_VERSION = 0x06c015bd22b4c69690933c1058878ebdfef31f9aaae40bbe86d8a09fe1b2972c;
+    // keccak256("CircleWeightedWebauthnMultisigMessage(bytes32 hash)")
     bytes32 private constant _MULTISIG_PLUGIN_TYPEHASH =
-        keccak256("CircleWeightedWebauthnMultisigMessage(bytes32 hash)");
+        0x7dc7da30a002512936154da01baa79a3d1e54e35034ffdfa7c53c28b3091236d;
 
     struct CheckNSignatureData {
         // lowestOffset of signature dynamic part, must locate after the signature constant part
@@ -81,6 +88,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         bytes32 first32Bytes;
         // second32Bytes of signature constant part
         bytes32 second32Bytes;
+        CheckNSignatureError returnError;
     }
 
     constructor(address entryPoint) BaseWeightedMultisigPlugin(entryPoint) {}
@@ -96,6 +104,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         uint256[] calldata pubicKeyWeightsToAdd,
         uint256 newThresholdWeight
     ) external override isInitialized(msg.sender) {
+        _validatePublicKeys(publicKeyOwnersToAdd);
         (bytes30[] memory _totalOwners, OwnerData[] memory _ownersData) =
             _mergeOwnersData(ownersToAdd, weightsToAdd, publicKeyOwnersToAdd, pubicKeyWeightsToAdd);
         _addOwnersAndUpdateMultisigMetadata(_totalOwners, _ownersData, newThresholdWeight);
@@ -108,7 +117,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         uint256 newThresholdWeight
     ) external override isInitialized(msg.sender) {
         bytes30[] memory _totalOwners = _mergeOwners(ownersToRemove, publicKeyOwnersToRemove);
-        _removeOwners(_totalOwners, newThresholdWeight);
+        _removeOwnersAndUpdateMultisigMetadata(_totalOwners, newThresholdWeight);
     }
 
     /// @inheritdoc IWeightedMultisigPlugin
@@ -132,7 +141,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     function isValidSignature(bytes32 digest, bytes memory signature) external view override returns (bytes4) {
         bytes32 wrappedDigest = getReplaySafeMessageHash(msg.sender, digest);
         CheckNSignatureInput memory input = CheckNSignatureInput(wrappedDigest, wrappedDigest, msg.sender, signature);
-        (bool success,) = checkNSignatures(input);
+        (bool success,,) = checkNSignatures(input);
         return success ? EIP1271_VALID_SIGNATURE : EIP1271_INVALID_SIGNATURE;
     }
 
@@ -161,6 +170,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             uint256[] memory publicKeyOwnerWeights,
             uint256 thresholdWeight
         ) = abi.decode(data, (address[], uint256[], PublicKey[], uint256[], uint256));
+        _validatePublicKeys(initialPublicKeyOwners);
         (bytes30[] memory _totalOwners, OwnerData[] memory _ownersData) =
             _mergeOwnersData(initialOwners, ownerWeights, initialPublicKeyOwners, publicKeyOwnerWeights);
         _onInstall(_totalOwners, _ownersData, thresholdWeight);
@@ -319,7 +329,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         public
         view
         override
-        returns (bool success, uint256 firstFailure)
+        returns (bool success, uint256 firstFailure, CheckNSignatureError returnError)
     {
         if (input.signatures.length < _INDIVIDUAL_SIGNATURE_BYTES_LEN) {
             revert InvalidSigLength();
@@ -341,6 +351,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
 
         // tracks whether `signatures` is a complete and valid multisig signature
         checkNSignatureData.success = true;
+        checkNSignatureData.returnError = CheckNSignatureError.NONE;
         while (accumulatedWeight < thresholdWeight) {
             // Fail if the next 65 bytes would exceed signature length
             // or lowest dynamic part signature offset, where next 65 bytes is defined as
@@ -357,9 +368,9 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
                 ) || sigConstantPartEndPos > input.signatures.length
             ) {
                 if (checkNSignatureData.success) {
-                    return (false, signatureCount);
+                    return (false, signatureCount, CheckNSignatureError.SIG_PARTS_OVERLAP);
                 } else {
-                    return (false, checkNSignatureData.firstFailure);
+                    return (false, checkNSignatureData.firstFailure, CheckNSignatureError.SIG_PARTS_OVERLAP);
                 }
             }
 
@@ -387,9 +398,11 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
                 _validateContractSignature(checkNSignatureData, input, digest, signatureCount);
             } else if (sigType == 2) {
                 _validateWebauthnSignature(checkNSignatureData, input, digest, signatureCount);
-            } else {
+            } else if (sigType == 27 || sigType == 28) {
                 // reverts if signature has the wrong s value, wrong v value, or if it's a bad point on the k1 curve
                 _validateEOASignature(checkNSignatureData, input, digest, signatureCount, sigType);
+            } else {
+                revert UnsupportedSigType(sigType);
             }
 
             if (
@@ -401,6 +414,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
                 if (checkNSignatureData.success) {
                     checkNSignatureData.firstFailure = signatureCount;
                     checkNSignatureData.success = false;
+                    checkNSignatureData.returnError = CheckNSignatureError.SIGS_OUT_OF_ORDER;
                 }
             }
 
@@ -414,7 +428,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
         if (numSigsOnActualDigest != 0) {
             revert InvalidNumSigsOnActualDigest(numSigsOnActualDigest);
         }
-        return (checkNSignatureData.success, checkNSignatureData.firstFailure);
+        return (checkNSignatureData.success, checkNSignatureData.firstFailure, checkNSignatureData.returnError);
     }
 
     function _validateContractSignature(
@@ -434,6 +448,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             if (checkNSignatureData.success) {
                 checkNSignatureData.firstFailure = signatureCount;
                 checkNSignatureData.success = false;
+                checkNSignatureData.returnError = CheckNSignatureError.INVALID_CONTRACT_ADDRESS;
             }
         }
         // offset of current signature dynamic part
@@ -475,6 +490,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             if (checkNSignatureData.success) {
                 checkNSignatureData.firstFailure = signatureCount;
                 checkNSignatureData.success = false;
+                checkNSignatureData.returnError = CheckNSignatureError.INVALID_SIG;
             }
         }
     }
@@ -535,6 +551,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             if (checkNSignatureData.success) {
                 checkNSignatureData.firstFailure = signatureCount;
                 checkNSignatureData.success = false;
+                checkNSignatureData.returnError = CheckNSignatureError.INVALID_SIG;
             }
         }
     }
@@ -553,6 +570,7 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
             if (checkNSignatureData.success) {
                 checkNSignatureData.firstFailure = signatureCount;
                 checkNSignatureData.success = false;
+                checkNSignatureData.returnError = CheckNSignatureError.INVALID_SIG;
             }
         }
     }
@@ -563,7 +581,20 @@ contract WeightedWebauthnMultisigPlugin is BaseWeightedMultisigPlugin, BaseERC71
     }
 
     /// @inheritdoc BaseERC712CompliantModule
-    function _getModuleIdHash() internal pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(_NAME, PLUGIN_VERSION_1));
+    function _getModuleNameHash() internal pure override returns (bytes32) {
+        return _HASHED_NAME;
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleVersionHash() internal pure override returns (bytes32) {
+        return _HASHED_MODULE_VERSION;
+    }
+
+    function _validatePublicKeys(PublicKey[] memory publicKeys) internal pure {
+        for (uint256 i = 0; i < publicKeys.length; ++i) {
+            if (!FCL_Elliptic_ZZ.ecAff_isOnCurve(publicKeys[i].x, publicKeys[i].y)) {
+                revert InvalidPublicKey(publicKeys[i].x, publicKeys[i].y);
+            }
+        }
     }
 }

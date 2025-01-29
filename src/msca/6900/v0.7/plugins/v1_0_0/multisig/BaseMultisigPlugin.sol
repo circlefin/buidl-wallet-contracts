@@ -31,6 +31,7 @@ import {NotImplemented} from "../../../../shared/common/Errors.sol";
 import {BasePlugin} from "../../BasePlugin.sol";
 import {IWeightedMultisigPlugin} from "./IWeightedMultisigPlugin.sol";
 
+import {CalldataUtils} from "../../../../../../utils/CalldataUtils.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {
     AssociatedLinkedListSet,
@@ -48,6 +49,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
     using AssociatedLinkedListSetLib for AssociatedLinkedListSet;
+    using CalldataUtils for bytes;
 
     error EmptyOwnersNotAllowed();
     error InvalidAddress();
@@ -63,6 +65,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
     error TooManyOwners(uint256 currentNumOwners, uint256 numOwnersToAdd);
     error ZeroOwnersInputNotAllowed();
     error InvalidUserOpDigest();
+    error UnsupportedSigType(uint8 sigType);
 
     enum FunctionId {
         USER_OP_VALIDATION_OWNER // require owner access
@@ -88,7 +91,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
         public
         view
         virtual
-        returns (bool success, uint256 firstFailure);
+        returns (bool success, uint256 firstFailure, IWeightedMultisigPlugin.CheckNSignatureError returnError);
 
     /// @inheritdoc BasePlugin
     function userOpValidationFunction(uint8 functionId, PackedUserOperation calldata userOp, bytes32 userOpHash)
@@ -114,7 +117,7 @@ abstract contract BaseMultisigPlugin is BasePlugin {
                 account: msg.sender,
                 signatures: userOp.signature
             });
-            (bool success,) = checkNSignatures(input);
+            (bool success,,) = checkNSignatures(input);
             return success ? SIG_VALIDATION_SUCCEEDED : SIG_VALIDATION_FAILED;
         }
 
@@ -132,8 +135,8 @@ abstract contract BaseMultisigPlugin is BasePlugin {
             sender := calldataload(userOp)
         }
         uint256 nonce = userOp.nonce;
-        bytes32 hashInitCode = _calldataKeccak(userOp.initCode);
-        bytes32 hashCallData = _calldataKeccak(userOp.callData);
+        bytes32 hashInitCode = userOp.initCode.calldataKeccak();
+        bytes32 hashCallData = userOp.callData.calldataKeccak();
 
         bytes32 userOpHash = keccak256(
             abi.encode(
@@ -149,17 +152,6 @@ abstract contract BaseMultisigPlugin is BasePlugin {
         );
 
         return keccak256(abi.encode(userOpHash, ENTRYPOINT, block.chainid));
-    }
-
-    /// @param data calldata to hash
-    function _calldataKeccak(bytes calldata data) internal pure returns (bytes32 ret) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly ("memory-safe") {
-            let mem := mload(0x40)
-            let len := data.length
-            calldatacopy(mem, data.offset, len)
-            ret := keccak256(mem, len)
-        }
     }
 
     /// @notice Check if the account has initialized this plugin yet

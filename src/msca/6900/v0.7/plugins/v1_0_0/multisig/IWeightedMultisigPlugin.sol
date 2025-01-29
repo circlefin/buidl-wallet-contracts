@@ -30,25 +30,25 @@ interface IWeightedMultisigPlugin {
     /// @param account account plugin is installed on
     /// @param owners list of owners added
     /// @param weights list of weights corresponding to added owners
-    event OwnersAdded(address account, bytes30[] owners, OwnerData[] weights);
+    event OwnersAdded(address indexed account, bytes30[] owners, OwnerData[] weights);
 
     /// @notice This event is emitted when owners of the account are removed.
     /// @param account account plugin is installed on
     /// @param owners list of owners removed
     /// @param totalWeightRemoved total weight removed
-    event OwnersRemoved(address account, bytes30[] owners, uint256 totalWeightRemoved);
+    event OwnersRemoved(address indexed account, bytes30[] owners, uint256 totalWeightRemoved);
 
     /// @notice This event is emitted when weights of account owners updated.
     /// @param account account plugin is installed on
     /// @param owners list of owners updated
     /// @param weights list of updated weights corresponding to owners
-    event OwnersUpdated(address account, bytes30[] owners, OwnerData[] weights);
+    event OwnersUpdated(address indexed account, bytes30[] owners, OwnerData[] weights);
 
     /// @notice This event is emitted when the threshold weight is updated
     /// @param account account plugin is installed on
     /// @param oldThresholdWeight the old threshold weight required to perform an action
     /// @param newThresholdWeight the new threshold weight required to perform an action
-    event ThresholdUpdated(address account, uint256 oldThresholdWeight, uint256 newThresholdWeight);
+    event ThresholdUpdated(address indexed account, uint256 oldThresholdWeight, uint256 newThresholdWeight);
 
     error InvalidThresholdWeight();
     error InvalidWeight(bytes30 owner, address account, uint256 weight);
@@ -60,6 +60,14 @@ interface IWeightedMultisigPlugin {
         bytes32 minimalDigest;
         address account;
         bytes signatures;
+    }
+
+    enum CheckNSignatureError {
+        NONE,
+        SIG_PARTS_OVERLAP, // constant part and dynamic part overlap or constant part is too long
+        SIGS_OUT_OF_ORDER, // signatures are unsorted
+        INVALID_CONTRACT_ADDRESS,
+        INVALID_SIG
     }
 
     /// @notice Add owners and their associated weights for the account, and optionally update threshold weight required
@@ -158,12 +166,13 @@ interface IWeightedMultisigPlugin {
     /// signatures The signatures to check.
     /// @return success True if the signatures are valid.
     /// @return firstFailure first failure, if failed is true.
+    /// @return returnError for debugging.
     /// (Note: if all signatures are individually valid but do not satisfy the
     /// multisig, firstFailure will be set to the last signature's index.)
     function checkNSignatures(CheckNSignatureInput memory input)
         external
         view
-        returns (bool success, uint256 firstFailure);
+        returns (bool success, uint256 firstFailure, CheckNSignatureError returnError);
 
     /// @notice Check if an address is an owner of `account`.
     /// @param account The account to check.

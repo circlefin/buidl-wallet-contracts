@@ -180,7 +180,7 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
         view
         virtual
         override(BaseMultisigPlugin, IWeightedMultisigPlugin)
-        returns (bool success, uint256 firstFailure);
+        returns (bool success, uint256 firstFailure, CheckNSignatureError returnError);
 
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓
     // ┃    Internal Functions    ┃
@@ -209,7 +209,9 @@ abstract contract BaseWeightedMultisigPlugin is BaseMultisigPlugin, IWeightedMul
         emit OwnersAdded(msg.sender, ownersToAdd, ownersDataToAdd);
     }
 
-    function _removeOwners(bytes30[] memory ownersToRemove, uint256 newThresholdWeight) internal {
+    function _removeOwnersAndUpdateMultisigMetadata(bytes30[] memory ownersToRemove, uint256 newThresholdWeight)
+        internal
+    {
         uint256 toRemoveLen = ownersToRemove.length;
 
         if (toRemoveLen == 0) {

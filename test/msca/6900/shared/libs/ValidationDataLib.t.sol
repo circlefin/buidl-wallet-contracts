@@ -53,6 +53,14 @@ contract ValidationDataLibTest is TestUtils {
         assertEq(result.validAfter, 1);
         assertEq(result.validUntil, 2);
         assertEq(result.authorizer, address(1));
+
+        a = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(1)});
+        b = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(2)});
+        bUint = b._packValidationData();
+        result = a._intersectValidationData(bUint);
+        assertEq(result.validAfter, 1);
+        assertEq(result.validUntil, 2);
+        assertEq(result.authorizer, address(2));
     }
 
     function testIntersectBadAuthorizer_b() public pure {
@@ -63,6 +71,14 @@ contract ValidationDataLibTest is TestUtils {
         assertEq(result.validAfter, 1);
         assertEq(result.validUntil, 2);
         assertEq(result.authorizer, address(1));
+
+        a = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(2)});
+        b = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(1)});
+        bUint = b._packValidationData();
+        result = a._intersectValidationData(bUint);
+        assertEq(result.validAfter, 1);
+        assertEq(result.validUntil, 2);
+        assertEq(result.authorizer, address(2));
     }
 
     function testIntersect_equal() public pure {
@@ -73,6 +89,14 @@ contract ValidationDataLibTest is TestUtils {
         assertEq(result.validAfter, 3);
         assertEq(result.validUntil, 3);
         assertEq(result.authorizer, address(1));
+
+        a = ValidationData({validAfter: 1, validUntil: 3, authorizer: address(2)});
+        b = ValidationData({validAfter: 3, validUntil: 5, authorizer: address(1)});
+        bUint = b._packValidationData();
+        result = a._intersectValidationData(bUint);
+        assertEq(result.validAfter, 3);
+        assertEq(result.validUntil, 3);
+        assertEq(result.authorizer, address(2));
     }
 
     function testIntersect_noOverlap() public pure {
@@ -83,5 +107,13 @@ contract ValidationDataLibTest is TestUtils {
         assertEq(result.validAfter, 3);
         assertEq(result.validUntil, 2);
         assertEq(result.authorizer, address(1));
+
+        a = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(1)});
+        b = ValidationData({validAfter: 3, validUntil: 4, authorizer: address(2)});
+        bUint = b._packValidationData();
+        result = a._intersectValidationData(bUint);
+        assertEq(result.validAfter, 3);
+        assertEq(result.validUntil, 2);
+        assertEq(result.authorizer, address(2));
     }
 }

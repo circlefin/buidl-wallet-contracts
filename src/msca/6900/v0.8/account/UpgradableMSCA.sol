@@ -47,10 +47,7 @@ contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
 
     event UpgradableMSCAInitialized(address indexed account, address indexed entryPointAddress);
 
-    constructor(IEntryPoint _newEntryPoint) BaseMSCA(_newEntryPoint) {
-        // lock the implementation contract so it can only be called from proxies
-        _disableWalletStorageInitializers();
-    }
+    constructor(IEntryPoint _newEntryPoint) BaseMSCA(_newEntryPoint) {}
 
     /// @notice Initializes the account with a validation function.
     /// @dev This function is only callable once. It is expected to be called by the factory that deploys the account.

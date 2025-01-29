@@ -19,16 +19,15 @@
 pragma solidity 0.8.24;
 
 import {PublicKey} from "../common/CommonStructs.sol";
+import {InvalidPublicKey} from "../common/Errors.sol";
 
 /**
  * @dev Util functions for public key.
  */
 library PublicKeyLib {
-    error InvalidPublicKey(uint256 x, uint256 y);
-
     function toBytes30(uint256 x, uint256 y) internal pure returns (bytes30) {
         // (0, 0) is point at infinity and not on the curve and should therefore be rejected
-        if (x == 0 && y == 0) {
+        if (!isValidPublicKey(x, y)) {
             revert InvalidPublicKey(x, y);
         }
         return bytes30(uint240(uint256(keccak256(abi.encode(x, y)))));
@@ -39,5 +38,13 @@ library PublicKeyLib {
         uint256 x = publicKey.x;
         uint256 y = publicKey.y;
         return toBytes30(x, y);
+    }
+
+    function isValidPublicKey(uint256 x, uint256 y) internal pure returns (bool) {
+        return x != 0 || y != 0;
+    }
+
+    function isValidPublicKey(PublicKey memory publicKey) internal pure returns (bool) {
+        return publicKey.x != 0 || publicKey.y != 0;
     }
 }

@@ -23,7 +23,12 @@ import {ExecutionDetail, PermittedExternalCall, PluginDetail} from "../common/St
 
 /// @dev The same storage will be used for v1.x.y of MSCAs.
 library WalletStorageV1Lib {
-    // keccak256 hash of "circle.msca.v1.storage" subtracted by 1
+    // @notice When we initially calculated the storage slot, EIP-7201 was still under active discussion,
+    // so we didn’t fully adopt the storage alignment proposed by the EIP, which reduces gas costs
+    // for subsequent operations, as a single cold storage access warms all 256 slots within the group.
+    // To avoid introducing breaking changes and the complexity of migration, we chose not to make changes midway.
+    // For v2 accounts, which will feature a different storage layout, we will adopt EIP-7201.
+    // keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v1.storage"))) - 1))
     bytes32 private constant WALLET_STORAGE_SLOT = 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8;
 
     struct Layout {

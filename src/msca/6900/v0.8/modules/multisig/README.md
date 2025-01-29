@@ -4,7 +4,7 @@ Weighted Multisig Module is an ERC6900-compatible weighted multisig validation m
 ## Core Functionalities
 Core features include:
 1. Weighted multisig validation on execution functions.
-2. Execution functions that modify account by adding signers, removing signers, or updating signer weights, and/or modifying the threshold weight. These functions are guarded by the above validation function.
+2. Execution functions that modify account by adding signers, removing signers, updating signer weights, and/or modifying the threshold weight. These functions are guarded by the above validation function.
 3. Support for EOA signers, ERC-1271 smart contract signers and public key signers.
 
 ## Technical Decisions

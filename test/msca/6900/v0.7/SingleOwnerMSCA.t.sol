@@ -25,7 +25,6 @@ import {
     InvalidInitializationInput, InvalidValidationFunctionId
 } from "../../../../src/msca/6900/shared/common/Errors.sol";
 import {InvalidExecutionFunction} from "../../../../src/msca/6900/shared/common/Errors.sol";
-import {ValidationData} from "../../../../src/msca/6900/shared/common/Structs.sol";
 import {SingleOwnerMSCA} from "../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
 import {
     Call,
@@ -86,15 +85,14 @@ contract SingleOwnerMSCATest is TestUtils {
         uint256 actualGasCost,
         uint256 actualGasUsed
     );
-
-    error FailedOp(uint256 opIndex, string reason);
-
     event UserOperationRevertReason(
         bytes32 indexed userOpHash, address indexed sender, uint256 nonce, bytes revertReason
     );
 
     // MSCA
     error WalletStorageIsInitialized();
+    error FailedOp(uint256 opIndex, string reason);
+    error NotFoundSelector();
 
     IEntryPoint private entryPoint = new EntryPoint();
     PluginManager private pluginManager = new PluginManager();
@@ -857,6 +855,14 @@ contract SingleOwnerMSCATest is TestUtils {
         return sender;
     }
 
+    function testShortCalldataIntoFallback() public {
+        // deployment was done in setUp
+        SingleOwnerMSCA msca = factory.createAccount(address(this), 0, abi.encode(address(this)));
+        // fail early even before InvalidValidationFunctionId is reverted
+        vm.expectRevert(NotFoundSelector.selector);
+        address(msca).callWithReturnDataOrRevert(0, bytes("aaa"));
+    }
+
     function installSingleOwnerPlugin(address semiMSCA, uint256 ownerPrivateKey, address ownerInPlugin) internal {
         bytes32 manifestHash = keccak256(abi.encode(singleOwnerPlugin.pluginManifest()));
         // nonce key is 0
@@ -982,22 +988,5 @@ contract SingleOwnerMSCATest is TestUtils {
         entryPoint.handleOps(ops, beneficiary);
         assertEq(SingleOwnerMSCA(payable(semiMSCA)).getNativeOwner(), address(0));
         vm.stopPrank();
-    }
-
-    /**
-     * @dev Unpack into the deserialized packed format from validAfter | validUntil | authorizer.
-     */
-    function _unpackValidationData(uint256 validationDataInt)
-        internal
-        pure
-        returns (ValidationData memory validationData)
-    {
-        address authorizer = address(uint160(validationDataInt));
-        uint48 validUntil = uint48(validationDataInt >> 160);
-        if (validUntil == 0) {
-            validUntil = type(uint48).max;
-        }
-        uint48 validAfter = uint48(validationDataInt >> (48 + 160));
-        return ValidationData(validAfter, validUntil, authorizer);
     }
 }

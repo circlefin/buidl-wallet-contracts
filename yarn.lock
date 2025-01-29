@@ -25,9 +25,9 @@
     js-tokens "^4.0.0"
     picocolors "^1.0.0"
 
-"@erc6900/reference-implementation@github:erc6900/reference-implementation#v0.8.0-rc.6":
-  version "0.8.0-rc.5"
-  resolved "https://codeload.github.com/erc6900/reference-implementation/tar.gz/6cdcfa653eb019d27d23586a86ff8171201a4066"
+"@erc6900/reference-implementation@github:erc6900/reference-implementation#v0.8.0":
+  version "0.8.0"
+  resolved "https://codeload.github.com/erc6900/reference-implementation/tar.gz/c9b256cfd963a655179fa3cd9ea3f92c73cbfcdd"
 
 "@modular-account-libs@github:erc6900/modular-account-libs#v0.8.0-rc.0":
   version "0.8.0-rc.0"
@@ -69,10 +69,10 @@
   resolved "https://registry.yarnpkg.com/@sindresorhus/is/-/is-5.6.0.tgz#41dd6093d34652cddb5d5bdeee04eafc33826668"
   integrity sha512-TV7t8GKYaJWsn00tFDqBw8+Uqmr8A0fRU1tvTQhyZzGv0sJCGRQL3JGMI3ucuKo3XIZdUP+Lx7/gh2t3lewy7g==
 
-"@solidity-parser/parser@^0.18.0":
-  version "0.18.0"
-  resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.18.0.tgz#8e77a02a09ecce957255a2f48c9a7178ec191908"
-  integrity sha512-yfORGUIPgLck41qyN7nbwJRAx17/jAIXCTanHOJZhB6PJ1iAk/84b/xlsVKFSyNyLXIj0dhppoE0+CRws7wlzA==
+"@solidity-parser/parser@^0.19.0":
+  version "0.19.0"
+  resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.19.0.tgz#37a8983b2725af9b14ff8c4a475fa0e98d773c3f"
+  integrity sha512-RV16k/qIxW/wWc+mLzV3ARyKUaMUTBy9tOLMzFhtNSKYeTAanQ3a5MudJKf/8arIFnA2L27SNjarQKmFg0w/jA==
 
 "@szmarczak/http-timer@^5.0.1":
   version "5.0.1"
@@ -302,9 +302,9 @@ fast-uri@^3.0.1:
   version "0.0.0"
   resolved "https://codeload.github.com/rdubois-crypto/FreshCryptoLib/tar.gz/8179e08cac72072bd260796633fec41fdfd5b441"
 
-"forge-std@github:foundry-rs/forge-std#v1.9.2":
-  version "1.9.2"
-  resolved "https://codeload.github.com/foundry-rs/forge-std/tar.gz/1714bee72e286e73f76e320d110e0eaf5c4e649d"
+"forge-std@github:foundry-rs/forge-std#v1.9.5":
+  version "1.9.5"
+  resolved "https://codeload.github.com/foundry-rs/forge-std/tar.gz/b93cf4bc34ff214c099dc970b153f85ade8c9f66"
 
 form-data-encoder@^2.1.2:
   version "2.1.4"
@@ -650,12 +650,12 @@ solady@0.0.243:
   resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.243.tgz#f1d3063206f44111c45a987d66f68a0a72c9f60e"
   integrity sha512-KwYZ79Sx+KUQ04d4dyj5P+ny1yi1LYDYv2ixZtgr43Eyn3PTvc+21do+eHG63vl4ZSREh3B3W9BAIgar68qF1A==
 
-solhint@^5.0.3:
-  version "5.0.3"
-  resolved "https://registry.yarnpkg.com/solhint/-/solhint-5.0.3.tgz#b57f6d2534fe09a60f9db1b92e834363edd1cbde"
-  integrity sha512-OLCH6qm/mZTCpplTXzXTJGId1zrtNuDYP5c2e6snIv/hdRVxPfBBz/bAlL91bY/Accavkayp2Zp2BaDSrLVXTQ==
+solhint@^5.0.5:
+  version "5.0.5"
+  resolved "https://registry.yarnpkg.com/solhint/-/solhint-5.0.5.tgz#43d9c730c2b22e11aa45582580749e0801a049d4"
+  integrity sha512-WrnG6T+/UduuzSWsSOAbfq1ywLUDwNea3Gd5hg6PS+pLUm8lz2ECNr0beX609clBxmDeZ3676AiA9nPDljmbJQ==
   dependencies:
-    "@solidity-parser/parser" "^0.18.0"
+    "@solidity-parser/parser" "^0.19.0"
     ajv "^6.12.6"
     antlr4 "^4.13.1-patch-1"
     ast-parents "^0.0.1"
