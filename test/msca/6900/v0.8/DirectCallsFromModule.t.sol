@@ -98,7 +98,7 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
     /* -------------------------------------------------------------------------- */
     /*                                  Negatives                                 */
     /* -------------------------------------------------------------------------- */
-
+    // TODO: use test_Revert because testFail has been deprecated
     function testFailDirectCallModuleNotInstalled() public {
         vm.startPrank(address(directCallModule));
         vm.expectRevert(

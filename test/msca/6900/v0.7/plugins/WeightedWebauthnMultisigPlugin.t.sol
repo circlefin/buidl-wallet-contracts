@@ -65,6 +65,7 @@ import {WebAuthnLib} from "../../../../../src/libs/WebAuthnLib.sol";
 import {WeightedWebauthnMultisigPlugin} from
     "../../../../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
 
+import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
 import {stdJson} from "forge-std/src/StdJson.sol";
 import {VmSafe} from "forge-std/src/Vm.sol";
 import {console} from "forge-std/src/console.sol";
@@ -77,10 +78,10 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     using stdJson for string;
     using MessageHashUtils for bytes32;
 
-    event OwnersAdded(address account, bytes30[] owners, OwnerData[] weights);
-    event OwnersRemoved(address account, bytes30[] owners, uint256 totalWeightRemoved);
-    event OwnersUpdated(address account, bytes30[] owners, OwnerData[] weights);
-    event ThresholdUpdated(address account, uint256 oldThresholdWeight, uint256 newThresholdWeight);
+    event OwnersAdded(address indexed account, bytes30[] owners, OwnerData[] weights);
+    event OwnersRemoved(address indexed account, bytes30[] owners, uint256 totalWeightRemoved);
+    event OwnersUpdated(address indexed account, bytes30[] owners, OwnerData[] weights);
+    event ThresholdUpdated(address indexed account, uint256 oldThresholdWeight, uint256 newThresholdWeight);
 
     error AlreadyInitialized();
     error EmptyOwnersNotAllowed();
@@ -94,14 +95,16 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     error ThresholdWeightExceedsTotalWeight(uint256 thresholdWeight, uint256 totalWeight);
     error TooManyOwners(uint256 currentNumOwners, uint256 numOwnersToAdd);
     error ZeroOwnersInputNotAllowed();
-    error ECDSAInvalidSignature();
+    error InvalidPublicKey(uint256 x, uint256 y);
+    error FailToGeneratePublicKey(uint256 x, uint256 y);
+    error UnsupportedSigType(uint8 sigType);
 
     WeightedWebauthnMultisigPlugin private plugin;
     address private account;
     address private ownerOne = address(1);
     address private ownerTwo = address(2);
-    PublicKey private pubKeyOne = PublicKey({x: 1, y: 1});
-    PublicKey private pubKeyTwo = PublicKey({x: 2, y: 2});
+    PublicKey private pubKeyOne;
+    PublicKey private pubKeyTwo;
     uint256 private weightOne = 100;
     uint256 private weightTwo = 101;
     uint256 private pubKeyWeightOne = 100;
@@ -246,6 +249,8 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         weightOneList.push(weightOne);
         ownerTwoList.push(ownerTwo);
         weightTwoList.push(weightTwo);
+        pubKeyOne = _generateRandomPublicKey(1);
+        pubKeyTwo = _generateRandomPublicKey(2);
         pubKeyOneList.push(pubKeyOne);
         pubKeyWeightOneList.push(pubKeyWeightOne);
         pubKeyTwoList.push(pubKeyTwo);
@@ -292,7 +297,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         for (uint256 i = 1; i <= _MAX_OWNERS + 1; i++) {
             _addresses[i - 1] = vm.addr(i);
             _weights[i - 1] = 1;
-            _pubKeys[i - 1] = PublicKey(i, i);
+            _pubKeys[i - 1] = _generateRandomPublicKey(i);
         }
 
         vm.expectRevert(abi.encodeWithSelector(TooManyOwners.selector, 0, _MAX_OWNERS * 2 + 2));
@@ -324,8 +329,20 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         _invalidWeightList[0] = _invalidWeight;
 
         vm.expectRevert(abi.encodeWithSelector(InvalidWeight.selector, ownerOne.toBytes30(), account, _invalidWeight));
+        vm.prank(account);
         plugin.onInstall(
             abi.encode(ownerOneList, _invalidWeightList, pubKeyOneList, pubKeyWeightOneList, thresholdWeightOne)
+        );
+    }
+
+    function testFuzz_onInstallInvalidPublicKey(uint256 x, uint256 y) public {
+        vm.assume(x >= FCL_Elliptic_ZZ.p);
+        PublicKey[] memory badPubKeysToAdd = new PublicKey[](1);
+        badPubKeysToAdd[0] = PublicKey(x, y);
+
+        vm.expectRevert(abi.encodeWithSelector(InvalidPublicKey.selector, badPubKeysToAdd[0].x, badPubKeysToAdd[0].y));
+        plugin.onInstall(
+            abi.encode(ownerOneList, weightOneList, badPubKeysToAdd, pubKeyWeightOneList, thresholdWeightOne)
         );
     }
 
@@ -475,9 +492,16 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.assume(input.owner2 != input.owner3);
         vm.assume(input.owner3 != input.owner1);
 
-        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
-        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
-        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(input.pubKey1.x != 0);
+        vm.assume(input.pubKey2.x != 0);
+        vm.assume(input.pubKey3.x != 0);
+        vm.assume(
+            (input.pubKey1.x != input.pubKey2.x) && (input.pubKey2.x != input.pubKey3.x)
+                && (input.pubKey3.x != input.pubKey1.x)
+        );
+        input.pubKey1 = _generateRandomPublicKey(input.pubKey1.x);
+        input.pubKey2 = _generateRandomPublicKey(input.pubKey2.x);
+        input.pubKey3 = _generateRandomPublicKey(input.pubKey3.x);
         vm.assume(!_isSame(input.pubKey1, input.pubKey2));
         vm.assume(!_isSame(input.pubKey2, input.pubKey3));
         vm.assume(!_isSame(input.pubKey3, input.pubKey1));
@@ -516,6 +540,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         initialPubKeyWeights[1] = input.pubKeyWeight2;
 
         uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.pubKeyWeight1 + input.pubKeyWeight2;
+        vm.prank(account);
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -604,7 +629,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             address[] memory _addresses = new address[](1);
             _addresses[0] = vm.addr(i);
             PublicKey[] memory _pubKeys = new PublicKey[](1);
-            _pubKeys[0] = PublicKey(i + 2, i + 2);
+            _pubKeys[0] = _generateRandomPublicKey(i + 2);
             vm.prank(account);
             plugin.addOwners(_addresses, weightOneList, _pubKeys, pubKeyWeightOneList, 0);
         }
@@ -612,7 +637,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         address[] memory _lastAddress = new address[](1);
         _lastAddress[0] = vm.addr(_MAX_OWNERS + 1);
         PublicKey[] memory _lastPubKeys = new PublicKey[](1);
-        _lastPubKeys[0] = PublicKey(_MAX_OWNERS + 2, _MAX_OWNERS + 2);
+        _lastPubKeys[0] = _generateRandomPublicKey(_MAX_OWNERS + 2);
         vm.prank(account);
         vm.expectRevert(abi.encodeWithSelector(TooManyOwners.selector, _MAX_OWNERS, 2));
         plugin.addOwners(_lastAddress, weightOneList, _lastPubKeys, pubKeyWeightOneList, 0);
@@ -627,6 +652,17 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         vm.expectRevert(abi.encodeWithSelector(InvalidOwner.selector, address(0).toBytes30()));
         plugin.addOwners(badOwnersToAdd, weightOneList, new PublicKey[](0), new uint256[](0), thresholdWeightOne);
+    }
+
+    function testFuzz_addOwnersInvalidPublicKey(uint256 x, uint256 y) public {
+        vm.assume(x >= FCL_Elliptic_ZZ.p);
+        PublicKey[] memory badPubKeysToAdd = new PublicKey[](1);
+        badPubKeysToAdd[0] = PublicKey(x, y);
+        _install();
+
+        vm.prank(account);
+        vm.expectRevert(abi.encodeWithSelector(InvalidPublicKey.selector, badPubKeysToAdd[0].x, badPubKeysToAdd[0].y));
+        plugin.addOwners(ownerOneList, weightOneList, badPubKeysToAdd, pubKeyWeightOneList, thresholdWeightOne);
     }
 
     function test_addOwners_invalidWeight_zero() public {
@@ -727,9 +763,16 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.assume(input.owner2 != input.owner3);
         vm.assume(input.owner3 != input.owner1);
 
-        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
-        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
-        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(input.pubKey1.x != 0);
+        vm.assume(input.pubKey2.x != 0);
+        vm.assume(input.pubKey3.x != 0);
+        vm.assume(
+            (input.pubKey1.x != input.pubKey2.x) && (input.pubKey2.x != input.pubKey3.x)
+                && (input.pubKey3.x != input.pubKey1.x)
+        );
+        input.pubKey1 = _generateRandomPublicKey(input.pubKey1.x);
+        input.pubKey2 = _generateRandomPublicKey(input.pubKey2.x);
+        input.pubKey3 = _generateRandomPublicKey(input.pubKey3.x);
         vm.assume(!_isSame(input.pubKey1, input.pubKey2));
         vm.assume(!_isSame(input.pubKey2, input.pubKey3));
         vm.assume(!_isSame(input.pubKey3, input.pubKey1));
@@ -771,7 +814,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         initialPubKeyWeights[2] = input.pubKeyWeight3;
 
         uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.pubKeyWeight1 + input.pubKeyWeight2;
-
+        vm.prank(account);
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1183,9 +1226,16 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         vm.assume(input.owner2 != input.owner3);
         vm.assume(input.owner3 != input.owner1);
 
-        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
-        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
-        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(input.pubKey1.x != 0);
+        vm.assume(input.pubKey2.x != 0);
+        vm.assume(input.pubKey3.x != 0);
+        vm.assume(
+            (input.pubKey1.x != input.pubKey2.x) && (input.pubKey2.x != input.pubKey3.x)
+                && (input.pubKey3.x != input.pubKey1.x)
+        );
+        input.pubKey1 = _generateRandomPublicKey(input.pubKey1.x);
+        input.pubKey2 = _generateRandomPublicKey(input.pubKey2.x);
+        input.pubKey3 = _generateRandomPublicKey(input.pubKey3.x);
         vm.assume(!_isSame(input.pubKey1, input.pubKey2));
         vm.assume(!_isSame(input.pubKey2, input.pubKey3));
         vm.assume(!_isSame(input.pubKey3, input.pubKey1));
@@ -1229,6 +1279,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         uint256 initialThresholdWeight =
             input.weight1 + input.weight2 + input.weight3 + input.weight1 + input.weight2 + input.weight3;
 
+        vm.prank(account);
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1462,9 +1513,16 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     function _installPluginForAddPubKeyOnlyOwnersThenK1Owner(AddPubKeyOnlyOwnersThenK1OwnerInput memory input)
         internal
     {
-        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
-        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
-        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(input.pubKey1.x != 0);
+        vm.assume(input.pubKey2.x != 0);
+        vm.assume(input.pubKey3.x != 0);
+        vm.assume(
+            (input.pubKey1.x != input.pubKey2.x) && (input.pubKey2.x != input.pubKey3.x)
+                && (input.pubKey3.x != input.pubKey1.x)
+        );
+        input.pubKey1 = _generateRandomPublicKey(input.pubKey1.x);
+        input.pubKey2 = _generateRandomPublicKey(input.pubKey2.x);
+        input.pubKey3 = _generateRandomPublicKey(input.pubKey3.x);
         vm.assume(!_isSame(input.pubKey1, input.pubKey2));
         vm.assume(!_isSame(input.pubKey2, input.pubKey3));
         vm.assume(!_isSame(input.pubKey3, input.pubKey1));
@@ -1494,6 +1552,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         initialPubKeyWeights[1] = input.pubKeyWeight2;
 
         uint256 initialThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2;
+        vm.prank(account);
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1538,9 +1597,16 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     }
 
     function _installPluginForRemovePubKeyOnlyOwners(RemovePubKeyOnlyOwnersInput memory input) internal {
-        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
-        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
-        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
+        vm.assume(input.pubKey1.x != 0);
+        vm.assume(input.pubKey2.x != 0);
+        vm.assume(input.pubKey3.x != 0);
+        vm.assume(
+            (input.pubKey1.x != input.pubKey2.x) && (input.pubKey2.x != input.pubKey3.x)
+                && (input.pubKey3.x != input.pubKey1.x)
+        );
+        input.pubKey1 = _generateRandomPublicKey(input.pubKey1.x);
+        input.pubKey2 = _generateRandomPublicKey(input.pubKey2.x);
+        input.pubKey3 = _generateRandomPublicKey(input.pubKey3.x);
         vm.assume(!_isSame(input.pubKey1, input.pubKey2));
         vm.assume(!_isSame(input.pubKey2, input.pubKey3));
         vm.assume(!_isSame(input.pubKey3, input.pubKey1));
@@ -1563,6 +1629,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         initialPubKeyWeights[2] = input.pubKeyWeight3;
 
         uint256 initialThresholdWeight = input.pubKeyWeight1 + input.pubKeyWeight2 + input.pubKeyWeight3;
+        vm.startPrank(account);
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1583,9 +1650,31 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(returnedOwners[2], input.pubKey1.toBytes30());
         assertEq(returnedOwnersData[2].weight, input.pubKeyWeight1);
         assertEq(returnedThresholdWeight, initialThresholdWeight);
+        vm.stopPrank();
     }
 
     function testFuzz_updateMultisigWeightsPubKeyOnly(UpdateMultisigWeightsPubKeyOnlyInput memory input) public {
+        vm.assume(input.pubKey1.x != 0);
+        vm.assume(input.pubKey2.x != 0);
+        vm.assume(input.pubKey3.x != 0);
+        vm.assume(
+            (input.pubKey1.x != input.pubKey2.x) && (input.pubKey2.x != input.pubKey3.x)
+                && (input.pubKey3.x != input.pubKey1.x)
+        );
+        input.pubKey1 = _generateRandomPublicKey(input.pubKey1.x);
+        input.pubKey2 = _generateRandomPublicKey(input.pubKey2.x);
+        input.pubKey3 = _generateRandomPublicKey(input.pubKey3.x);
+        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
+        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
+        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
+
+        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
+        input.weight2 = bound(input.weight2, 1, _MAX_WEIGHT);
+        input.weight3 = bound(input.weight3, 1, _MAX_WEIGHT);
+        input.weight4 = bound(input.weight4, 1, _MAX_WEIGHT);
+        input.weight5 = bound(input.weight5, 1, _MAX_WEIGHT);
+        input.weight6 = bound(input.weight6, 1, _MAX_WEIGHT);
+
         address[] memory initialOwners;
         PublicKey[] memory initialPubKeys = new PublicKey[](3);
         initialPubKeys[0] = input.pubKey1;
@@ -1626,20 +1715,6 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         address[] memory initialOwners,
         PublicKey[] memory initialPubKeys
     ) internal {
-        vm.assume(!(input.pubKey1.x == 0 && input.pubKey1.y == 0));
-        vm.assume(!(input.pubKey2.x == 0 && input.pubKey2.y == 0));
-        vm.assume(!(input.pubKey3.x == 0 && input.pubKey3.y == 0));
-        vm.assume(!_isSame(input.pubKey1, input.pubKey2));
-        vm.assume(!_isSame(input.pubKey2, input.pubKey3));
-        vm.assume(!_isSame(input.pubKey3, input.pubKey1));
-
-        input.weight1 = bound(input.weight1, 1, _MAX_WEIGHT);
-        input.weight2 = bound(input.weight2, 1, _MAX_WEIGHT);
-        input.weight3 = bound(input.weight3, 1, _MAX_WEIGHT);
-        input.weight4 = bound(input.weight4, 1, _MAX_WEIGHT);
-        input.weight5 = bound(input.weight5, 1, _MAX_WEIGHT);
-        input.weight6 = bound(input.weight6, 1, _MAX_WEIGHT);
-
         uint256[] memory initialWeights;
         uint256[] memory initialPubKeyWeights = new uint256[](3);
         initialPubKeyWeights[0] = input.weight1;
@@ -1647,6 +1722,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         initialPubKeyWeights[2] = input.weight3;
 
         uint256 initialThresholdWeight = input.weight1 + input.weight2 + input.weight3;
+        vm.prank(account);
         plugin.onInstall(
             abi.encode(initialOwners, initialWeights, initialPubKeys, initialPubKeyWeights, initialThresholdWeight)
         );
@@ -1999,7 +2075,8 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(EIP1271_INVALID_SIGNATURE, plugin.isValidSignature(digest, signature));
     }
 
-    function testIsValidSignature_invalidThresholdWeight(bytes32 digest) public {
+    function testIsValidSignature_invalidThresholdWeight() public {
+        bytes32 digest = bytes32(0);
         bytes memory _sig = bytes("0x0000000000000000000000000000000000000000000000000000000000000000");
         // test does not install, so no owner has a threshold
         vm.expectRevert(abi.encodeWithSelector(InvalidThresholdWeight.selector));
@@ -2026,7 +2103,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         listOfTwoWeights[1] = weightTwo; // 101
 
         uint256 threshold = weightOne + weightTwo;
-
+        vm.prank(account);
         plugin.onInstall(abi.encode(listOfTwoOwners, listOfTwoWeights, new PublicKey[](0), new uint256[](0), threshold));
 
         // 2. create a valid signature for installed owner
@@ -2049,9 +2126,11 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             account: account,
             signatures: sigWithFooAppended
         });
-        (bool success, uint256 firstFailure) = plugin.checkNSignatures(input);
+        (bool success, uint256 firstFailure, IWeightedMultisigPlugin.CheckNSignatureError returnError) =
+            plugin.checkNSignatures(input);
         assertEq(success, false);
         assertEq(firstFailure, 1);
+        assertEq(uint8(returnError), uint8(IWeightedMultisigPlugin.CheckNSignatureError.SIG_PARTS_OVERLAP));
 
         vm.prank(account);
         assertEq(EIP1271_INVALID_SIGNATURE, plugin.isValidSignature(bytes32(0), sigWithFooAppended));
@@ -2074,7 +2153,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         // sig check should fail (not owner)
         vm.prank(account);
-        vm.expectRevert(ECDSAInvalidSignature.selector);
+        vm.expectRevert(abi.encodeWithSelector(UnsupportedSigType.selector, 57));
         plugin.isValidSignature(digest, sig);
     }
 
@@ -2084,7 +2163,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         // incorrect digest
         bytes32 messageDigest = bytes32("foo");
         vm.prank(account);
-        vm.expectRevert(ECDSAInvalidSignature.selector);
+        vm.expectRevert(abi.encodeWithSelector(UnsupportedSigType.selector, 66));
         IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
             actualDigest: messageDigest,
             minimalDigest: messageDigest,
@@ -2102,7 +2181,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/5212e8eb1830be145cc7b6b2c955c7667a74e14c/test/utils/cryptography/ECDSA.test.js#L195C7-L195C92
         bytes32 messageDigest = 0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9;
         vm.prank(account);
-        vm.expectRevert(ECDSAInvalidSignature.selector);
+        vm.expectRevert(abi.encodeWithSelector(UnsupportedSigType.selector, 66));
         IWeightedMultisigPlugin.CheckNSignatureInput memory input = IWeightedMultisigPlugin.CheckNSignatureInput({
             actualDigest: messageDigest,
             minimalDigest: messageDigest,
@@ -2135,9 +2214,11 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
             account: account,
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = plugin.checkNSignatures(input);
+        (bool success, uint256 firstFailure, IWeightedMultisigPlugin.CheckNSignatureError returnError) =
+            plugin.checkNSignatures(input);
         assertEq(success, false);
         assertEq(firstFailure, 0);
+        assertEq(uint8(returnError), uint8(IWeightedMultisigPlugin.CheckNSignatureError.SIG_PARTS_OVERLAP));
     }
 
     function testFuzz_userOpValidationFunction_eoaOwner(string memory salt, PackedUserOperation memory userOp) public {
@@ -2361,7 +2442,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         for (uint256 i = 0; i < input.k; i++) {
             sigDynamicParts = abi.encodePacked(
                 sigDynamicParts,
-                _SignIndividualOwnerSignature(
+                _signIndividualOwnerSignature(
                     offset,
                     userOp,
                     owners[i],
@@ -2377,7 +2458,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         userOp.signature = abi.encodePacked(userOp.signature, sigDynamicParts);
     }
 
-    function _SignIndividualOwnerSignature(
+    function _signIndividualOwnerSignature(
         uint256[] memory offset,
         PackedUserOperation memory userOp,
         Owner memory owner,
@@ -2666,7 +2747,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         uint256[] memory weightsToAdd1 = new uint256[](1);
         weightsToAdd1[0] = weightOne;
-
+        vm.prank(account);
         plugin.onInstall(abi.encode(ownersToAdd1, weightsToAdd1, new PublicKey[](0), new uint256[](0), weightOne));
 
         // sign minimal user op hash
@@ -2867,6 +2948,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
 
         vm.expectEmit(true, true, true, true);
         emit ThresholdUpdated(account, 0, 2);
+        vm.prank(account);
         // thresholdWeight = 2
         plugin.onInstall(abi.encode(ownerList, weightList, emptyPubKeyList, emptyPubKeyWeightList, 2));
 
@@ -2944,6 +3026,54 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
         assertEq(ownershipMetadata.numOwners, 1);
     }
 
+    // they are also tested during signature signing
+    function testFuzz_relaySafeMessageHash(bytes32 hash) public view {
+        bytes32 replaySafeHash = plugin.getReplaySafeMessageHash(account, hash);
+        bytes32 expected = MessageHashUtils.toTypedDataHash({
+            domainSeparator: keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
+                    ),
+                    keccak256(abi.encodePacked("Weighted Multisig Webauthn Plugin")),
+                    keccak256(abi.encodePacked("1.0.0")),
+                    block.chainid,
+                    address(plugin),
+                    bytes32(bytes20(account))
+                )
+            ),
+            structHash: keccak256(abi.encode(keccak256("CircleWeightedWebauthnMultisigMessage(bytes32 hash)"), hash))
+        });
+        assertEq(replaySafeHash, expected);
+    }
+
+    function testIsValidPublicKey_returnsFalse_whenX0Y0() public pure {
+        assertFalse(FCL_Elliptic_ZZ.ecAff_isOnCurve(0, 0));
+    }
+
+    function testIsValidPublicKey_returnsFalse_whenX0() public pure {
+        assertFalse(FCL_Elliptic_ZZ.ecAff_isOnCurve(0, FCL_Elliptic_ZZ.gy));
+    }
+
+    function testIsValidPublicKey_returnsFalse_whenY0() public pure {
+        assertFalse(FCL_Elliptic_ZZ.ecAff_isOnCurve(FCL_Elliptic_ZZ.gx, 0));
+    }
+
+    function testFuzz_isValidPublicKey_returnsFalse_whenXGreaterThanEqualP(uint256 x) public pure {
+        vm.assume(x >= FCL_Elliptic_ZZ.p);
+        assertFalse(FCL_Elliptic_ZZ.ecAff_isOnCurve(x, FCL_Elliptic_ZZ.gy));
+    }
+
+    function testFuzz_isValidPublicKey_returnsFalse_whenYGreaterThanEqualP(uint256 y) public pure {
+        vm.assume(y >= FCL_Elliptic_ZZ.p);
+        assertFalse(FCL_Elliptic_ZZ.ecAff_isOnCurve(FCL_Elliptic_ZZ.gx, y));
+    }
+
+    function testFuzz_isValidPublicKey(uint256 random) public view {
+        (uint256 x, uint256 y) = _generateRandomPoint(random);
+        assertTrue(FCL_Elliptic_ZZ.ecAff_isOnCurve(x, y));
+    }
+
     function _addOwners(
         address[] memory _owners,
         uint256[] memory _weights,
@@ -2974,6 +3104,7 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     }
 
     function _install() internal {
+        vm.prank(account);
         vm.expectEmit(true, true, true, true);
         (bytes30[] memory _tOwners, OwnerData[] memory _tWeights) =
             _mergeOwnersData(ownerOneList, weightOneList, pubKeyOneList, pubKeyWeightOneList);
@@ -3213,5 +3344,26 @@ contract WeightedWebauthnMultisigPluginTest is TestUtils {
     /// @dev Helper function to convert address stored as in bytes30 to address.
     function toAddress(bytes30 addrInBytes30) internal pure returns (address) {
         return address(uint160(uint240(addrInBytes30)));
+    }
+
+    function _generateRandomPublicKey(uint256 randomScalar) internal view returns (PublicKey memory) {
+        (uint256 x, uint256 y) = _generateRandomPoint(randomScalar);
+        return PublicKey(x, y);
+    }
+
+    // Generate a random point on secp256r1
+    function _generateRandomPoint(uint256 randomScalar) internal view returns (uint256 x, uint256 y) {
+        if (randomScalar == 0 || randomScalar >= FCL_Elliptic_ZZ.n) {
+            // as multiplication with 0 always results in the neutral point (not a valid public key)
+            randomScalar = 1;
+        }
+        // Perform scalar multiplication (k * G)
+        (x, y) = FCL_Elliptic_ZZ.ecZZ_mulmuladd(FCL_Elliptic_ZZ.gx, FCL_Elliptic_ZZ.gy, randomScalar, 0); // Q = (Gx,
+            // Gy), scalar_u = k
+        if (FCL_Elliptic_ZZ.ecAff_isOnCurve(x, y)) {
+            return (x, y);
+        } else {
+            revert FailToGeneratePublicKey(x, y);
+        }
     }
 }

@@ -20,4 +20,6 @@ pragma solidity 0.8.24;
 
 uint256 constant MAX_SIGNERS = 1000;
 
+uint256 constant MIN_WEIGHT = 1;
+
 uint256 constant MAX_WEIGHT = 1000000;

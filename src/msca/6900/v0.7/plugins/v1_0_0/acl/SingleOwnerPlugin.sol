@@ -69,7 +69,12 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC7
     using MessageHashUtils for bytes32;
 
     string public constant _NAME = "Single Owner Plugin";
-    bytes32 private constant _PLUGIN_TYPEHASH = keccak256("CircleSingleOwnerPluginMessage(bytes32 hash)");
+    // keccak256("Single Owner Plugin")
+    bytes32 private constant _HASHED_NAME = 0x08c8cf10d2d0bf39cc82fa5a1ebaa119cc25f363c1f8283e24234f97cf6ba1b3;
+    // keccak256("1.0.0")
+    bytes32 private constant _HASHED_MODULE_VERSION = 0x06c015bd22b4c69690933c1058878ebdfef31f9aaae40bbe86d8a09fe1b2972c;
+    // keccak256("CircleSingleOwnerPluginMessage(bytes32 hash)")
+    bytes32 private constant _PLUGIN_TYPEHASH = 0xe9e3c1d4aef0f2df05fca86fe9de193cdd9cfec08c6a2b4ea169c3a816c171e7;
     string internal constant TRANSFER_OWNERSHIP = "Transfer_Ownership";
     // MSCA => owner
     mapping(address => address) internal _mscaOwners;
@@ -265,7 +270,12 @@ contract SingleOwnerPlugin is BasePlugin, ISingleOwnerPlugin, IERC1271, BaseERC7
     }
 
     /// @inheritdoc BaseERC712CompliantModule
-    function _getModuleIdHash() internal pure override returns (bytes32) {
-        return keccak256(abi.encodePacked(_NAME, PLUGIN_VERSION_1));
+    function _getModuleNameHash() internal pure override returns (bytes32) {
+        return _HASHED_NAME;
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleVersionHash() internal pure override returns (bytes32) {
+        return _HASHED_MODULE_VERSION;
     }
 }

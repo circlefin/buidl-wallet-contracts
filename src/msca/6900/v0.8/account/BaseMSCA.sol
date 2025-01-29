@@ -45,7 +45,8 @@ import {
     Call,
     HookConfig,
     ModuleEntity,
-    ValidationConfig
+    ValidationConfig,
+    ValidationFlags
 } from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
 import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
@@ -112,6 +113,7 @@ abstract contract BaseMSCA is
     using SparseCalldataSegmentLib for bytes;
     using Bytes4DLLLib for Bytes4DLL;
     using ValidationConfigLib for ValidationConfig;
+    using ValidationConfigLib for ValidationFlags;
     using HookConfigLib for HookConfig;
     using HookLib for HookConfig;
     using HookLib for bytes32;
@@ -191,6 +193,9 @@ abstract contract BaseMSCA is
     ///      If there's no module associated with this function selector, revert
     // solhint-disable-next-line no-complex-fallback
     fallback(bytes calldata) external payable returns (bytes memory result) {
+        if (msg.data.length < 4) {
+            revert NotFoundSelector();
+        }
         address executionFunctionModule = WalletStorageLib.getLayout().executionStorage[msg.sig].module;
         // valid module address should not be address(0)
         if (executionFunctionModule == address(0)) {
@@ -252,7 +257,7 @@ abstract contract BaseMSCA is
     /// @inheritdoc IERC1271
     function isValidSignature(bytes32 hash, bytes calldata signature) public view override returns (bytes4) {
         ModuleEntity sigValidation = ModuleEntity.wrap(bytes24(signature));
-        if (!WalletStorageLib.getLayout().validationStorage[sigValidation].isSignatureValidation) {
+        if (!WalletStorageLib.getLayout().validationStorage[sigValidation].validationFlags.isSignatureValidation()) {
             revert InvalidSignatureValidation(sigValidation);
         }
         signature = signature[24:];
@@ -446,9 +451,7 @@ abstract contract BaseMSCA is
         returns (ValidationDataView memory validationData)
     {
         ValidationStorage storage validationStorage = WalletStorageLib.getLayout().validationStorage[validationFunction];
-        validationData.isGlobal = validationStorage.isGlobal;
-        validationData.isSignatureValidation = validationStorage.isSignatureValidation;
-        validationData.isUserOpValidation = validationStorage.isUserOpValidation;
+        validationData.validationFlags = validationStorage.validationFlags;
         validationData.validationHooks = validationStorage.validationHooks._toHookConfigs();
         validationData.executionHooks = validationStorage.executionHooks._toHookConfigs();
         validationData.selectors = validationStorage.selectors.getAll();
@@ -531,7 +534,7 @@ abstract contract BaseMSCA is
         bytes32 userOpHash
     ) internal returns (uint256 validationData) {
         ValidationStorage storage validationStorage = WalletStorageLib.getLayout().validationStorage[validationFunction];
-        if (!validationStorage.isUserOpValidation) {
+        if (!validationStorage.validationFlags.isUserOpValidation()) {
             revert InvalidUserOpValidation(validationFunction);
         }
         Bytes32DLL storage validationHookFunctions = validationStorage.validationHooks;
@@ -751,7 +754,7 @@ abstract contract BaseMSCA is
         bytes calldata installData,
         bytes[] calldata hooks
     ) internal {
-        ModuleEntity validationModuleEntity = validationConfig.moduleEntity();
+        (ModuleEntity validationModuleEntity, ValidationFlags validationFlags) = validationConfig.unpack();
         ValidationStorage storage validationStorage =
             WalletStorageLib.getLayout().validationStorage[validationModuleEntity];
         uint256 hooksLength = hooks.length;
@@ -780,9 +783,7 @@ abstract contract BaseMSCA is
             validationStorage.selectors.append(selectors[i]);
         }
 
-        validationStorage.isGlobal = validationConfig.isGlobal();
-        validationStorage.isSignatureValidation = validationConfig.isSignatureValidation();
-        validationStorage.isUserOpValidation = validationConfig.isUserOpValidation();
+        validationStorage.validationFlags = validationFlags;
         // call onInstall to initialize module data for the modular account
         (address moduleAddr,) = validationModuleEntity.unpack();
         _onInstall(moduleAddr, installData, type(IValidationModule).interfaceId);
@@ -794,9 +795,7 @@ abstract contract BaseMSCA is
         bytes[] calldata hookUninstallData
     ) internal returns (bool) {
         ValidationStorage storage validationStorage = WalletStorageLib.getLayout().validationStorage[validationFunction];
-        validationStorage.isGlobal = false;
-        validationStorage.isSignatureValidation = false;
-        validationStorage.isUserOpValidation = false;
+        validationStorage.validationFlags = ValidationFlags.wrap(0);
 
         bool onUninstallSucceeded = true;
         if (hookUninstallData.length > 0) {
@@ -1047,7 +1046,7 @@ abstract contract BaseMSCA is
         return (
             selector._isNativeExecutionFunction()
                 || WalletStorageLib.getLayout().executionStorage[selector].allowGlobalValidation
-        ) && WalletStorageLib.getLayout().validationStorage[validationFunction].isGlobal;
+        ) && WalletStorageLib.getLayout().validationStorage[validationFunction].validationFlags.isGlobal();
     }
 
     function _isAllowedForSelectorValidation(bytes4 selector, ModuleEntity validationFunction)

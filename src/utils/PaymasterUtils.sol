@@ -18,6 +18,7 @@
  */
 pragma solidity 0.8.24;
 
+import {CalldataUtils} from "./CalldataUtils.sol";
 import {UserOperationLib} from "@account-abstraction/contracts/core/UserOperationLib.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
@@ -52,6 +53,7 @@ enum ChargeMode {
  */
 library PaymasterUtils {
     using UserOperationLib for PackedUserOperation;
+    using CalldataUtils for bytes;
 
     /**
      * struct PackedUserOperation {
@@ -69,26 +71,11 @@ library PaymasterUtils {
     function packUpToPaymasterAndData(PackedUserOperation calldata userOp) internal pure returns (bytes memory ret) {
         address sender = userOp.getSender();
         uint256 nonce = userOp.nonce;
-        bytes32 hashInitCode = calldataKeccak(userOp.initCode);
-        bytes32 hashCallData = calldataKeccak(userOp.callData);
+        bytes32 hashInitCode = userOp.initCode.calldataKeccak();
+        bytes32 hashCallData = userOp.callData.calldataKeccak();
         bytes32 accountGasLimits = userOp.accountGasLimits;
         uint256 preVerificationGas = userOp.preVerificationGas;
         bytes32 gasFees = userOp.gasFees;
         return abi.encode(sender, nonce, hashInitCode, hashCallData, accountGasLimits, preVerificationGas, gasFees);
-    }
-
-    /**
-     * Keccak function over calldata.
-     * @dev copy calldata into memory, do keccak and drop allocated memory. This is more efficient than letting solidity
-     * do it.
-     */
-    function calldataKeccak(bytes calldata data) internal pure returns (bytes32 ret) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let mem := mload(0x40)
-            let len := data.length
-            calldatacopy(mem, data.offset, len)
-            ret := keccak256(mem, len)
-        }
     }
 }

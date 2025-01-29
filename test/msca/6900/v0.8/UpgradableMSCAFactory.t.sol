@@ -83,6 +83,18 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
     }
 
+    function testSetModuleAddressZero() public {
+        address[] memory _modules = new address[](1);
+        _modules[0] = address(0);
+        bool[] memory _permissions = new bool[](1);
+        _permissions[0] = true;
+        vm.startPrank(factoryOwner);
+        bytes4 errorSelector = bytes4(keccak256("ModuleIsNotAllowed(address)"));
+        vm.expectRevert(abi.encodeWithSelector(errorSelector, address(0)));
+        factory.setModules(_modules, _permissions);
+        vm.stopPrank();
+    }
+
     function testInstallDisabledModule() public {
         SingleSignerValidationModule maliciousModule = new SingleSignerValidationModule();
         ownerValidation = ModuleEntityLib.pack(address(maliciousModule), uint32(0));
