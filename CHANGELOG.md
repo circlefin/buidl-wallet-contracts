@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.3](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.2...v2.1.3) (2025-02-03)
+
+
+### Continuous Integration
+
+* add code coverage checking script ([#58](https://github.com/circlefin/buidl-wallet-contracts/issues/58)) ([517b89a](https://github.com/circlefin/buidl-wallet-contracts/commit/517b89a6191d00b8722de5c4b80ce14443290a11))
+
 ## [2.1.2](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.1...v2.1.2) (2025-01-29)
 
 
