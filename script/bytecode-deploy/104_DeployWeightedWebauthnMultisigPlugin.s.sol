@@ -38,10 +38,10 @@ contract DeployWeightedWebauthnMultiSigPluginScript is Script {
         }
 
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/script/bytecode-deploy/json/WeightedWebauthnMultiSigPlugin.json");
+        string memory path = string.concat(root, "/script/bytecode-deploy/build-output/WeightedWebauthnMultiSigPlugin.json");
         string memory json = vm.readFile(path);
 
-        bytes32 salt = bytes32("0x202501291645");
+        bytes32 salt = bytes32(0x2cc3c603d96a0edab755ab092bf8e79f8d8934cc586d021ddd53be945606e535);
         bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
         bytes memory args = abi.encode(entryPoint);
 

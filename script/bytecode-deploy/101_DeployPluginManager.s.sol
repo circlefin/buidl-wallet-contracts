@@ -42,7 +42,7 @@ contract DeployPluginManagerScript is Script {
         string memory path = string.concat(root, "/script/bytecode-deploy/build-output/PluginManager.json");
         string memory json = vm.readFile(path);
 
-        bytes32 salt = bytes32("0x202501291645");
+        bytes32 salt = bytes32(0x20828f442f63e502375f253988ec6578620f09b1c00bbcc237edb6838323dba1);
         bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
 
         bytes memory callData = abi.encodePacked(salt, creationCode);

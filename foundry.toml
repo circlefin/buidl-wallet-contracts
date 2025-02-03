@@ -1,6 +1,7 @@
 [profile.default]
 fs_permissions = [{ access = "read-write", path = "./gas"},
-    { access = "read", path = "./test/fixtures"}]
+    { access = "read", path = "./test/fixtures"},
+    { access = "read", path = "./script/bytecode-deploy/build-output"}]
 src = 'src'
 out = 'out'
 libs = ['lib', 'node_modules']

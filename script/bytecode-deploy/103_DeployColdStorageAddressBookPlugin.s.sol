@@ -40,7 +40,7 @@ contract DeployColdStorageAddressBookScript is Script {
         string memory path = string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPlugin.json");
         string memory json = vm.readFile(path);
 
-        bytes32 salt = bytes32("0x202501291645");
+        bytes32 salt = bytes32(0x36fdaa1ba01cead4cf7fd9405035fc259bb463d9411d619a7deb31d13a2bd89f);
         bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
 
         bytes memory callData = abi.encodePacked(salt, creationCode);
