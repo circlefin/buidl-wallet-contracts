@@ -47,9 +47,13 @@ contract SingleSignerValidationModule is IValidationModule, BaseModule, BaseERC7
     using MessageHashUtils for bytes32;
 
     // A string in the format "vendor.module.semver". The vendor and module names MUST NOT contain a period character.
-    string public constant MODULE_ID = "circle.single-signer-validation-module.2.0.0";
-    bytes32 private constant _HASHED_MODULE_ID = keccak256(bytes(MODULE_ID));
-    bytes32 private constant _MODULE_TYPEHASH = keccak256("SingleSignerValidationMessage(bytes message)");
+    string public constant MODULE_ID = "circle.single-signer-validation-module.1.0.0";
+    // keccak256("circle.single-signer-validation-module.1.0.0")
+    bytes32 private constant _HASHED_MODULE_ID = 0xb7a07c87bdb512080dfe47da0b1e70c517ba5218ba354e91def18b15077c58a4;
+    // keccak256("1.0.0")
+    bytes32 private constant _HASHED_MODULE_VERSION = 0x06c015bd22b4c69690933c1058878ebdfef31f9aaae40bbe86d8a09fe1b2972c;
+    // keccak256("SingleSignerValidationMessage(bytes message)")
+    bytes32 private constant _MODULE_TYPEHASH = 0x98b95f3602725ed42dccfe2fc6c94df5b37193d13336bd177cd68345785e4f47;
     // entityId => account => signer
     // this module supports composition that other validation can rely on entity id in this validation to validate
     // the signature
@@ -69,12 +73,20 @@ contract SingleSignerValidationModule is IValidationModule, BaseModule, BaseERC7
 
     /// @inheritdoc IModule
     function onInstall(bytes calldata data) external override {
+        if (data.length == 0) {
+            // the caller already checks before calling into it, this is just a safety check
+            return;
+        }
         (uint32 entityId, address owner) = abi.decode(data, (uint32, address));
         _transferSigner(entityId, owner);
     }
 
     /// @inheritdoc IModule
     function onUninstall(bytes calldata data) external override {
+        if (data.length == 0) {
+            // the caller already checks before calling into it, this is just a safety check
+            return;
+        }
         uint32 entityId = abi.decode(data, (uint32));
         _transferSigner(entityId, address(0));
     }
@@ -156,7 +168,12 @@ contract SingleSignerValidationModule is IValidationModule, BaseModule, BaseERC7
     }
 
     /// @inheritdoc BaseERC712CompliantModule
-    function _getModuleIdHash() internal pure override returns (bytes32) {
+    function _getModuleNameHash() internal pure override returns (bytes32) {
         return _HASHED_MODULE_ID;
+    }
+
+    /// @inheritdoc BaseERC712CompliantModule
+    function _getModuleVersionHash() internal pure override returns (bytes32) {
+        return _HASHED_MODULE_VERSION;
     }
 }

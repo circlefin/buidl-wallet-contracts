@@ -38,6 +38,10 @@ library Bytes32DLLLib {
      * @dev Check if an item exists or not. O(1).
      */
     function contains(Bytes32DLL storage dll, bytes32 item) internal view returns (bool) {
+        if (item == SENTINEL_BYTES32) {
+            // SENTINEL_BYTES32 is not a valid item
+            return false;
+        }
         return getHead(dll) == item || dll.next[item] != SENTINEL_BYTES32 || dll.prev[item] != SENTINEL_BYTES32;
     }
 
@@ -121,17 +125,11 @@ library Bytes32DLLLib {
     function getAll(Bytes32DLL storage dll) internal view returns (bytes32[] memory results) {
         uint256 totalCount = size(dll);
         results = new bytes32[](totalCount);
-        uint256 accumulatedCount = 0;
-        bytes32 start = SENTINEL_BYTES32;
-        for (uint256 i = 0; i < totalCount; ++i) {
-            (bytes32[] memory currentResults, bytes32 next) = getPaginated(dll, start, 10);
-            for (uint256 j = 0; j < currentResults.length; ++j) {
-                results[accumulatedCount++] = currentResults[j];
-            }
-            if (next == SENTINEL_BYTES32) {
-                break;
-            }
-            start = next;
+        bytes32 current = getHead(dll);
+        uint256 count = 0;
+        for (; count < totalCount && current > SENTINEL_BYTES32; ++count) {
+            results[count] = current;
+            current = dll.next[current];
         }
         return results;
     }

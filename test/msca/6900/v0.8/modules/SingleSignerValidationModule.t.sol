@@ -26,7 +26,11 @@ import {
 } from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
 
 import {IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
-import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {
+    ModuleEntity,
+    ValidationConfig,
+    ValidationFlags
+} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
 
 import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
@@ -44,11 +48,14 @@ import {UpgradableMSCAFactory} from "../../../../../src/msca/6900/v0.8/factories
 import {EIP1271_INVALID_SIGNATURE, EIP1271_VALID_SIGNATURE} from "../../../../../src/common/Constants.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract SingleSignerValidationModuleTest is AccountTestUtils {
     using ModuleEntityLib for bytes21;
     using ModuleEntityLib for ModuleEntity;
+    using ValidationConfigLib for ValidationFlags;
 
     // upgrade
     event Upgraded(address indexed newImplementation);
@@ -100,20 +107,18 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         factory.setModules(_modules, _permissions);
         vm.stopPrank();
 
-        signerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint8(0));
+        signerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
         (signerAddr1, eoaPrivateKey1) = makeAddrAndKey("Circle_Single_Signer_Validation_Module_V1_Test1");
         (signerAddr2, eoaPrivateKey2) = makeAddrAndKey("Circle_Single_Signer_Validation_Module_V1_Test2");
         bytes32 salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        signerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint8(0));
         ValidationConfig validationConfig = ValidationConfigLib.pack(signerValidation, true, true, true);
         bytes memory initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint8(0), signerAddr1), bytes(""), bytes(""));
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), signerAddr1), bytes(""));
         vm.startPrank(signerAddr1);
         msca1 = factory.createAccountWithValidation(addressToBytes32(signerAddr1), salt, initializingData);
         vm.stopPrank();
         vm.startPrank(signerAddr2);
-        initializingData =
-            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint8(0), signerAddr2), bytes(""), bytes(""));
+        initializingData = abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), signerAddr2), bytes(""));
         msca2 = factory.createAccountWithValidation(addressToBytes32(signerAddr2), salt, initializingData);
         vm.stopPrank();
         console.logString("Circle_Single_Signer_Validation_Module_V1 address:");
@@ -134,8 +139,8 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         assertEq(validationData.selectors.length, 0);
         assertEq(validationData.validationHooks.length, 0);
         assertEq(validationData.executionHooks.length, 0);
-        assertEq(validationData.isGlobal, true);
-        assertEq(validationData.isSignatureValidation, true);
+        assertEq(validationData.validationFlags.isGlobal(), true);
+        assertEq(validationData.validationFlags.isSignatureValidation(), true);
         // verify executionDetail
         ExecutionDataView memory executionData =
             msca1.getExecutionData(singleSignerValidationModule.transferSigner.selector);
@@ -179,14 +184,14 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         assertEq(executionData.allowGlobalValidation, true);
         assertEq(executionData.executionHooks.length, 0);
 
-        assertEq(singleSignerValidationModule.moduleId(), "circle.single-signer-validation-module.2.0.0");
+        assertEq(singleSignerValidationModule.moduleId(), "circle.single-signer-validation-module.1.0.0");
     }
 
     /// fail because transferSigner was not installed in validation module
     function testTransferSignerWhenFunctionUninstalled() public {
         address sender = address(msca1);
         // it should start with the deployed signerAddr
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr1), signerAddr1);
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr1), signerAddr1);
         // could be any address, I'm using UpgradableMSCA for simplicity
         UpgradableMSCA newSigner = new UpgradableMSCA(entryPoint);
         // deployment was done in setUp
@@ -196,7 +201,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         // start with balance
         vm.deal(sender, 10 ether);
         bytes memory transferSignerCallData =
-            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint8(0), address(newSigner)));
+            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint32(0), address(newSigner)));
         bytes memory initCode = "";
         PackedUserOperation memory userOp = buildPartialUserOp(
             sender,
@@ -231,7 +236,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         );
         entryPoint.handleOps(ops, beneficiary);
         // won't change
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr1), address(signerAddr1));
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr1), address(signerAddr1));
         vm.stopPrank();
     }
 
@@ -239,7 +244,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
     function testTransferSignerViaExecuteFunction() public {
         address sender = address(msca2);
         // it should start with the deployed signerAddr
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), signerAddr2);
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr2), signerAddr2);
         // could be any address, I'm using UpgradableMSCA for simplicity
         UpgradableMSCA newSigner = new UpgradableMSCA(entryPoint);
         // deployment was done in setUp
@@ -249,7 +254,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         // start with balance
         vm.deal(sender, 10 ether);
         bytes memory transferSignerCallData =
-            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint8(0), address(newSigner)));
+            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint32(0), address(newSigner)));
         bytes memory executeCallData =
             abi.encodeCall(IModularAccount.execute, (address(singleSignerValidationModule), 0, transferSignerCallData));
         bytes memory initCode = "";
@@ -280,13 +285,13 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         vm.startPrank(address(entryPoint));
         entryPoint.handleOps(ops, beneficiary);
         // now it's the new signer
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), address(newSigner));
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr2), address(newSigner));
         vm.stopPrank();
     }
 
     function testTransferSignerViaRuntime() public {
         // it should start with the deployed signerAddr
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), signerAddr2);
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr2), signerAddr2);
         // could be any address, I'm using UpgradableMSCA for simplicity
         UpgradableMSCA newSigner = new UpgradableMSCA(entryPoint);
         // deployment was done in setUp
@@ -294,7 +299,7 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         // start with balance
         vm.deal(mscaAddr2, 10 ether);
         bytes memory transferSignerCallData =
-            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint8(0), address(newSigner)));
+            abi.encodeCall(singleSignerValidationModule.transferSigner, (uint32(0), address(newSigner)));
         bytes memory executeCallData =
             abi.encodeCall(IModularAccount.execute, (address(singleSignerValidationModule), 0, transferSignerCallData));
 
@@ -305,14 +310,14 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
             executeCallData, encodeSignature(new PreValidationHookData[](0), signerValidation, bytes(""), true)
         );
         // now it's the new signer
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), address(newSigner));
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr2), address(newSigner));
         vm.stopPrank();
     }
 
     /// you can find more negative test cases in UpgradableMSCATest
     function testValidateSignature() public view {
         // it should start with the deployed signerAddr
-        assertEq(singleSignerValidationModule.signers(uint8(0), mscaAddr2), signerAddr2);
+        assertEq(singleSignerValidationModule.signers(uint32(0), mscaAddr2), signerAddr2);
         // deployment was done in setUp
         assertTrue(mscaAddr2.code.length != 0);
         // raw message hash
@@ -328,5 +333,27 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         signature =
             encode1271Signature(new PreValidationHookData[](0), signerValidation, abi.encodePacked(r, s, uint32(0)));
         assertEq(msca2.isValidSignature(messageHash, signature), bytes4(EIP1271_INVALID_SIGNATURE));
+    }
+
+    // they are also tested during signature signing
+    function testFuzz_relaySafeMessageHash(bytes32 hash) public view {
+        address account = address(msca1);
+        bytes32 replaySafeHash = singleSignerValidationModule.getReplaySafeMessageHash(account, hash);
+        bytes32 expected = MessageHashUtils.toTypedDataHash({
+            domainSeparator: keccak256(
+                abi.encode(
+                    keccak256(
+                        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)"
+                    ),
+                    keccak256(abi.encodePacked("circle.single-signer-validation-module.1.0.0")),
+                    keccak256(abi.encodePacked("1.0.0")),
+                    block.chainid,
+                    address(singleSignerValidationModule),
+                    bytes32(bytes20(account))
+                )
+            ),
+            structHash: keccak256(abi.encode(keccak256("SingleSignerValidationMessage(bytes message)"), hash))
+        });
+        assertEq(replaySafeHash, expected);
     }
 }

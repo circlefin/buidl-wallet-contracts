@@ -19,138 +19,105 @@
 pragma solidity 0.8.24;
 
 import {PublicKey} from "../../../../../common/CommonStructs.sol";
-import {AccountMetadata, CheckNSignaturesInput, SignerData} from "./MultisigStructs.sol";
+import {AccountMetadata, CheckNSignaturesRequest, SignerMetadata, SignerMetadataWithId} from "./MultisigStructs.sol";
 import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
-/// @title Weighted Multisig Module Interface
+/// @title Weighted Multisig Validation Module Interface
 /// @author Circle
 /// @notice This module adds a weighted threshold validation module to a ERC6900 smart contract account.
 interface IWeightedMultisigValidationModule is IValidationModule {
-    /// @notice This event is emitted when the threshold weight is updated
-    /// @param account account module is installed on
-    /// @param oldThresholdWeight the old threshold weight required to perform an action
-    /// @param newThresholdWeight the new threshold weight required to perform an action
-    event ThresholdUpdated(address account, uint256 oldThresholdWeight, uint256 newThresholdWeight);
+    event AccountMetadataUpdated(
+        address indexed account, uint32 indexed entityId, AccountMetadata oldMetadata, AccountMetadata newMetadata
+    );
+    event SignersAdded(address indexed account, uint32 indexed entityId, SignerMetadataWithId[] addedSigners);
+    event SignersRemoved(address indexed account, uint32 indexed entityId, SignerMetadataWithId[] removedSigners);
+    event SignersUpdated(address indexed account, uint32 indexed entityId, SignerMetadataWithId[] updatedSigners);
 
-    error InvalidThresholdWeight();
-    error SignersWeightsMismatch();
+    error InvalidSignerWeight(uint32 entityId, address account, bytes30 signerId, uint256 weight);
+    error ZeroThresholdWeight(uint32 entityId, address account);
+    error SignerWeightsLengthMismatch(uint32 entityId, address account);
     error ThresholdWeightExceedsTotalWeight(uint256 thresholdWeight, uint256 totalWeight);
+    error TooManySigners(uint256 numSigners);
+    error TooFewSigners(uint256 numSigners);
+    error InvalidSignerMetadata(uint32 entityId, address account, SignerMetadata signerMetadata);
+    error SignerIdAlreadyExists(uint32 entityId, address account, bytes30 signerId);
+    error SignerIdDoesNotExist(uint32 entityId, address account, bytes30 signerId);
+    error SignerMetadataDoesNotExist(uint32 entityId, address account, bytes30 signerId);
+    error SignerMetadataAlreadyExists(uint32 entityId, address account, SignerMetadata signerMetaData);
+    error AlreadyInitialized(uint32 entityId, address account);
+    error Uninitialized(uint32 entityId, address account);
+    error EmptyThresholdWeightAndSigners(uint32 entityId, address account);
+    error InvalidSigLength(uint32 entityId, address account, uint256 length);
+    error InvalidAddress(uint32 entityId, address account, address addr);
+    error InvalidSigOffset(uint32 entityId, address account, uint256 offset);
+    error InvalidNumSigsOnActualDigest(uint32 entityId, address account, uint256 numSigs);
+    error InvalidUserOpDigest(uint32 entityId, address account);
 
-    /// @notice Add address signers (e.g. EOA) and their associated weights for the account, and optionally update
-    /// threshold weight.
+    /// @notice Get the signer id.
+    /// @param signer The signer to check.
+    /// @return signer id in bytes30.
+    function getSignerId(address signer) external pure returns (bytes30);
+
+    /// @notice Get the signer id.
+    /// @param signer The signer to check.
+    /// @return signer id in bytes30.
+    function getSignerId(PublicKey calldata signer) external pure returns (bytes30);
+
+    /// @notice Add signers, their signers metadata for the account (msg.sender) given entity id, and
+    /// optionally update
+    /// threshold weight. Account metadata will be updated with the new signers and threshold weight.
     /// @dev Constraints:
-    /// - msg.sender must be initialized for this module
-    /// - signers must be non-empty
+    /// - msg.sender must be initialized for this module.
+    /// - signersToAdd must be non-empty.
     /// - total signers after adding new signers must not exceed MAX_SIGNERS.
-    /// - length of weights must be equal to length of signers.
-    /// - each weight must be between [1, MAX_WEIGHT], inclusive.
-    /// - each signer in signers must not be address(0) or an existing signer.
+    /// - each weight must be between [MIN_WEIGHT, MAX_WEIGHT], inclusive.
+    /// - each signer in signersToAdd must not be address(0), PublicKey(0,0) or an existing signer.
+    /// - each signer in signersToAdd must be either a valid address or a valid PublicKey.
+    /// - each signer in signersToAdd does not need to have signerId as it will be calculated and returned.
     /// - If newThresholdWeight is not equal to 0 or the current threshold, and signers are added successfully,
     /// the threshold weight will be updated. The threshold weight must be <= the new total weight after adding signers.
-    /// @param entityIds entity ids for the account and signer
-    /// @param signers array of address signers to be added
-    /// @param weights corresponding array of weights for signers to be added (must be the same length as signers).
+    /// @param entityId entity id for the account and signers.
+    /// @param signersToAdd a list of signer information to be added. Please note that the signerId field is empty.
     /// @param newThresholdWeight new threshold weight to set as required to perform an action, or 0 to leave
     /// unmodified.
-    function addSigners(
-        uint32[] calldata entityIds,
-        address[] calldata signers,
-        uint256[] calldata weights,
-        uint256 newThresholdWeight
-    ) external;
+    /// @return added signers with their ids.
+    function addSigners(uint32 entityId, SignerMetadata[] calldata signersToAdd, uint256 newThresholdWeight)
+        external
+        returns (SignerMetadataWithId[] memory);
 
-    /// @notice Add public key signers (e.g. passkey) and their associated weights for the account, and optionally
-    /// update threshold weight.
+    /// @notice Remove certain (but not all) signers and their metadata for the account (msg.sender) given their
+    /// entityId and signer ids
+    /// and optionally update threshold weight. Account metadata will be updated with the new signers and threshold
+    /// weight.
     /// @dev Constraints:
-    /// - msg.sender must be initialized for this module
-    /// - signers must be non-empty
-    /// - total signers after adding new signers must not exceed MAX_SIGNERS.
-    /// - length of weights must be equal to length of signers.
-    /// - each weight must be between [1, MAX_WEIGHT], inclusive.
-    /// - each signer in signers must not be (0, 0) or an existing signer.
-    /// - If newThresholdWeight is not equal to 0 or the current threshold, and signers are added successfully,
-    /// the threshold weight will be updated. The threshold weight must be <= the new total weight after adding signers.
-    /// @param entityIds entity ids for the account and signer
-    /// @param signers array of public key signers to be added
-    /// @param weights corresponding array of weights for signers to be added (must be the same length as signers)
-    /// @param newThresholdWeight new threshold weight to set as required to perform an action, or 0 to leave
-    /// unmodified.
-    function addSigners(
-        uint32[] calldata entityIds,
-        PublicKey[] calldata signers,
-        uint256[] calldata weights,
-        uint256 newThresholdWeight
-    ) external;
-
-    /// @notice Remove given address signers and set their associated weights to 0 for the account,
-    /// and optionally update threshold weight.
-    /// @dev Constraints:
-    /// - msg.sender must be initialized for this module
-    /// - signers must be non-empty
+    /// - msg.sender must be initialized for this module.
+    /// - signersToRemove must be non-empty.
     /// - Removal of signers must not set total number of signers to 0.
     /// - If newThresholdWeight is not equal to 0 or the current threshold, and signers are removed successfully,
     /// the threshold weight will be updated. The threshold weight must be <= the new total weight after removing
     /// signers.
-    /// @param entityIds entity ids for the account and signer
-    /// @param signers array of address signers to be removed
+    /// @param entityId entity id for the account and signers.
+    /// @param signersToRemove a list of signer ids to be removed.
     /// @param newThresholdWeight new threshold weight to set as required to perform an action, or 0 to leave
     /// unmodified.
-    function removeSigners(uint32[] calldata entityIds, address[] calldata signers, uint256 newThresholdWeight)
-        external;
+    function removeSigners(uint32 entityId, bytes30[] calldata signersToRemove, uint256 newThresholdWeight) external;
 
-    /// @notice Remove given public key signers and set their associated weights to 0 for the account,
-    /// and optionally update threshold weight.
+    /// @notice Update the signers' weights for the account along with the threshold weight,
+    /// or update only the threshold weight.
     /// @dev Constraints:
-    /// - msg.sender must be initialized for this module
-    /// - signers must be non-empty
-    /// - Removal of signers must not set total number of signers to 0.
-    /// - If newThresholdWeight is not equal to 0 or the current threshold, and signers are removed successfully,
-    /// the threshold weight will be updated. The threshold weight must be <= the new total weight after removing
-    /// signers.
-    /// @param entityIds entity ids for the account and signer
-    /// @param signers array of public key signers to be removed
-    /// @param newThresholdWeight new threshold weight to set as required to perform an action, or 0 to leave
-    /// unmodified.
-    function removeSigners(uint32[] calldata entityIds, PublicKey[] calldata signers, uint256 newThresholdWeight)
-        external;
-
-    /// @notice Update address signers' weights for the account, and/or update threshold weight.
-    /// @dev Constraints:
-    /// - all signers updated must currently have non-zero weight
-    /// - all new weights must be in range [1, MAX_WEIGHT]
+    /// - All signers updated must currently have non-zero weight.
+    /// - each signer in non-empty signersToUpdate must have a signerId.
+    /// - each signer in non-empty signersToUpdate must have a valid new weight.
+    /// - each signer in signersToUpdate does not need to have addr or publicKey as signerId will be used.
+    /// - All new weights must be in range [MIN_WEIGHT, MAX_WEIGHT].
     /// - If a newThresholdWeight is nonzero, the threshold weight will be updated. Updating threshold weight does not
-    /// require modifying signers.
-    /// The newThresholdWeight must be <= the new total weight.
-    /// @param entityIds entity ids for the account and signer
-    /// @param signers array of address signers to be updated
-    /// @param weights corresponding array of weights for signers
+    /// require modifying signer weight. The newThresholdWeight must be <= the new total weight.
+    /// @param entityId entity id for the account and signers.
+    /// @param signersToUpdate a list of signer weights to be updated given its id.
     /// @param newThresholdWeight new threshold weight to set as required to perform an action, or 0 to leave
     /// unmodified.
-    function updateWeights(
-        uint32[] calldata entityIds,
-        address[] calldata signers,
-        uint256[] calldata weights,
-        uint256 newThresholdWeight
-    ) external;
-
-    /// @notice Update public key signers' weights for the account, and/or update threshold weight.
-    /// @dev Constraints:
-    /// - all signers updated must currently have non-zero weight
-    /// - all new weights must be in range [1, MAX_WEIGHT]
-    /// - If a newThresholdWeight is nonzero, the threshold weight will be updated. Updating threshold weight does not
-    /// require modifying signers.
-    /// The newThresholdWeight must be <= the new total weight.
-    /// @param entityIds entity ids for the account and signer
-    /// @param signers array of public key signers to be updated
-    /// @param weights corresponding array of weights for signers
-    /// @param newThresholdWeight new threshold weight to set as required to perform an action, or 0 to leave
-    /// unmodified.
-    function updateWeights(
-        uint32[] calldata entityIds,
-        PublicKey[] calldata signers,
-        uint256[] calldata weights,
-        uint256 newThresholdWeight
-    ) external;
+    function updateWeights(uint32 entityId, SignerMetadataWithId[] calldata signersToUpdate, uint256 newThresholdWeight)
+        external;
 
     /// @notice Check if the nSignaturesInput is valid for the account.
     /// @param nSignaturesInput has the following fields:
@@ -167,19 +134,26 @@ interface IWeightedMultisigValidationModule is IValidationModule {
     /// @return firstFailure first failure, if failed is true.
     /// (Note: if all signatures are individually valid but do not satisfy the
     /// multisig, firstFailure will be set to the last signature's index.)
-    function checkNSignatures(CheckNSignaturesInput calldata nSignaturesInput)
+    function checkNSignatures(CheckNSignaturesRequest calldata nSignaturesInput)
         external
         view
         returns (bool success, uint256 firstFailure);
 
-    /// @notice Return signer data of an account.
-    /// @param entityId entity id for the account and signer.
-    /// @param account the account to get signerData of.
-    /// @return signerData signersData[entityId][account].
-    function signerDataOf(uint32 entityId, address account) external view returns (SignerData memory signerData);
+    /// @notice Return all the signer metadata of an account.
+    /// @param entityId entity id for the account and signers.
+    /// @param account the account to return signerMetaData of.
+    /// @return signersMetadataWithId a list of signer metadata with ids.
+    function signersMetadataOf(uint32 entityId, address account)
+        external
+        view
+        returns (SignerMetadataWithId[] memory signersMetadataWithId);
 
     /// @notice Get the metadata of an account, their respective number of signers, threshold weight, and total weight.
-    /// @param account the account to get the metadata of.
+    /// @param entityId entity id for the account and signers.
+    /// @param account the account to return the metadata of.
     /// @return accountMetadata account metadata.
-    function accountMetadataOf(address account) external view returns (AccountMetadata memory accountMetadata);
+    function accountMetadataOf(uint32 entityId, address account)
+        external
+        view
+        returns (AccountMetadata memory accountMetadata);
 }

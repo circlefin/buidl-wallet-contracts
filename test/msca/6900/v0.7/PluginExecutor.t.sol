@@ -39,6 +39,7 @@ import {TestPermitAnyExternalAddressPlugin} from "./TestPermitAnyExternalAddress
 import {TestPermitAnyExternalAddressWithPostHookOnlyPlugin} from
     "./TestPermitAnyExternalAddressWithPostHookOnlyPlugin.sol";
 
+import {ExecutionUtils} from "../../../../src/utils/ExecutionUtils.sol";
 import {TestPermitAnyExternalAddressWithPreHookOnlyPlugin} from
     "./TestPermitAnyExternalAddressWithPreHookOnlyPlugin.sol";
 import {TestTokenPlugin} from "./TestTokenPlugin.sol";
@@ -53,6 +54,7 @@ import {console} from "forge-std/src/console.sol";
 contract PluginExecutorTest is TestUtils {
     using FunctionReferenceLib for bytes21;
     using FunctionReferenceLib for FunctionReference;
+    using ExecutionUtils for address;
     // upgrade
 
     event Upgraded(address indexed newImplementation);
@@ -1176,6 +1178,29 @@ contract PluginExecutorTest is TestUtils {
         // verify the amount has been increased by mint
         assertEq(longLiquidityPool.balanceOf(mscaAddr), 234);
         assertEq(shortLiquidityPool.balanceOf(mscaAddr), 234);
+        vm.stopPrank();
+    }
+
+    function testShortCalldataIntoExecuteFromPluginToExternal() public {
+        // deployment was done in setUp
+        assertTrue(address(msca).code.length != 0);
+        // start with balance
+        vm.deal(address(msca), 10 ether);
+        bytes32 manifestHash = keccak256(abi.encode(testTokenPlugin.pluginManifest()));
+        // airdrop 1000 tokens
+        bytes memory pluginInstallData = abi.encode(1000);
+        FunctionReference[] memory dependencies = new FunctionReference[](1);
+        vm.startPrank(address(msca));
+        // import SingleOwnerPlugin as dependency
+        dependencies[0] =
+            FunctionReference(address(singleOwnerPlugin), uint8(ISingleOwnerPlugin.FunctionId.USER_OP_VALIDATION_OWNER));
+        msca.installPlugin(address(testTokenPlugin), manifestHash, pluginInstallData, dependencies);
+
+        address externalTarget = testTokenPlugin.LONG_LIQUIDITY_POOL_ADDR();
+        uint256 initialBal = externalTarget.balance;
+        bytes memory data = abi.encodeCall(testTokenPlugin.callExecuteFromPluginExternal, (1, bytes("")));
+        address(msca).callWithReturnDataOrRevert(0, data);
+        assertEq(externalTarget.balance, initialBal + 1);
         vm.stopPrank();
     }
 }

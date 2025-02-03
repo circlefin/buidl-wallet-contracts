@@ -40,6 +40,10 @@ library Bytes4DLLLib {
      * @dev Check if an item exists or not. O(1).
      */
     function contains(Bytes4DLL storage dll, bytes4 item) internal view returns (bool) {
+        if (item == SENTINEL_BYTES4) {
+            // SENTINEL_BYTES4 is not a valid item
+            return false;
+        }
         return getHead(dll) == item || dll.next[item] != bytes4(0) || dll.prev[item] != bytes4(0);
     }
 
@@ -123,17 +127,11 @@ library Bytes4DLLLib {
     function getAll(Bytes4DLL storage dll) internal view returns (bytes4[] memory results) {
         uint256 totalCount = size(dll);
         results = new bytes4[](totalCount);
-        uint256 accumulatedCount = 0;
-        bytes4 startVal = bytes4(0x0);
-        for (uint256 i = 0; i < totalCount; ++i) {
-            (bytes4[] memory currentResults, bytes4 nextVal) = getPaginated(dll, startVal, 10);
-            for (uint256 j = 0; j < currentResults.length; ++j) {
-                results[accumulatedCount++] = currentResults[j];
-            }
-            if (nextVal == SENTINEL_BYTES4) {
-                break;
-            }
-            startVal = nextVal;
+        bytes4 current = getHead(dll);
+        uint256 count = 0;
+        for (; count < totalCount && current > SENTINEL_BYTES4; ++count) {
+            results[count] = current;
+            current = dll.next[current];
         }
         return results;
     }

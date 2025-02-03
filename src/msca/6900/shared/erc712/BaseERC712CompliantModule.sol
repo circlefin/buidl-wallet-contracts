@@ -46,16 +46,24 @@ abstract contract BaseERC712CompliantModule {
         return MessageHashUtils.toTypedDataHash({
             domainSeparator: keccak256(
                 abi.encode(
-                    _DOMAIN_SEPARATOR_TYPEHASH, _getModuleIdHash(), block.chainid, address(this), bytes32(bytes20(account))
+                    _DOMAIN_SEPARATOR_TYPEHASH,
+                    _getModuleNameHash(),
+                    _getModuleVersionHash(),
+                    block.chainid,
+                    address(this),
+                    bytes32(bytes20(account))
                 )
             ),
             structHash: keccak256(abi.encode(_getModuleTypeHash(), hash))
         });
     }
 
-    /// @dev Returns the module typehash.
+    /// @dev Returns the module message typehash.
     function _getModuleTypeHash() internal pure virtual returns (bytes32);
 
-    /// @dev Returns the module id.
-    function _getModuleIdHash() internal pure virtual returns (bytes32);
+    /// @dev Returns the module name hash.
+    function _getModuleNameHash() internal pure virtual returns (bytes32);
+
+    // @dev Returns the module version hash.
+    function _getModuleVersionHash() internal pure virtual returns (bytes32);
 }

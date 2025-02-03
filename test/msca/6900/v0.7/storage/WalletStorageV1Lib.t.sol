@@ -51,11 +51,12 @@ contract WalletStorageV1LibTest is TestUtils {
         assertEq(hash, 0xc6a0cc20c824c4eecc4b0fbb7fb297d07492a7bd12c83d4fa4d27b4249f9bfc8);
     }
 
+    // this test is very similar to AddressDLLLibTest, but under the context of plugin and wallet
     function testAddRemoveGetPlugins() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testAddRemoveGetPlugins");
         TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // sentinel address is initialized
-        assertTrue(msca.containsPlugin(SENTINEL_ADDRESS));
+        // sentinel address is not considered as the value of the list
+        assertFalse(msca.containsPlugin(SENTINEL_ADDRESS));
         // try to remove sentinel stupidly
         bytes4 selector = bytes4(keccak256("InvalidAddress()"));
         vm.expectRevert(abi.encodeWithSelector(selector));
@@ -116,9 +117,9 @@ contract WalletStorageV1LibTest is TestUtils {
     function testAddRemoveGetPreUserOpValidationHooks() public {
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testAddRemoveGetPreUserOpValidationHooks");
         TestCircleMSCA msca = new TestCircleMSCA(entryPoint, pluginManager);
-        // sentinel hook is initialized
+        // sentinel hook is not part of the list
         bytes4 selector = bytes4(0xb61d27f6);
-        assertEq(msca.containsPreUserOpValidationHook(selector, SENTINEL_BYTES21.unpack()), 1);
+        assertEq(msca.containsPreUserOpValidationHook(selector, SENTINEL_BYTES21.unpack()), 0);
         // try to remove sentinel stupidly
         bytes4 errorSelector = bytes4(keccak256("InvalidFunctionReference()"));
         vm.expectRevert(abi.encodeWithSelector(errorSelector));

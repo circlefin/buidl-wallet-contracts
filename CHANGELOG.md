@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.1...v2.1.2) (2025-01-29)
+
+
+### Miscellaneous Chores
+
+* update the repo with the latest changes ([#66](https://github.com/circlefin/buidl-wallet-contracts/issues/66)) ([50a1708](https://github.com/circlefin/buidl-wallet-contracts/commit/50a170899f11bd2c4ff93367cb3bf951ac0a56cc))
+
 ## [2.1.1](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.0...v2.1.1) (2024-12-06)
 
 

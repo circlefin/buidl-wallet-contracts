@@ -143,6 +143,9 @@ abstract contract BaseMSCA is
     ///      If there's no plugin associated with this function selector, revert
     // solhint-disable-next-line no-complex-fallback
     fallback(bytes calldata) external payable returns (bytes memory result) {
+        if (msg.data.length < 4) {
+            revert NotFoundSelector();
+        }
         // run runtime validation before we load the executionDetail because validation may update account state
         if (msg.sender != address(ENTRY_POINT)) {
             // ENTRY_POINT should go through validateUserOp flow which calls userOpValidationFunction

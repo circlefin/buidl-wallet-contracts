@@ -59,6 +59,7 @@ import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
 import {ValidationDataView} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
 
+import {ExecutionUtils} from "../../../../src/utils/ExecutionUtils.sol";
 import {MockModule} from "./helpers/MockModule.sol";
 import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
@@ -70,8 +71,9 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 contract UpgradableMSCATest is AccountTestUtils {
     using ModuleEntityLib for bytes21;
     using ModuleEntityLib for ModuleEntity;
-    // upgrade
+    using ExecutionUtils for address;
 
+    // upgrade
     event Upgraded(address indexed newImplementation);
     // erc721
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
@@ -94,6 +96,7 @@ contract UpgradableMSCATest is AccountTestUtils {
     event ReceivedCall(bytes msgData);
 
     error RuntimeValidationFailed(address module, uint32 entityId, bytes revertReason);
+    error NotFoundSelector();
 
     IEntryPoint private entryPoint = new EntryPoint();
     uint256 internal eoaPrivateKey;
@@ -1247,6 +1250,18 @@ contract UpgradableMSCATest is AccountTestUtils {
             abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), hooks);
         vm.expectRevert(abi.encodeWithSelector(BaseMSCA.MaxHooksExceeded.selector));
         factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+    }
+
+    function testShortCalldataIntoFallback() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testShortCalldataIntoFallback");
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        // fail early even before InvalidValidationFunctionId is reverted
+        vm.expectRevert(NotFoundSelector.selector);
+        address(msca).callWithReturnDataOrRevert(0, bytes("aaa"));
     }
 
     function _installMultipleOwnerValidations() internal returns (UpgradableMSCA msca) {
