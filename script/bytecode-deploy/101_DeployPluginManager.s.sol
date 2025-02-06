@@ -18,41 +18,41 @@
  */
 pragma solidity 0.8.24;
 
-import {PLUGIN_MANAGER_ADDRESS} from "./100_ContractAddress.sol";
+import {DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_ADDRESS} from "./100_Constants.sol";
+import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
-    error DeployFailed();
-
-    address internal constant DETERMINISTIC_DEPLOYMENT_FACTORY = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     address internal constant EXPECTED_PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
+    string[8] internal CHAINS = ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
+        for (uint256 i = 0; i < CHAINS.length; i++) {
+            vm.createSelectFork(CHAINS[i]);
+            vm.startBroadcast(key);
 
-        vm.startBroadcast(key);
+            if (EXPECTED_PLUGIN_MANAGER.code.length == 0) {
+                string memory root = vm.projectRoot();
+                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/PluginManager.json");
+                string memory json = vm.readFile(path);
 
-        if (EXPECTED_PLUGIN_MANAGER.code.length != 0) {
-            console.log("Found existing plugin manager at expected address: %s", EXPECTED_PLUGIN_MANAGER);
-            return;
+                bytes32 salt = bytes32(0x20828f442f63e502375f253988ec6578620f09b1c00bbcc237edb6838323dba1);
+                bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
+
+                bytes memory callData = abi.encodePacked(salt, creationCode);
+                (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
+
+                if (!success) {
+                    revert DeployFailed();
+                }
+
+                console.log("Deployed PluginManager at address: %s", address(bytes20(result)));
+            } else {
+                console.log("Found existing plugin manager at expected address: %s", EXPECTED_PLUGIN_MANAGER);
+            }
+            vm.stopBroadcast();
         }
-
-        string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/script/bytecode-deploy/build-output/PluginManager.json");
-        string memory json = vm.readFile(path);
-
-        bytes32 salt = bytes32(0x20828f442f63e502375f253988ec6578620f09b1c00bbcc237edb6838323dba1);
-        bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-
-        bytes memory callData = abi.encodePacked(salt, creationCode);
-        (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
-
-        if (!success) {
-            revert DeployFailed();
-        }
-
-        console.log("Deployed PluginManager at address: %s", address(bytes20(result)));
-        vm.stopBroadcast();
     }
 }

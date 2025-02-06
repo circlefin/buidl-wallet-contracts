@@ -18,41 +18,52 @@
  */
 pragma solidity 0.8.24;
 
-import {ENTRY_POINT, WEIGHTED_MULTISIG_PLUGIN_ADDRESS} from "./100_ContractAddress.sol";
+import {ENTRY_POINT, DETERMINISTIC_DEPLOYMENT_FACTORY, WEIGHTED_MULTISIG_PLUGIN_ADDRESS} from "./100_Constants.sol";
+import {WeightedWebauthnMultisigPlugin} from
+"../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
+import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployWeightedWebauthnMultiSigPluginScript is Script {
-    error DeployFailed();
-
-    address internal constant DETERMINISTIC_DEPLOYMENT_FACTORY = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
-    address payable internal constant EXPECTED_WEIGHTED_MULTISIG_PLUGIN_ADDRESS = payable(WEIGHTED_MULTISIG_PLUGIN_ADDRESS);
+    address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(WEIGHTED_MULTISIG_PLUGIN_ADDRESS);
+    string[8] internal CHAINS = ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        vm.startBroadcast(key);
-        if (EXPECTED_WEIGHTED_MULTISIG_PLUGIN_ADDRESS.code.length != 0) {
-            console.log("Found existing WeightedWebauthnMultiSigPlugin at expected address: %s", EXPECTED_WEIGHTED_MULTISIG_PLUGIN_ADDRESS);
-            return;
+        for (uint256 i = 0; i < CHAINS.length; i++) {
+            vm.createSelectFork(CHAINS[i]);
+            vm.startBroadcast(key);
+
+            WeightedWebauthnMultisigPlugin plugin;
+            if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
+                string memory root = vm.projectRoot();
+                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/WeightedWebauthnMultiSigPlugin.json");
+                string memory json = vm.readFile(path);
+
+                bytes32 salt = bytes32(0x2cc3c603d96a0edab755ab092bf8e79f8d8934cc586d021ddd53be945606e535);
+                bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
+                bytes memory args = abi.encode(entryPoint);
+
+                bytes memory callData = abi.encodePacked(salt, creationCode, args);
+                (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
+
+                if (!success) {
+                    revert DeployFailed();
+                }
+
+                plugin = WeightedWebauthnMultisigPlugin(address(bytes20(result)));
+                console.log("Deployed WeightedWebauthnMultiSigPlugin at address: %s", address(bytes20(result)));
+            } else {
+                plugin = WeightedWebauthnMultisigPlugin(EXPECTED_PLUGIN_ADDRESS);
+                console.log("Found existing WeightedWebauthnMultiSigPlugin at expected address: %s", EXPECTED_PLUGIN_ADDRESS);
+            }
+
+            // Log plugin manifest hash
+            console.log("WeightedWebauthnMultisigPlugin manifest hash: ");
+            console.logBytes32(keccak256(abi.encode(plugin.pluginManifest())));
+            vm.stopBroadcast();
         }
-
-        string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/script/bytecode-deploy/build-output/WeightedWebauthnMultiSigPlugin.json");
-        string memory json = vm.readFile(path);
-
-        bytes32 salt = bytes32(0x2cc3c603d96a0edab755ab092bf8e79f8d8934cc586d021ddd53be945606e535);
-        bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-        bytes memory args = abi.encode(entryPoint);
-
-        bytes memory callData = abi.encodePacked(salt, creationCode, args);
-        (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
-
-        if (!success) {
-            revert DeployFailed();
-        }
-
-        console.log("Deployed WeightedWebauthnMultiSigPlugin at address: %s", address(bytes20(result)));
-        vm.stopBroadcast();
     }
 }

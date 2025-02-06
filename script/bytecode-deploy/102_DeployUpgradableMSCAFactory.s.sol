@@ -18,44 +18,45 @@
  */
 pragma solidity 0.8.24;
 
-import {ENTRY_POINT, PLUGIN_MANAGER_ADDRESS, UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./100_ContractAddress.sol";
+import {ENTRY_POINT, DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_ADDRESS, UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./100_Constants.sol";
+import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployUpgradableMSCAFactoryScript is Script {
-    error DeployFailed();
-
-    address internal constant DETERMINISTIC_DEPLOYMENT_FACTORY = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     address internal constant PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
     address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
     address internal owner = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
+    string[8] internal CHAINS = ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        vm.startBroadcast(key);
-        if (EXPECTED_FACTORY_ADDRESS.code.length != 0) {
-            console.log("Found existing factory at expected address: %s", EXPECTED_FACTORY_ADDRESS);
-            return;
+        for (uint256 i = 0; i < CHAINS.length; i++) {
+            vm.createSelectFork(CHAINS[i]);
+            vm.startBroadcast(key);
+            if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
+                string memory root = vm.projectRoot();
+                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/UpgradableMSCAFactory.json");
+                string memory json = vm.readFile(path);
+
+                bytes32 salt = bytes32(0xda9f7ba8ec86b458ea272ecf44962d37f768e4d6f254dd2a82d5724b934b72d5);
+                bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
+                bytes memory args = abi.encode(owner, entryPoint, PLUGIN_MANAGER);
+
+
+                bytes memory callData = abi.encodePacked(salt, creationCode, args);
+                (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
+
+                if (!success) {
+                    revert DeployFailed();
+                }
+
+                console.log("Deployed new factory at address: %s", address(bytes20(result)));
+            } else {
+                console.log("Found existing factory at expected address: %s", EXPECTED_FACTORY_ADDRESS);
+            }
+            vm.stopBroadcast();
         }
-
-        string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/script/bytecode-deploy/build-output/UpgradableMSCAFactory.json");
-        string memory json = vm.readFile(path);
-
-        bytes32 salt = bytes32(0xda9f7ba8ec86b458ea272ecf44962d37f768e4d6f254dd2a82d5724b934b72d5);
-        bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-        bytes memory args = abi.encode(owner, entryPoint, PLUGIN_MANAGER);
-
-
-        bytes memory callData = abi.encodePacked(salt, creationCode, args);
-        (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
-
-        if (!success) {
-            revert DeployFailed();
-        }
-
-        console.log("Deployed new factory at address: %s", address(bytes20(result)));
-        vm.stopBroadcast();
     }
 }
