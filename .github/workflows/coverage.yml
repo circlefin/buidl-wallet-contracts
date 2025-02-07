@@ -20,4 +20,5 @@ jobs:
       - name: Setup environment
         uses: ./.github/actions/setup
 
-      # TODO report and check coverage
+      - name: Run Test Coverage
+        run: yarn coverage

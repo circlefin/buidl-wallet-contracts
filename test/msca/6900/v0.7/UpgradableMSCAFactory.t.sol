@@ -147,7 +147,7 @@ contract UpgradableMSCAFactoryTest is TestUtils {
         // nonce key is 0
         uint256 acctNonce = entryPoint.getNonce(sender, 0);
         // start with balance
-        vm.deal(sender, 1 ether);
+        vm.deal(sender, 10 ether);
         testLiquidityPool.mint(sender, 2000000);
         address recipient = address(0x9005Be081B8EC2A31258878409E88675Cd791376);
         // execute ERC20 token contract
@@ -165,7 +165,7 @@ contract UpgradableMSCAFactoryTest is TestUtils {
             vm.toString(initCode),
             vm.toString(executeCallData),
             83353,
-            1028650,
+            10028650,
             45484,
             516219199704,
             1130000000,
