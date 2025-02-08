@@ -191,28 +191,30 @@ contract WalletStorageV1LibTest is TestUtils {
 
     function testBulkGetPlugins() public {
         // try out different limits, even bigger than totalPlugins
+        // we can't set the limit too high for unoptimized runs such as forge coverage
         for (uint256 limit = 1; limit <= 10; limit++) {
             // 4 plugins
             bulkAddAndGetPlugins(new TestCircleMSCA(entryPoint, pluginManager), 4, limit);
         }
-        for (uint256 limit = 1; limit <= 55; limit++) {
+        for (uint256 limit = 1; limit <= 25; limit++) {
             bulkAddAndGetPlugins(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
-        for (uint256 limit = 1; limit <= 56; limit++) {
+        for (uint256 limit = 1; limit <= 26; limit++) {
             bulkAddAndGetPlugins(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
     }
 
     function testBulkGetPreUserOpValidationHooks() public {
         // try out different limits, even bigger than totalHooks
+        // we can't set the limit too high for unoptimized runs such as forge coverage
         for (uint256 limit = 1; limit <= 10; limit++) {
             // 4 plugins
             bulkAddAndGetPreUserOpValidationHooks(new TestCircleMSCA(entryPoint, pluginManager), 4, limit);
         }
-        for (uint256 limit = 1; limit <= 55; limit++) {
+        for (uint256 limit = 1; limit <= 25; limit++) {
             bulkAddAndGetPreUserOpValidationHooks(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
-        for (uint256 limit = 1; limit <= 56; limit++) {
+        for (uint256 limit = 1; limit <= 26; limit++) {
             bulkAddAndGetPreUserOpValidationHooks(new TestCircleMSCA(entryPoint, pluginManager), 50, limit);
         }
     }

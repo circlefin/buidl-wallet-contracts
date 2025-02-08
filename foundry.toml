@@ -11,6 +11,7 @@ via_ir = true
 auto_detect_solc = false
 auto_detect_remappings = false
 deny_warnings = true
+no_match_coverage = "test/|script/"
 
 [fuzz]
 runs = 1024

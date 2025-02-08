@@ -8,7 +8,7 @@
     "lint": "solhint -w 0 -c .solhint-src.json './src/**/*.sol' && solhint -w 0 -c .solhint-test.json './test/**/*.sol' && solhint -w 0 -c .solhint-script.json './script/**/*.sol'",
     "test": "forge test -vv",
     "gasreport": "forge test --gas-report > gas/reports/gas-report.txt",
-    "coverage": "forge coverage --ir-minimum",
+    "coverage": "forge coverage > temp-ci_yarn_check-coverage.out && node script/test/checkCoverage.js temp-ci_yarn_check-coverage.out && rm temp-ci_yarn_check-coverage.out",
     "format:check": "forge fmt --check",
     "format:write": "forge fmt"
   },
