@@ -20,15 +20,16 @@ pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
 import {
-COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS,
-UPGRADABLE_MSCA_FACTORY_ADDRESS,
-WEIGHTED_MULTISIG_PLUGIN_ADDRESS
+    COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS,
+    UPGRADABLE_MSCA_FACTORY_ADDRESS,
+    WEIGHTED_MULTISIG_PLUGIN_ADDRESS
 } from "./100_Constants.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract SetUpgradableMSCAFactoryPlugins is Script {
     address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
-    string[8] internal CHAINS = ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
+    string[8] internal CHAINS =
+        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");

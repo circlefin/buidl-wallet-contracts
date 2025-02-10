@@ -18,14 +18,16 @@
  */
 pragma solidity 0.8.24;
 
-import {DETERMINISTIC_DEPLOYMENT_FACTORY, COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS} from "./100_Constants.sol";
-import {ColdStorageAddressBookPlugin} from "../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
+import {ColdStorageAddressBookPlugin} from
+    "../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
+import {COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS, DETERMINISTIC_DEPLOYMENT_FACTORY} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployColdStorageAddressBookScript is Script {
     address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS);
-    string[8] internal CHAINS = ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
+    string[8] internal CHAINS =
+        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -37,7 +39,8 @@ contract DeployColdStorageAddressBookScript is Script {
             ColdStorageAddressBookPlugin plugin;
             if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPlugin.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPlugin.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0x36fdaa1ba01cead4cf7fd9405035fc259bb463d9411d619a7deb31d13a2bd89f);
@@ -54,7 +57,9 @@ contract DeployColdStorageAddressBookScript is Script {
                 console.log("Deployed ColdStorageAddressBookPlugin at address: %s", address(bytes20(result)));
             } else {
                 plugin = ColdStorageAddressBookPlugin(EXPECTED_PLUGIN_ADDRESS);
-                console.log("Found existing ColdStorageAddressBookPlugin at expected address: %s", EXPECTED_PLUGIN_ADDRESS);
+                console.log(
+                    "Found existing ColdStorageAddressBookPlugin at expected address: %s", EXPECTED_PLUGIN_ADDRESS
+                );
             }
 
             // Log plugin manifest hash

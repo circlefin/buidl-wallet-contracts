@@ -70,6 +70,55 @@ For running integration tests in Anvil node, run `make anvil-tests`. This runs t
 
 `make anvil` (if using foundry stack). To get a list of pre-funded addresses, you can look at the beginning of the logs in the `anvil` Docker container, or reference <https://github.com/foundry-rs/foundry/blob/0d8302880b79fa9c3c4aa52ab446583dece19a34/crates/anvil/README.md?plain=1#L48>.
 
+### (NEW) Deploy & Verify
+scripts and artifacts under `./script/bytecode-deploy` are using bytecode deployment and standard json input verification.
+
+#### artifact generation
+These steps are not needed for chain expansion. They're documented to show how to properly add artifacts if new deployment scripts are added.
+
+For each smart contract needs to be deployed, repeat the following steps:
+1. Force build the smart contract.
+2. Copy the necessary build outputs from `./out` to `./script/bytecode-deploy/build-output`. Sometimes it's more than the contract itself.
+3. Generate the standard json input to `./script/bytecode-deploy/standard-json-input`.
+
+The full set of commands are:
+```shell
+# PluginManager
+forge build src/msca/6900/v0.7/managers/PluginManager.sol --force
+cp out/PluginManager.sol/PluginManager.json script/bytecode-deploy/build-output/PluginManager.json
+forge verify-contract -c <CHAIN_ID> --optimizer-runs 200 --via-ir <PLUGIN_MANAGER_ADDRESS> src/msca/6900/v0.7/managers/PluginManager.sol:PluginManager --show-standard-json-input > script/bytecode-deploy/standard-json-input/PluginManager.json
+
+# UpgradableMSCAFactory (Build outputs of UpgradableMSCA and ERC1967Proxy are added for SDK)
+forge build src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol --force
+cp out/UpgradableMSCAFactory.sol/UpgradableMSCAFactory.json script/bytecode-deploy/build-output/UpgradableMSCAFactory.json
+cp out/UpgradableMSCA.sol/UpgradableMSCA.json script/bytecode-deploy/build-output/UpgradableMSCA.json
+cp out/ERC1967Proxy.sol/ERC1967Proxy.json script/bytecode-deploy/build-output/ERC1967Proxy.json
+forge verify-contract -c <CHAIN_ID> --optimizer-runs 200 --via-ir <FACTORY_ADDRESS> --constructor-args $(cast abi-encode "constructor(address,address,address)" <MSCA_FACTORY_OWNER_ADDRESS> <ENTRY_POINT_V07> <PLUGIN_MANAGER_ADDRESS>) src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol:UpgradableMSCAFactory --show-standard-json-input > script/bytecode-deploy/standard-json-input/UpgradableMSCAFactory.json
+cast abi-encode "constructor(address,address,address)" <MSCA_FACTORY_OWNER_ADDRESS> <ENTRY_POINT_V07> <PLUGIN_MANAGER_ADDRESS> | sed -e "s/^0x//" > script/bytecode-deploy/standard-json-input/UpgradableMSCAFactory_constructor_args
+
+# UpgradableMSCA (build output of UpgradableMSCAFactory is used for verification, we only need to generate constructor args)
+cast abi-encode "constructor(address,address)" <ENTRY_POINT_V07> <PLUGIN_MANAGER_ADDRESS> | sed -e "s/^0x//" > script/bytecode-deploy/standard-json-input/UpgradableMSCA_constructor_args
+
+# ColdStorageAddressBookPlugin
+forge build src/msca/6900/v0.7/plugns/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol --force
+cp out/ColdStorageAddressBookPlugin.sol/ColdStorageAddressBookPlugin.json script/bytecode-deploy/build-output/ColdStorageAddressBookPlugin.json
+forge verify-contract -c <CHAIN_ID> --optimizer-runs 200 --via-ir <PLUGIN_ADDRESS> src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol:ColdStorageAddressBookPlugin --show-standard-json-input > script/bytecode-deploy/standard-json-input/ColdStorageAddressBookPlugin.json
+
+# WeightedWebauthnMultisigPlugin
+forge build src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol --force
+cp out/WeightedWebauthnMultisigPlugin.sol/WeightedWebauthnMultisigPlugin.json script/bytecode-deploy/build-output/WeightedWebauthnMultisigPlugin.json
+forge verify-contract -c <CHAIN_ID> --optimizer-runs 200 --via-ir <FACTORY_ADDRESS> --constructor-args $(cast abi-encode "constructor(address)" <ENTRY_POINT_V07>) src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol:WeightedWebauthnMultisigPlugin --show-standard-json-input > script/bytecode-deploy/standard-json-input/WeightedWebauthnMultisigPlugin.json
+cast abi-encode "constructor(address)" <ENTRY_POINT_V07> | sed -e "s/^0x//" > script/bytecode-deploy/standard-json-input/WeightedWebauthnMultisigPlugin_constructor_args
+```
+#### Deploy
+Deployment scripts are under script/bytecode-deploy. Deploy command is:
+```shell
+forge script script/bytecode-deploy/<SCRIPT_FILE>  -vvvv --slow --broadcast --force --multi
+```
+
+#### Verification
+Use the standard json output and constructor arg file under script/bytecode-deploy.standard-json-input to verify smart contracts in block explorer.
+
 ### Deploy & Verify
 #### SCA and Paymaster
   1. Deployment

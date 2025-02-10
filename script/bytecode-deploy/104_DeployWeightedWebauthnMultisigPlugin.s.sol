@@ -18,15 +18,16 @@
  */
 pragma solidity 0.8.24;
 
-import {ENTRY_POINT, DETERMINISTIC_DEPLOYMENT_FACTORY, WEIGHTED_MULTISIG_PLUGIN_ADDRESS} from "./100_Constants.sol";
 import {WeightedWebauthnMultisigPlugin} from
-"../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
+    "../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
+import {DETERMINISTIC_DEPLOYMENT_FACTORY, ENTRY_POINT, WEIGHTED_MULTISIG_PLUGIN_ADDRESS} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployWeightedWebauthnMultiSigPluginScript is Script {
     address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(WEIGHTED_MULTISIG_PLUGIN_ADDRESS);
-    string[8] internal CHAINS = ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
+    string[8] internal CHAINS =
+        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         address entryPoint = ENTRY_POINT;
@@ -39,7 +40,8 @@ contract DeployWeightedWebauthnMultiSigPluginScript is Script {
             WeightedWebauthnMultisigPlugin plugin;
             if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/WeightedWebauthnMultiSigPlugin.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/WeightedWebauthnMultiSigPlugin.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0x2cc3c603d96a0edab755ab092bf8e79f8d8934cc586d021ddd53be945606e535);
@@ -57,7 +59,9 @@ contract DeployWeightedWebauthnMultiSigPluginScript is Script {
                 console.log("Deployed WeightedWebauthnMultiSigPlugin at address: %s", address(bytes20(result)));
             } else {
                 plugin = WeightedWebauthnMultisigPlugin(EXPECTED_PLUGIN_ADDRESS);
-                console.log("Found existing WeightedWebauthnMultiSigPlugin at expected address: %s", EXPECTED_PLUGIN_ADDRESS);
+                console.log(
+                    "Found existing WeightedWebauthnMultiSigPlugin at expected address: %s", EXPECTED_PLUGIN_ADDRESS
+                );
             }
 
             // Log plugin manifest hash
