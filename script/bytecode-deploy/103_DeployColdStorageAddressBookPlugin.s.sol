@@ -48,6 +48,8 @@ contract DeployColdStorageAddressBookScript is Script {
                 bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
 
                 bytes memory callData = abi.encodePacked(salt, creationCode);
+
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
 
                 if (!success) {

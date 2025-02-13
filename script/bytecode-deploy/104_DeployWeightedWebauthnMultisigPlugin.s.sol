@@ -53,6 +53,8 @@ contract DeployWeightedWebauthnMultiSigPluginScript is Script {
                 bytes memory args = abi.encode(entryPoint);
 
                 bytes memory callData = abi.encodePacked(salt, creationCode, args);
+
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
 
                 if (!success) {

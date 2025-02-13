@@ -52,6 +52,8 @@ contract DeployUpgradableMSCAFactoryScript is Script {
                 bytes memory args = abi.encode(owner, entryPoint, PLUGIN_MANAGER);
 
                 bytes memory callData = abi.encodePacked(salt, creationCode, args);
+
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
 
                 if (!success) {
