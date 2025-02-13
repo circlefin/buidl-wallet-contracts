@@ -20,21 +20,25 @@ pragma solidity 0.8.24;
 
 import {WeightedWebauthnMultisigPlugin} from
     "../../src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol";
-import {DETERMINISTIC_DEPLOYMENT_FACTORY, ENTRY_POINT, WEIGHTED_MULTISIG_PLUGIN_ADDRESS} from "./100_Constants.sol";
+import {
+    Constants,
+    DETERMINISTIC_DEPLOYMENT_FACTORY,
+    ENTRY_POINT,
+    WEIGHTED_MULTISIG_PLUGIN_ADDRESS
+} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployWeightedWebauthnMultiSigPluginScript is Script {
     address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(WEIGHTED_MULTISIG_PLUGIN_ADDRESS);
-    string[8] internal CHAINS =
-        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        for (uint256 i = 0; i < CHAINS.length; i++) {
-            vm.createSelectFork(CHAINS[i]);
+        string[8] memory chains = Constants.getChains();
+        for (uint256 i = 0; i < chains.length; i++) {
+            vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
 
             WeightedWebauthnMultisigPlugin plugin;

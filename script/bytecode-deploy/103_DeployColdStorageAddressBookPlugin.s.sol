@@ -20,20 +20,21 @@ pragma solidity 0.8.24;
 
 import {ColdStorageAddressBookPlugin} from
     "../../src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol";
-import {COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS, DETERMINISTIC_DEPLOYMENT_FACTORY} from "./100_Constants.sol";
+import {
+    COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS, Constants, DETERMINISTIC_DEPLOYMENT_FACTORY
+} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployColdStorageAddressBookScript is Script {
     address payable internal constant EXPECTED_PLUGIN_ADDRESS = payable(COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS);
-    string[8] internal CHAINS =
-        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        for (uint256 i = 0; i < CHAINS.length; i++) {
-            vm.createSelectFork(CHAINS[i]);
+        string[8] memory chains = Constants.getChains();
+        for (uint256 i = 0; i < chains.length; i++) {
+            vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
 
             ColdStorageAddressBookPlugin plugin;

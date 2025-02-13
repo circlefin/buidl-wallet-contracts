@@ -19,6 +19,7 @@
 pragma solidity 0.8.24;
 
 import {
+    Constants,
     DETERMINISTIC_DEPLOYMENT_FACTORY,
     ENTRY_POINT,
     PLUGIN_MANAGER_ADDRESS,
@@ -31,15 +32,14 @@ contract DeployUpgradableMSCAFactoryScript is Script {
     address internal constant PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
     address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
     address internal owner = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
-    string[8] internal CHAINS =
-        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        for (uint256 i = 0; i < CHAINS.length; i++) {
-            vm.createSelectFork(CHAINS[i]);
+        string[8] memory chains = Constants.getChains();
+        for (uint256 i = 0; i < chains.length; i++) {
+            vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
             if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();

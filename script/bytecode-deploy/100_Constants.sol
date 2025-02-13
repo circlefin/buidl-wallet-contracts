@@ -26,3 +26,9 @@ address constant PLUGIN_MANAGER_ADDRESS = 0x00000005e69188224e4dEeF607801916DC09
 address constant UPGRADABLE_MSCA_FACTORY_ADDRESS = 0x0000000DF7E6c9Dc387cAFc5eCBfa6c3a6179AdD;
 address constant COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS = 0x0000000d81083B16EA76dfab46B0315B0eDBF3d0;
 address constant WEIGHTED_MULTISIG_PLUGIN_ADDRESS = 0x0000000C984AFf541D6cE86Bb697e68ec57873C8;
+
+library Constants {
+    function getChains() internal pure returns (string[8] memory) {
+        return ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
+    }
+}

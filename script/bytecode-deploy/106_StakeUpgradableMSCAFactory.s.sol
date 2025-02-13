@@ -20,7 +20,7 @@ pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
 
-import {UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./100_Constants.sol";
+import {Constants, UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./100_Constants.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract StakeUpgradableMSCAFactory is Script {
@@ -38,8 +38,9 @@ contract StakeUpgradableMSCAFactory is Script {
         uint32 unstakeDelaySec = 1 * 24 * 60 * 60; // 1 day
 
         // Set plugins for factory
-        for (uint256 i = 0; i < CHAINS.length; i++) {
-            vm.createSelectFork(CHAINS[i]);
+        string[8] memory chains = Constants.getChains();
+        for (uint256 i = 0; i < chains.length; i++) {
+            vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
 
             // Ensure factory has been deployed

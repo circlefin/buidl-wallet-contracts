@@ -18,20 +18,18 @@
  */
 pragma solidity 0.8.24;
 
-import {DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_ADDRESS} from "./100_Constants.sol";
+import {Constants, DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_ADDRESS} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
     address internal constant EXPECTED_PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
-    string[8] internal CHAINS =
-        ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
-
-        for (uint256 i = 0; i < CHAINS.length; i++) {
-            vm.createSelectFork(CHAINS[i]);
+        string[8] memory chains = Constants.getChains();
+        for (uint256 i = 0; i < chains.length; i++) {
+            vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
 
             if (EXPECTED_PLUGIN_MANAGER.code.length == 0) {

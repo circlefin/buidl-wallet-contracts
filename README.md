@@ -110,6 +110,14 @@ cp out/WeightedWebauthnMultisigPlugin.sol/WeightedWebauthnMultisigPlugin.json sc
 forge verify-contract -c <CHAIN_ID> --optimizer-runs 200 --via-ir <FACTORY_ADDRESS> --constructor-args $(cast abi-encode "constructor(address)" <ENTRY_POINT_V07>) src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol:WeightedWebauthnMultisigPlugin --show-standard-json-input > script/bytecode-deploy/standard-json-input/WeightedWebauthnMultisigPlugin.json
 cast abi-encode "constructor(address)" <ENTRY_POINT_V07> | sed -e "s/^0x//" > script/bytecode-deploy/standard-json-input/WeightedWebauthnMultisigPlugin_constructor_args
 ```
+
+#### Deployment script
+This step is not needed for chain expansion. We only need to add deployment script if new smart contracts are added.
+1. Writing a new deployment script. There are examples files ending in s.sol in script/bytecode-deploy.
+2. Salt mining with `cast create2` to find a salt that generates the address with 8 leading zeros.
+3. Use the salt in deployment script.
+4. Adjust the chains in `100_Constants.sol` accordingly.
+
 #### Deploy
 Deployment scripts are under script/bytecode-deploy. Deploy command is:
 ```shell
