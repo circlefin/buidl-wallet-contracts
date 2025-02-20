@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.2.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.2...v2.2.0) (2025-02-20)
+
+
+### Features
+
+* add bytecode deployment scripts ([#68](https://github.com/circlefin/buidl-wallet-contracts/issues/68)) ([a0fdf60](https://github.com/circlefin/buidl-wallet-contracts/commit/a0fdf60496d8ad877198e647ed3b844c4fd5e2fa))
+
+
+### Miscellaneous Chores
+
+* add missing copyright header ([#70](https://github.com/circlefin/buidl-wallet-contracts/issues/70)) ([431adb9](https://github.com/circlefin/buidl-wallet-contracts/commit/431adb93005001e4a4646f2b4b2afcd83541a0e6))
+
+
+### Continuous Integration
+
+* add code coverage checking script ([#58](https://github.com/circlefin/buidl-wallet-contracts/issues/58)) ([517b89a](https://github.com/circlefin/buidl-wallet-contracts/commit/517b89a6191d00b8722de5c4b80ce14443290a11))
+
 ## [2.1.2](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.1...v2.1.2) (2025-01-29)
 
 
