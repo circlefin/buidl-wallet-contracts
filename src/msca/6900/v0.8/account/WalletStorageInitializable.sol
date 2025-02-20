@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
+import {WalletStorageV2Lib} from "../libs/WalletStorageV2Lib.sol";
 
 /// @notice Forked from OpenZeppelin (proxy/utils/Initializable.sol) with wallet storage access.
 ///         Reinitialization is removed.
@@ -43,8 +43,8 @@ abstract contract WalletStorageInitializable {
      * Emits an {WalletStorageInitialized} event.
      */
     modifier walletStorageInitializer() {
-        bool isTopLevelCall = !WalletStorageLib.getLayout().initializing;
-        uint8 initialized = WalletStorageLib.getLayout().initialized;
+        bool isTopLevelCall = !WalletStorageV2Lib.getLayout().initializing;
+        uint8 initialized = WalletStorageV2Lib.getLayout().initialized;
 
         // Allowed calls:
         // - initialSetup: the contract is not in the initializing state and no previous version was
@@ -56,13 +56,13 @@ abstract contract WalletStorageInitializable {
         if (!initialSetup && !deploying) {
             revert WalletStorageIsInitialized();
         }
-        WalletStorageLib.getLayout().initialized = 1;
+        WalletStorageV2Lib.getLayout().initialized = 1;
         if (isTopLevelCall) {
-            WalletStorageLib.getLayout().initializing = true;
+            WalletStorageV2Lib.getLayout().initializing = true;
         }
         _;
         if (isTopLevelCall) {
-            WalletStorageLib.getLayout().initializing = false;
+            WalletStorageV2Lib.getLayout().initializing = false;
             emit WalletStorageInitialized();
         }
     }
@@ -72,7 +72,7 @@ abstract contract WalletStorageInitializable {
      * {walletStorageInitializer} modifier, directly or indirectly.
      */
     modifier onlyWalletStorageInitializing() {
-        if (!WalletStorageLib.getLayout().initializing) {
+        if (!WalletStorageV2Lib.getLayout().initializing) {
             revert WalletStorageIsNotInitializing();
         }
         _;
@@ -87,11 +87,11 @@ abstract contract WalletStorageInitializable {
      * Emits an {WalletStorageInitialized} event the first time it is successfully executed.
      */
     function _disableWalletStorageInitializers() internal virtual {
-        if (WalletStorageLib.getLayout().initializing) {
+        if (WalletStorageV2Lib.getLayout().initializing) {
             revert WalletStorageIsInitializing();
         }
-        if (WalletStorageLib.getLayout().initialized != type(uint8).max) {
-            WalletStorageLib.getLayout().initialized = type(uint8).max;
+        if (WalletStorageV2Lib.getLayout().initialized != type(uint8).max) {
+            WalletStorageV2Lib.getLayout().initialized = type(uint8).max;
             emit WalletStorageInitialized();
         }
     }

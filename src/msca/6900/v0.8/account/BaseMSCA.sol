@@ -62,7 +62,7 @@ import {IValidationHookModule} from "@erc6900/reference-implementation/interface
 import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 import {SelectorRegistryLib} from "../libs/SelectorRegistryLib.sol";
-import {WalletStorageLib} from "../libs/WalletStorageLib.sol";
+import {WalletStorageV2Lib} from "../libs/WalletStorageV2Lib.sol";
 import {HookConfigLib} from "@erc6900/reference-implementation/libraries/HookConfigLib.sol";
 import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/ModuleEntityLib.sol";
 import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
@@ -127,7 +127,7 @@ abstract contract BaseMSCA is
 
     IEntryPoint public immutable ENTRY_POINT;
 
-    error NotNativeFunctionSelector(bytes4 selector);
+    error NotWrappedNativeExecutionFunction(bytes4 selector);
     error PreRuntimeValidationHookFailed(address module, uint32 entityId, bytes revertReason);
     error RuntimeValidationFailed(address module, uint32 entityId, bytes revertReason);
     error AlwaysDenyRule();
@@ -141,6 +141,7 @@ abstract contract BaseMSCA is
     error InvalidAuthorizationOrSigLength(uint256 actualLength, uint256 requiredLength);
     error InvalidModuleEntity(ModuleEntity moduleEntity);
     error ExecutionDetailAlreadySet(address module, bytes4 selector);
+    error ExecutionDetailNotSet(address module, bytes4 selector);
     error ValidationFunctionAlreadySet(bytes4 selector);
     error FailToCallOnInstall(address module, bytes revertReason);
     error InvalidExecutionSelector(address module, bytes4 selector);
@@ -158,9 +159,9 @@ abstract contract BaseMSCA is
      *      If the call is from entry point, then validateUserOp will run.
      *      https://eips.ethereum.org/assets/eip-6900/Modular_Account_Call_Flow.svg
      */
-    modifier validateNativeFunction() {
-        if (!msg.sig._isNativeExecutionFunction()) {
-            revert NotNativeFunctionSelector(msg.sig);
+    modifier wrapNativeExecutionFunction() {
+        if (!msg.sig._isWrappedNativeExecutionFunction()) {
+            revert NotWrappedNativeExecutionFunction(msg.sig);
         }
         (
             PostExecHookToRun[] memory postExecHooksFromDirectCallValidation,
@@ -196,7 +197,7 @@ abstract contract BaseMSCA is
         if (msg.data.length < 4) {
             revert NotFoundSelector();
         }
-        address executionFunctionModule = WalletStorageLib.getLayout().executionStorage[msg.sig].module;
+        address executionFunctionModule = WalletStorageV2Lib.getLayout().executionStorage[msg.sig].module;
         // valid module address should not be address(0)
         if (executionFunctionModule == address(0)) {
             revert InvalidExecutionFunction(msg.sig);
@@ -251,13 +252,13 @@ abstract contract BaseMSCA is
         if (interfaceId == type(IERC165).interfaceId) {
             return true;
         }
-        return WalletStorageLib.getLayout().supportedInterfaces[interfaceId] > 0;
+        return WalletStorageV2Lib.getLayout().supportedInterfaces[interfaceId] > 0;
     }
 
     /// @inheritdoc IERC1271
-    function isValidSignature(bytes32 hash, bytes calldata signature) public view override returns (bytes4) {
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns (bytes4) {
         ModuleEntity sigValidation = ModuleEntity.wrap(bytes24(signature));
-        if (!WalletStorageLib.getLayout().validationStorage[sigValidation].validationFlags.isSignatureValidation()) {
+        if (!WalletStorageV2Lib.getLayout().validationStorage[sigValidation].validationFlags.isSignatureValidation()) {
             revert InvalidSignatureValidation(sigValidation);
         }
         signature = signature[24:];
@@ -279,7 +280,7 @@ abstract contract BaseMSCA is
         returns (bytes calldata)
     {
         Bytes32DLL storage validationHooks =
-            WalletStorageLib.getLayout().validationStorage[sigValidation].validationHooks;
+            WalletStorageV2Lib.getLayout().validationStorage[sigValidation].validationHooks;
         uint8 segmentIndex = 0;
         bytes32 startHook = SENTINEL_BYTES32;
         while (segmentIndex < MAX_VALIDATION_ASSOC_HOOKS) {
@@ -317,7 +318,7 @@ abstract contract BaseMSCA is
     function installExecution(address module, ExecutionManifest calldata manifest, bytes calldata moduleInstallData)
         external
         override
-        validateNativeFunction
+        wrapNativeExecutionFunction
     {
         _installExecution(module, manifest, moduleInstallData);
         emit ExecutionInstalled(module, manifest);
@@ -328,7 +329,7 @@ abstract contract BaseMSCA is
     function uninstallExecution(address module, ExecutionManifest calldata manifest, bytes calldata moduleUninstallData)
         external
         override
-        validateNativeFunction
+        wrapNativeExecutionFunction
     {
         bool onUninstallSuccess = _uninstallExecution(module, manifest, moduleUninstallData);
         emit ExecutionUninstalled(module, onUninstallSuccess, manifest);
@@ -344,7 +345,7 @@ abstract contract BaseMSCA is
         bytes4[] calldata selectors,
         bytes calldata installData,
         bytes[] calldata hooks
-    ) external override validateNativeFunction {
+    ) external override wrapNativeExecutionFunction {
         _installValidation(validationConfig, selectors, installData, hooks);
         emit ValidationInstalled(validationConfig.module(), validationConfig.entityId());
     }
@@ -355,7 +356,7 @@ abstract contract BaseMSCA is
         ModuleEntity validationFunction,
         bytes calldata uninstallData,
         bytes[] calldata hookUninstallData
-    ) external override validateNativeFunction {
+    ) external override wrapNativeExecutionFunction {
         bool onUninstallSuccess = _uninstallValidation(validationFunction, uninstallData, hookUninstallData);
         (address module, uint32 entityId) = validationFunction.unpack();
         emit ValidationUninstalled(module, entityId, onUninstallSuccess);
@@ -367,7 +368,7 @@ abstract contract BaseMSCA is
             revert UnauthorizedCaller();
         }
         // use case: spending limits hook
-        Bytes32DLL storage executionHooks = WalletStorageLib.getLayout().validationStorage[ModuleEntity.wrap(
+        Bytes32DLL storage executionHooks = WalletStorageV2Lib.getLayout().validationStorage[ModuleEntity.wrap(
             bytes24(userOp.signature[:24])
         )].executionHooks;
         PostExecHookToRun[] memory postExecHooks = executionHooks._processPreExecHooks(msg.data);
@@ -382,7 +383,7 @@ abstract contract BaseMSCA is
         external
         payable
         override
-        validateNativeFunction
+        wrapNativeExecutionFunction
         returns (bytes memory returnData)
     {
         return target.execute(value, data);
@@ -394,7 +395,7 @@ abstract contract BaseMSCA is
         external
         payable
         override
-        validateNativeFunction
+        wrapNativeExecutionFunction
         returns (bytes[] memory returnData)
     {
         return calls.executeBatch();
@@ -420,7 +421,7 @@ abstract contract BaseMSCA is
         _processRuntimeHooksAndValidation(validationFunction, data, authorization[25:]);
 
         // run execution checks
-        PostExecHookToRun[] memory postExecHooks = WalletStorageLib.getLayout().validationStorage[validationFunction]
+        PostExecHookToRun[] memory postExecHooks = WalletStorageV2Lib.getLayout().validationStorage[validationFunction]
             .executionHooks
             ._processPreExecHooks(msg.data);
         // self execute call
@@ -431,11 +432,27 @@ abstract contract BaseMSCA is
 
     /// @inheritdoc IModularAccountView
     function getExecutionData(bytes4 selector) external view returns (ExecutionDataView memory executionData) {
-        if (selector._isNativeFunction()) {
+        if (selector._isWrappedNativeExecutionFunction()) {
             executionData.module = address(this);
+            // global validation is allowed for native execution functions
             executionData.allowGlobalValidation = true;
+            executionData.skipRuntimeValidation = false;
+            // only the wrapped native functions run execution hooks associated with its selector;
+            // other functions run hooks from validation functions
+            ExecutionStorage storage executionStorage = WalletStorageV2Lib.getLayout().executionStorage[selector];
+            executionData.executionHooks = executionStorage.executionHooks._toHookConfigs();
+        } else if (selector._isNonWrappedNativeExecutionFunction()) {
+            executionData.module = address(this);
+            // global validation is allowed for native execution functions
+            executionData.allowGlobalValidation = true;
+            executionData.skipRuntimeValidation = false;
+        } else if (selector._isNativeViewFunction()) {
+            executionData.module = address(this);
+            // view function doesn't need any validation
+            executionData.allowGlobalValidation = false;
+            executionData.skipRuntimeValidation = true;
         } else {
-            ExecutionStorage storage executionStorage = WalletStorageLib.getLayout().executionStorage[selector];
+            ExecutionStorage storage executionStorage = WalletStorageV2Lib.getLayout().executionStorage[selector];
             executionData.module = executionStorage.module;
             executionData.skipRuntimeValidation = executionStorage.skipRuntimeValidation;
             executionData.allowGlobalValidation = executionStorage.allowGlobalValidation;
@@ -450,7 +467,8 @@ abstract contract BaseMSCA is
         view
         returns (ValidationDataView memory validationData)
     {
-        ValidationStorage storage validationStorage = WalletStorageLib.getLayout().validationStorage[validationFunction];
+        ValidationStorage storage validationStorage =
+            WalletStorageV2Lib.getLayout().validationStorage[validationFunction];
         validationData.validationFlags = validationStorage.validationFlags;
         validationData.validationHooks = validationStorage.validationHooks._toHookConfigs();
         validationData.executionHooks = validationStorage.executionHooks._toHookConfigs();
@@ -519,7 +537,7 @@ abstract contract BaseMSCA is
         // only `executeUserOp` would have access to userOp
         if (
             bytes4(userOp.callData[:4]) != this.executeUserOp.selector
-                && WalletStorageLib.getLayout().validationStorage[validationFunction].executionHooks.size() > 0
+                && WalletStorageV2Lib.getLayout().validationStorage[validationFunction].executionHooks.size() > 0
         ) {
             revert RequireUserOperationContext();
         }
@@ -533,7 +551,8 @@ abstract contract BaseMSCA is
         bytes calldata signature,
         bytes32 userOpHash
     ) internal returns (uint256 validationData) {
-        ValidationStorage storage validationStorage = WalletStorageLib.getLayout().validationStorage[validationFunction];
+        ValidationStorage storage validationStorage =
+            WalletStorageV2Lib.getLayout().validationStorage[validationFunction];
         if (!validationStorage.validationFlags.isUserOpValidation()) {
             revert InvalidUserOpValidation(validationFunction);
         }
@@ -609,7 +628,7 @@ abstract contract BaseMSCA is
         bytes calldata authorizationData
     ) internal virtual {
         Bytes32DLL storage validationHookFunctions =
-            WalletStorageLib.getLayout().validationStorage[validationFunction].validationHooks;
+            WalletStorageV2Lib.getLayout().validationStorage[validationFunction].validationHooks;
         bytes32 startHook = SENTINEL_BYTES32;
         uint8 segmentIndex = 0;
         while (segmentIndex < MAX_VALIDATION_ASSOC_HOOKS) {
@@ -659,7 +678,7 @@ abstract contract BaseMSCA is
         if (module == address(0)) {
             revert NullModule();
         }
-        WalletStorageLib.Layout storage storageLayout = WalletStorageLib.getLayout();
+        WalletStorageV2Lib.Layout storage storageLayout = WalletStorageV2Lib.getLayout();
         uint256 length = manifest.interfaceIds.length;
         for (uint256 i = 0; i < length; ++i) {
             storageLayout.supportedInterfaces[manifest.interfaceIds[i]] += 1;
@@ -673,9 +692,10 @@ abstract contract BaseMSCA is
         for (uint256 i = 0; i < length; ++i) {
             bytes4 selector = manifest.executionFunctions[i].executionSelector;
             if (storageLayout.executionStorage[selector].module != address(0)) {
-                revert ExecutionDetailAlreadySet(module, selector);
+                // only read the storage again for negative case
+                revert ExecutionDetailAlreadySet(storageLayout.executionStorage[selector].module, selector);
             }
-            if (selector._isNativeFunction() || selector._isErc4337Function() || selector._isIModuleFunction()) {
+            if (selector._isNativeFunction() || selector._isERC4337Function() || selector._isIModuleFunction()) {
                 revert InvalidExecutionSelector(module, selector);
             }
             storageLayout.executionStorage[selector].module = module;
@@ -711,7 +731,10 @@ abstract contract BaseMSCA is
         ExecutionManifest calldata manifest,
         bytes calldata moduleUninstallData
     ) internal returns (bool) {
-        WalletStorageLib.Layout storage storageLayout = WalletStorageLib.getLayout();
+        if (module == address(0)) {
+            revert NullModule();
+        }
+        WalletStorageV2Lib.Layout storage storageLayout = WalletStorageV2Lib.getLayout();
         // uninstall the components in reverse order (by component type) of their installation
         //////////////////////////////////////////////
         // uninstall execution hooks and functions
@@ -733,6 +756,9 @@ abstract contract BaseMSCA is
         length = manifest.executionFunctions.length;
         for (uint256 i = 0; i < length; ++i) {
             bytes4 selector = manifest.executionFunctions[i].executionSelector;
+            if (storageLayout.executionStorage[selector].module == address(0)) {
+                revert ExecutionDetailNotSet(address(0), selector);
+            }
             storageLayout.executionStorage[selector].module = address(0);
             storageLayout.executionStorage[selector].skipRuntimeValidation = false;
             storageLayout.executionStorage[selector].allowGlobalValidation = false;
@@ -756,7 +782,7 @@ abstract contract BaseMSCA is
     ) internal {
         (ModuleEntity validationModuleEntity, ValidationFlags validationFlags) = validationConfig.unpack();
         ValidationStorage storage validationStorage =
-            WalletStorageLib.getLayout().validationStorage[validationModuleEntity];
+            WalletStorageV2Lib.getLayout().validationStorage[validationModuleEntity];
         uint256 hooksLength = hooks.length;
         for (uint256 i = 0; i < hooksLength; ++i) {
             HookConfig hookConfig = HookConfig.wrap(bytes25(hooks[i][:25]));
@@ -794,7 +820,8 @@ abstract contract BaseMSCA is
         bytes calldata uninstallData,
         bytes[] calldata hookUninstallData
     ) internal returns (bool) {
-        ValidationStorage storage validationStorage = WalletStorageLib.getLayout().validationStorage[validationFunction];
+        ValidationStorage storage validationStorage =
+            WalletStorageV2Lib.getLayout().validationStorage[validationFunction];
         validationStorage.validationFlags = ValidationFlags.wrap(0);
 
         bool onUninstallSucceeded = true;
@@ -909,7 +936,7 @@ abstract contract BaseMSCA is
             PostExecHookToRun[] memory postExecHooksFromExecutionSelector
         )
     {
-        WalletStorageLib.Layout storage walletStorage = WalletStorageLib.getLayout();
+        WalletStorageV2Lib.Layout storage walletStorage = WalletStorageV2Lib.getLayout();
         ExecutionStorage storage executionStorage = walletStorage.executionStorage[msg.sig];
         if (msg.sender == address(ENTRY_POINT) || msg.sender == address(this) || executionStorage.skipRuntimeValidation)
         {
@@ -1045,8 +1072,8 @@ abstract contract BaseMSCA is
         // 2. the global validation has been registered
         return (
             selector._isNativeExecutionFunction()
-                || WalletStorageLib.getLayout().executionStorage[selector].allowGlobalValidation
-        ) && WalletStorageLib.getLayout().validationStorage[validationFunction].validationFlags.isGlobal();
+                || WalletStorageV2Lib.getLayout().executionStorage[selector].allowGlobalValidation
+        ) && WalletStorageV2Lib.getLayout().validationStorage[validationFunction].validationFlags.isGlobal();
     }
 
     function _isAllowedForSelectorValidation(bytes4 selector, ModuleEntity validationFunction)
@@ -1054,6 +1081,6 @@ abstract contract BaseMSCA is
         view
         returns (bool)
     {
-        return WalletStorageLib.getLayout().validationStorage[validationFunction].selectors.contains(selector);
+        return WalletStorageV2Lib.getLayout().validationStorage[validationFunction].selectors.contains(selector);
     }
 }

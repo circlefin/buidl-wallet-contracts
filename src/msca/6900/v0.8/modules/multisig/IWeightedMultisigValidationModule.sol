@@ -19,7 +19,13 @@
 pragma solidity 0.8.24;
 
 import {PublicKey} from "../../../../../common/CommonStructs.sol";
-import {AccountMetadata, CheckNSignaturesRequest, SignerMetadata, SignerMetadataWithId} from "./MultisigStructs.sol";
+import {
+    AccountMetadata,
+    CheckNSignaturesRequest,
+    CheckNSignaturesResponse,
+    SignerMetadata,
+    SignerMetadataWithId
+} from "./MultisigStructs.sol";
 import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
 /// @title Weighted Multisig Validation Module Interface
@@ -52,6 +58,9 @@ interface IWeightedMultisigValidationModule is IValidationModule {
     error InvalidSigOffset(uint32 entityId, address account, uint256 offset);
     error InvalidNumSigsOnActualDigest(uint32 entityId, address account, uint256 numSigs);
     error InvalidUserOpDigest(uint32 entityId, address account);
+    error UnsupportedSigType(uint32 entityId, address account, uint8 sigType);
+    error InvalidAuthorizationLength(uint32 entityId, address account, uint256 length);
+    error InvalidRuntimeDigest(uint32 entityId, address account);
 
     /// @notice Get the signer id.
     /// @param signer The signer to check.
@@ -130,14 +139,15 @@ interface IWeightedMultisigValidationModule is IValidationModule {
     /// entityId - entity id for the account and signer.
     /// account - the account to check the signatures for.
     /// signatures - the signatures to check.
-    /// @return success true if the signatures are valid.
-    /// @return firstFailure first failure, if failed is true.
+    /// @return response - success true if the signatures are valid.
+    /// firstFailure if failed is true.
+    /// returnError for debugging if available.
     /// (Note: if all signatures are individually valid but do not satisfy the
     /// multisig, firstFailure will be set to the last signature's index.)
     function checkNSignatures(CheckNSignaturesRequest calldata nSignaturesInput)
         external
         view
-        returns (bool success, uint256 firstFailure);
+        returns (CheckNSignaturesResponse memory response);
 
     /// @notice Return all the signer metadata of an account.
     /// @param entityId entity id for the account and signers.

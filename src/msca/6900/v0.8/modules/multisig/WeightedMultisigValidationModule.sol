@@ -19,22 +19,15 @@
 
 pragma solidity 0.8.24;
 
-import {CalldataUtils} from "../../../../../utils/CalldataUtils.sol";
+import {CheckNSignatureError} from "./MultisigEnums.sol";
 import {
     AccountMetadata,
     CheckNSignaturesContext,
     CheckNSignaturesRequest,
+    CheckNSignaturesResponse,
     SignerMetadata,
     SignerMetadataWithId
 } from "./MultisigStructs.sol";
-
-import {BaseERC712CompliantModule} from "../../../shared/erc712/BaseERC712CompliantModule.sol";
-import {
-    AssociatedLinkedListSet,
-    AssociatedLinkedListSetLib
-} from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
-
-import {CredentialType, PublicKey, WebAuthnSigDynamicPart} from "../../../../../common/CommonStructs.sol";
 
 import {
     EIP1271_INVALID_SIGNATURE,
@@ -45,26 +38,36 @@ import {
     ZERO,
     ZERO_BYTES32
 } from "../../../../../common/Constants.sol";
+import {BaseERC712CompliantModule} from "../../../shared/erc712/BaseERC712CompliantModule.sol";
 import {BaseModule} from "../BaseModule.sol";
+import {
+    AssociatedLinkedListSet,
+    AssociatedLinkedListSetLib
+} from "@modular-account-libs/libraries/AssociatedLinkedListSetLib.sol";
+
+import {CalldataUtils} from "../../../../../utils/CalldataUtils.sol";
+
+import {CredentialType, PublicKey, WebAuthnSigDynamicPart} from "../../../../../common/CommonStructs.sol";
+import {CalldataUtils} from "../../../../../utils/CalldataUtils.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
-import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
+import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 import {IWeightedMultisigValidationModule} from "./IWeightedMultisigValidationModule.sol";
-import {MAX_SIGNERS, MAX_WEIGHT, MIN_WEIGHT} from "./MultisigConstants.sol";
+import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IValidationModule.sol";
 
+import {InvalidPublicKey, UnauthorizedCaller} from "../../../../../common/Errors.sol";
+import {MAX_SIGNERS, MAX_WEIGHT, MIN_WEIGHT} from "./MultisigConstants.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
-import {PublicKeyLib} from "../../../../../libs/PublicKeyLib.sol";
-import {NotImplementedFunction} from "../../../shared/common/Errors.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 
+import {PublicKeyLib} from "../../../../../libs/PublicKeyLib.sol";
 import {SetValueLib} from "../../../../../libs/SetValueLib.sol";
 
 import {WebAuthnLib} from "../../../../../libs/WebAuthnLib.sol";
-import {CalldataUtils} from "../../../../../utils/CalldataUtils.sol";
 import {UserOperationLib} from "@account-abstraction/contracts/core/UserOperationLib.sol";
 import {SetValue} from "@modular-account-libs/libraries/Constants.sol";
 import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -142,9 +145,7 @@ contract WeightedMultisigValidationModule is
         if (actualUserOpDigest == minimalUserOpDigest) {
             revert InvalidUserOpDigest(entityId, sender);
         }
-        bool success;
-        uint256 firstFailure;
-        (success, firstFailure) = checkNSignatures(
+        CheckNSignaturesResponse memory response = checkNSignatures(
             CheckNSignaturesRequest({
                 entityId: entityId,
                 actualDigest: actualUserOpDigest,
@@ -154,10 +155,14 @@ contract WeightedMultisigValidationModule is
                 signatures: userOp.signature
             })
         );
-        return success ? SIG_VALIDATION_SUCCEEDED : SIG_VALIDATION_FAILED;
+        return response.success ? SIG_VALIDATION_SUCCEEDED : SIG_VALIDATION_FAILED;
     }
 
     /// @inheritdoc IValidationModule
+    /// @notice If the sender is the account, then it passes the validation.
+    ///         If the sender is a signer with sufficient weight, then it passes the validation.
+    ///         Otherwise, it checks the authorization signatures. Determine success or failure based on the weighted
+    ///         multisig rules.
     function validateRuntime(
         address account,
         uint32 entityId,
@@ -165,11 +170,38 @@ contract WeightedMultisigValidationModule is
         uint256 value,
         bytes calldata data,
         bytes calldata authorization
-    ) external pure override {
-        // TODO: implement this - the signatures can be put in the validationData field of the runtime validation
-        // function
-        (account, sender, value, data, authorization);
-        revert NotImplementedFunction(msg.sig, entityId);
+    ) external view override {
+        // if the sender is the account itself, we can skip the authorization check
+        if (sender == account) {
+            return;
+        }
+        // if the sender is a signer with sufficient weight, we can skip the authorization check
+        bytes30 signerId = _getSignerId(sender);
+        if (signersPerEntity[entityId].contains(account, SetValue.wrap(signerId))) {
+            if (
+                signersMetadataPerEntity[entityId][signerId][account].weight
+                    >= accountMetadataPerEntity[entityId][account].thresholdWeight
+            ) {
+                return;
+            }
+        }
+        // nonce(32) + gasLimit(32) + gasFees(32) + length of bytes(32)
+        if (authorization.length < 128) {
+            revert InvalidAuthorizationLength(entityId, account, authorization.length);
+        }
+        (uint256 nonce, bytes32 gasLimit, bytes32 gasFees, bytes memory sig) =
+            abi.decode(authorization, (uint256, bytes32, bytes32, bytes));
+        _validateRuntimeSig({
+            account: account,
+            entityId: entityId,
+            sender: sender,
+            value: value,
+            data: data,
+            nonce: nonce,
+            gasLimit: gasLimit,
+            gasFees: gasFees,
+            sig: sig
+        });
     }
 
     /// @inheritdoc IWeightedMultisigValidationModule
@@ -278,9 +310,7 @@ contract WeightedMultisigValidationModule is
     {
         (sender);
         bytes32 replaySafeHash = getReplaySafeMessageHash(account, hash);
-        bool success;
-        uint256 firstFailure;
-        (success, firstFailure) = checkNSignatures(
+        CheckNSignaturesResponse memory response = checkNSignatures(
             CheckNSignaturesRequest({
                 entityId: entityId,
                 actualDigest: replaySafeHash,
@@ -290,7 +320,7 @@ contract WeightedMultisigValidationModule is
                 signatures: signature
             })
         );
-        return success ? EIP1271_VALID_SIGNATURE : EIP1271_INVALID_SIGNATURE;
+        return response.success ? EIP1271_VALID_SIGNATURE : EIP1271_INVALID_SIGNATURE;
     }
 
     /// @inheritdoc IWeightedMultisigValidationModule
@@ -298,7 +328,7 @@ contract WeightedMultisigValidationModule is
         public
         view
         override
-        returns (bool success, uint256 firstFailure)
+        returns (CheckNSignaturesResponse memory response)
     {
         if (request.signatures.length < _INDIVIDUAL_SIGNATURE_BYTES_LEN) {
             revert InvalidSigLength(request.entityId, request.account, request.signatures.length);
@@ -316,13 +346,14 @@ contract WeightedMultisigValidationModule is
         uint8 sigType;
         uint256 signatureCount;
         // tracks whether `signatures` is a complete and valid multisig signature
-        context.success = true;
+        response.success = true;
+        response.errorCode = CheckNSignatureError.NONE;
         uint256 currentWeight;
         while (accumulatedWeight < thresholdWeight) {
             // check signature constant part length
-            _checkNextSigConstantPartLength(context, signatureCount, request.signatures.length);
-            if (context.success == false) {
-                return (false, context.firstFailure);
+            _checkNextSigConstantPartLength(context, signatureCount, request.signatures.length, response);
+            if (response.success == false) {
+                return response;
             }
 
             (sigType, context.first32Bytes, context.second32Bytes) =
@@ -332,21 +363,24 @@ contract WeightedMultisigValidationModule is
             (digest, sigType) = _getDigestAndNormalizeSigType(sigType, request);
             // verify each signature
             if (sigType == 0) {
-                currentWeight = _validateContractSignature(context, request, digest, signatureCount);
+                currentWeight = _validateContractSignature(context, request, digest, signatureCount, response);
             } else if (sigType == 2) {
-                currentWeight = _validateWebauthnSignature(context, request, digest, signatureCount);
-            } else {
+                currentWeight = _validateWebauthnSignature(context, request, digest, signatureCount, response);
+            } else if (sigType == 27 || sigType == 28) {
                 // reverts if signature has the wrong s value, wrong v value, or if it's a bad point on the k1 curve
-                currentWeight = _validateEOASignature(context, request, digest, signatureCount, sigType);
+                currentWeight = _validateEOASignature(context, request, digest, signatureCount, sigType, response);
+            } else {
+                revert UnsupportedSigType(request.entityId, request.account, sigType);
             }
             if (
                 // fail if the signature is out of order or duplicate or is from an unknown signer
                 context.currentSigner <= context.lastSigner
                     || !signersPerEntity[request.entityId].contains(request.account, SetValue.wrap(context.currentSigner))
             ) {
-                if (context.success) {
-                    context.firstFailure = signatureCount;
-                    context.success = false;
+                if (response.success) {
+                    response.firstFailure = signatureCount;
+                    response.success = false;
+                    response.errorCode = CheckNSignatureError.SIGS_OUT_OF_ORDER;
                 }
             }
 
@@ -362,7 +396,7 @@ contract WeightedMultisigValidationModule is
                 request.entityId, request.account, request.requiredNumSigsOnActualDigest
             );
         }
-        return (context.success, context.firstFailure);
+        return response;
     }
 
     /// @inheritdoc IWeightedMultisigValidationModule
@@ -500,6 +534,32 @@ contract WeightedMultisigValidationModule is
     function supportsInterface(bytes4 interfaceId) public view override(BaseModule, IERC165) returns (bool) {
         return interfaceId == type(IValidationModule).interfaceId
             || interfaceId == type(IWeightedMultisigValidationModule).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /// @notice Returns the replay-safe hash for runtime validation.
+    /// @param account MSCA itself.
+    /// @param entityId entity id for the account.
+    /// @param sender sender of the transaction.
+    /// @param data calldata.
+    /// @param nonce nonce of the transaction.
+    /// @param value value of the transaction.
+    /// @param gasLimit Packed gas limit.
+    /// @param gasFees Packed gas fields such as maxPriorityFeePerGas and maxFeePerGas.
+    function getReplaySafeHashForRuntimeValidation(
+        address account,
+        uint32 entityId,
+        address sender,
+        bytes calldata data,
+        uint256 nonce,
+        uint256 value,
+        bytes32 gasLimit,
+        bytes32 gasFees
+    ) public view returns (bytes32) {
+        bytes32 hashedCallData = data.calldataKeccak();
+        return getReplaySafeMessageHash({
+            account: account,
+            hash: keccak256(abi.encode(entityId, sender, nonce, value, gasLimit, gasFees, hashedCallData))
+        });
     }
 
     // ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -688,6 +748,10 @@ contract WeightedMultisigValidationModule is
             if (signerMetadata.addr != address(0)) {
                 signerId = _getSignerId(signerMetadata.addr);
             } else {
+                // validate public key is on secp256r1 curve
+                if (!FCL_Elliptic_ZZ.ecAff_isOnCurve(signerMetadata.publicKey.x, signerMetadata.publicKey.y)) {
+                    revert InvalidPublicKey(signerMetadata.publicKey.x, signerMetadata.publicKey.y);
+                }
                 signerId = _getSignerId(signerMetadata.publicKey);
             }
             _validateWeight(account, entityId, signerId, signerMetadata.weight);
@@ -731,7 +795,8 @@ contract WeightedMultisigValidationModule is
     function _checkNextSigConstantPartLength(
         CheckNSignaturesContext memory context,
         uint256 signatureCount,
-        uint256 sigLength
+        uint256 sigLength,
+        CheckNSignaturesResponse memory response
     ) internal pure {
         // Fail if the next 65 bytes would exceed signature length
         // or lowest dynamic part signature offset, where next 65 bytes is defined as
@@ -745,10 +810,11 @@ contract WeightedMultisigValidationModule is
             (context.lowestSigDynamicPartOffset != 0 && sigConstantPartEndPos > context.lowestSigDynamicPartOffset)
                 || sigConstantPartEndPos > sigLength
         ) {
-            if (context.success) {
+            if (response.success) {
                 // 1st failure
-                context.firstFailure = signatureCount;
-                context.success = false;
+                response.firstFailure = signatureCount;
+                response.success = false;
+                response.errorCode = CheckNSignatureError.SIG_PARTS_OVERLAP;
             }
         }
     }
@@ -839,7 +905,8 @@ contract WeightedMultisigValidationModule is
         CheckNSignaturesContext memory context,
         CheckNSignaturesRequest memory request,
         bytes32 digest,
-        uint256 signatureCount
+        uint256 signatureCount,
+        CheckNSignaturesResponse memory response
     ) internal view returns (uint256) {
         // first32Bytes contains the address to perform 1271 validation on
         address contractAddress = address(uint160(uint256(context.first32Bytes)));
@@ -851,17 +918,19 @@ contract WeightedMultisigValidationModule is
         SignerMetadata memory currentSignerMetadata =
             signersMetadataPerEntity[request.entityId][context.currentSigner][request.account];
         if (currentSignerMetadata.addr != contractAddress) {
-            if (context.success) {
-                context.firstFailure = signatureCount;
-                context.success = false;
+            if (response.success) {
+                response.firstFailure = signatureCount;
+                response.success = false;
+                response.errorCode = CheckNSignatureError.INVALID_CONTRACT_ADDRESS;
             }
         }
         // retrieve contract signature
         bytes memory sigDynamicPartBytes = _getSigDynamicPart(context, request);
         if (!SignatureChecker.isValidERC1271SignatureNow(contractAddress, digest, sigDynamicPartBytes)) {
-            if (context.success) {
-                context.firstFailure = signatureCount;
-                context.success = false;
+            if (response.success) {
+                response.firstFailure = signatureCount;
+                response.success = false;
+                response.errorCode = CheckNSignatureError.INVALID_SIG;
             }
         }
         return currentSignerMetadata.weight;
@@ -871,7 +940,8 @@ contract WeightedMultisigValidationModule is
         CheckNSignaturesContext memory context,
         CheckNSignaturesRequest memory request,
         bytes32 digest,
-        uint256 signatureCount
+        uint256 signatureCount,
+        CheckNSignaturesResponse memory response
     ) internal view returns (uint256) {
         // first32Bytes stores public key on-chain identifier
         context.currentSigner = bytes30(uint240(uint256(context.first32Bytes)));
@@ -890,9 +960,10 @@ contract WeightedMultisigValidationModule is
                 y: currentSignerMetadata.publicKey.y
             })
         ) {
-            if (context.success) {
-                context.firstFailure = signatureCount;
-                context.success = false;
+            if (response.success) {
+                response.firstFailure = signatureCount;
+                response.success = false;
+                response.errorCode = CheckNSignatureError.INVALID_SIG;
             }
         }
         return currentSignerMetadata.weight;
@@ -903,7 +974,8 @@ contract WeightedMultisigValidationModule is
         CheckNSignaturesRequest memory request,
         bytes32 digest,
         uint256 signatureCount,
-        uint8 sigType
+        uint8 sigType,
+        CheckNSignaturesResponse memory response
     ) internal view returns (uint256) {
         // reverts if signature has the wrong s value, wrong v value, or if it's a bad point on the k1 curve
         address signer = digest.recover(sigType, context.first32Bytes, context.second32Bytes);
@@ -911,9 +983,10 @@ contract WeightedMultisigValidationModule is
         SignerMetadata memory currentSignerMetadata =
             signersMetadataPerEntity[request.entityId][context.currentSigner][request.account];
         if (currentSignerMetadata.addr != signer) {
-            if (context.success) {
-                context.firstFailure = signatureCount;
-                context.success = false;
+            if (response.success) {
+                response.firstFailure = signatureCount;
+                response.success = false;
+                response.errorCode = CheckNSignatureError.INVALID_SIG;
             }
         }
         return currentSignerMetadata.weight;
@@ -941,5 +1014,55 @@ contract WeightedMultisigValidationModule is
         );
         // include chainid to prevent replay across chains
         return (keccak256(abi.encode(userOpHash, ENTRYPOINT, block.chainid)).toEthSignedMessageHash(), sender);
+    }
+
+    function _validateRuntimeSig(
+        address account,
+        uint32 entityId,
+        address sender,
+        uint256 value,
+        bytes calldata data,
+        uint256 nonce,
+        bytes32 gasLimit,
+        bytes32 gasFees,
+        bytes memory sig
+    ) internal view {
+        bytes32 fullReplaySafeHash = getReplaySafeHashForRuntimeValidation({
+            account: account,
+            entityId: entityId,
+            sender: sender,
+            data: data,
+            nonce: nonce,
+            value: value,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        bytes32 minimalReplaySafeHash = getReplaySafeHashForRuntimeValidation({
+            account: account,
+            entityId: entityId,
+            sender: sender,
+            data: data,
+            nonce: nonce,
+            value: value,
+            gasLimit: ZERO_BYTES32,
+            gasFees: ZERO_BYTES32
+        });
+        if (fullReplaySafeHash == minimalReplaySafeHash) {
+            revert InvalidRuntimeDigest(entityId, account);
+        }
+        CheckNSignaturesResponse memory response = checkNSignatures(
+            CheckNSignaturesRequest({
+                entityId: entityId,
+                actualDigest: fullReplaySafeHash,
+                minimalDigest: minimalReplaySafeHash,
+                requiredNumSigsOnActualDigest: 1,
+                account: account,
+                signatures: sig
+            })
+        );
+        if (response.success) {
+            return;
+        }
+        revert UnauthorizedCaller();
     }
 }

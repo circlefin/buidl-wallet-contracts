@@ -21,10 +21,15 @@ pragma solidity 0.8.24;
 import {ExecutionStorage, ValidationStorage} from "../common/Structs.sol";
 import {ModuleEntity} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
-/// @dev The same storage will be used for ERC6900 v0.8 MSCAs.
-library WalletStorageLib {
-    // keccak256 hash of "circle.msca.v0_8.storage" subtracted by 1
-    bytes32 internal constant WALLET_STORAGE_SLOT = 0x45b8c59e88d59f48fa992cc87612124331f3e8b18f76fa4c146925e98c37c228;
+/// @dev The same storage will be used for v2.x.y of MSCAs.
+library WalletStorageV2Lib {
+    // @notice On 12/16/2024, storage was aligned to 256 as a potential optimization in anticipation of gas schedule
+    // changes following the Verkle state tree migration. This adjustment accounts for scenarios where groups
+    // of 256 storage slots may become warm simultaneously and will only apply to newly deployed accounts.
+    // For more details, please refer to https://eips.ethereum.org/EIPS/eip-7201.
+    // 1. id = "circle.msca.v2.storage"
+    // 2. keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 internal constant WALLET_STORAGE_SLOT = 0x1ffef775e8122370efaac4f28eeec94f03b0484eca026ee3ab713094c73f5d00;
 
     struct Layout {
         // list of ERC-165 interfaceIds to add to account to support introspection checks

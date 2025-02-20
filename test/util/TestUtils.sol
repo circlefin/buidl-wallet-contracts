@@ -83,6 +83,14 @@ contract TestUtils is Test {
         return bytes32(uint256(uint160(addr)));
     }
 
+    function _encodeGasLimit(uint256 gasLimit) internal pure returns (bytes32) {
+        return bytes32(uint256(gasLimit));
+    }
+
+    function _encodeGasFees(uint128 maxFeePerGas, uint128 maxPriorityFeePerGas) internal pure returns (bytes32) {
+        return bytes32(uint256(maxPriorityFeePerGas) << 128 | uint256(maxFeePerGas));
+    }
+
     // I was trying to use this lib to generate public key but getting "Yul exception:Cannot swap Variable expr_16 with
     // Variable expr_mpos_8: too deep in the stack by 6 slots in"
     // need to investigate this a bit further

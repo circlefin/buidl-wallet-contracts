@@ -19,7 +19,7 @@
 pragma solidity 0.8.24;
 
 import {WalletStorageInitializable} from "../../../../../src/msca/6900/v0.8/account/WalletStorageInitializable.sol";
-import {WalletStorageLib} from "../../../../../src/msca/6900/v0.8/libs/WalletStorageLib.sol";
+import {WalletStorageV2Lib} from "../../../../../src/msca/6900/v0.8/libs/WalletStorageV2Lib.sol";
 
 /**
  * @title InitializableMock, forked from OpenZeppelin
@@ -33,7 +33,7 @@ contract WalletStorageInitializableMock is WalletStorageInitializable {
     bool public onlyInitializingRan;
 
     function isInitializing() public view returns (bool) {
-        return WalletStorageLib.getLayout().initializing;
+        return WalletStorageV2Lib.getLayout().initializing;
     }
 
     function initialize() public walletStorageInitializer {

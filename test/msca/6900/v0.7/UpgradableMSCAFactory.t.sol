@@ -262,12 +262,14 @@ contract UpgradableMSCAFactoryTest is TestUtils {
         }
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testEncodeAndDecodeFactoryWithInvalidPaddedInput() public {
         bytes memory result = hex"7109709ECfa91a80626fF3989D68f67F5b1DD12D";
         vm.expectRevert();
         abi.decode(result, (address[], bytes32[], bytes[]));
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testEncodeAndDecodeFactoryWithMaliciousBytes() public {
         // valid input with extra malicious bytes "12" in the beginning
         bytes memory result =
