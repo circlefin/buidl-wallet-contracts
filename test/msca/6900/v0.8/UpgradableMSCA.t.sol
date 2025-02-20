@@ -38,7 +38,11 @@ import {
 } from "@erc6900/reference-implementation/interfaces/IExecutionModule.sol";
 
 import {UpgradableMSCAFactory} from "../../../../src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol";
-import {ModuleEntity, ValidationConfig} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
+import {
+    HookConfig,
+    ModuleEntity,
+    ValidationConfig
+} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
 
 import {IExecutionHookModule} from "@erc6900/reference-implementation/interfaces/IExecutionHookModule.sol";
 import {Call, IModularAccount} from "@erc6900/reference-implementation/interfaces/IModularAccount.sol";
@@ -57,10 +61,14 @@ import {TestLiquidityPool} from "../../../util/TestLiquidityPool.sol";
 import {AccountTestUtils} from "./utils/AccountTestUtils.sol";
 import {EntryPoint} from "@account-abstraction/contracts/core/EntryPoint.sol";
 
-import {ValidationDataView} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
+import {
+    ExecutionDataView, ValidationDataView
+} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
 
 import {ExecutionUtils} from "../../../../src/utils/ExecutionUtils.sol";
 import {MockModule} from "./helpers/MockModule.sol";
+
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
 import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
 import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
@@ -97,6 +105,9 @@ contract UpgradableMSCATest is AccountTestUtils {
 
     error RuntimeValidationFailed(address module, uint32 entityId, bytes revertReason);
     error NotFoundSelector();
+    error NullModule();
+    error ExecutionDetailAlreadySet(address module, bytes4 selector);
+    error ExecutionDetailNotSet(address module, bytes4 selector);
 
     IEntryPoint private entryPoint = new EntryPoint();
     uint256 internal eoaPrivateKey;
@@ -1262,6 +1273,150 @@ contract UpgradableMSCATest is AccountTestUtils {
         // fail early even before InvalidValidationFunctionId is reverted
         vm.expectRevert(NotFoundSelector.selector);
         address(msca).callWithReturnDataOrRevert(0, bytes("aaa"));
+    }
+
+    function testUninstallNullModule() public {
+        ExecutionManifest memory manifest;
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testUninstallNullModule");
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+        vm.startPrank(address(msca));
+        vm.expectRevert(NullModule.selector);
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.uninstallExecution, (address(0), manifest, "")),
+            encodeSignature(new PreValidationHookData[](0), ownerValidation, "", true)
+        );
+    }
+
+    function testInstallAndUninstallSameModuleAgain() public {
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testUninstallSameModuleAgain");
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), uint32(0));
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+
+        ExecutionManifest memory executionManifest;
+        ManifestExecutionFunction[] memory executionFunctions = new ManifestExecutionFunction[](1);
+        executionFunctions[0] = ManifestExecutionFunction({
+            executionSelector: MockModule.testFoo.selector,
+            skipRuntimeValidation: true,
+            allowGlobalValidation: true
+        });
+        executionManifest.executionFunctions = executionFunctions;
+
+        MockModule moduleV1 = new MockModule(
+            executionManifest, SIG_VALIDATION_SUCCEEDED, true, true, bytes(""), true, SIG_VALIDATION_SUCCEEDED, true
+        );
+        vm.startPrank(address(msca));
+        msca.installExecution(address(moduleV1), executionManifest, "");
+
+        // install again
+        vm.expectRevert(
+            abi.encodeWithSelector(ExecutionDetailAlreadySet.selector, address(moduleV1), MockModule.testFoo.selector)
+        );
+        msca.installExecution(address(moduleV1), executionManifest, "");
+
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.uninstallExecution, (address(moduleV1), executionManifest, "")),
+            encodeSignature(new PreValidationHookData[](0), ownerValidation, "", true)
+        );
+
+        // uninstall again
+        vm.expectRevert(abi.encodeWithSelector(ExecutionDetailNotSet.selector, address(0), MockModule.testFoo.selector));
+        msca.executeWithRuntimeValidation(
+            abi.encodeCall(IModularAccount.uninstallExecution, (address(moduleV1), executionManifest, "")),
+            encodeSignature(new PreValidationHookData[](0), ownerValidation, "", true)
+        );
+        vm.stopPrank();
+    }
+
+    function testGetExecutionDataForNativeExecutionFunctions() public {
+        uint32 entityId = 10;
+        (ownerAddr, eoaPrivateKey) = makeAddrAndKey("testGetExecutionDataForNativeExecutionFunctions");
+        ownerValidation = ModuleEntityLib.pack(address(singleSignerValidationModule), entityId);
+        ValidationConfig validationConfig = ValidationConfigLib.pack(ownerValidation, true, true, true);
+        bytes memory initializingData =
+            abi.encode(validationConfig, new bytes4[](0), abi.encode(uint32(0), ownerAddr), new bytes[](0));
+        UpgradableMSCA msca = factory.createAccountWithValidation(addressToBytes32(ownerAddr), salt, initializingData);
+
+        ExecutionManifest memory executionManifest;
+        ManifestExecutionFunction[] memory executionFunctions = new ManifestExecutionFunction[](1);
+        executionFunctions[0] = ManifestExecutionFunction({
+            executionSelector: MockModule.testFoo.selector,
+            skipRuntimeValidation: true,
+            allowGlobalValidation: true
+        });
+        executionManifest.executionFunctions = executionFunctions;
+        ManifestExecutionHook[] memory executionHooks = new ManifestExecutionHook[](2);
+        executionHooks[0] = ManifestExecutionHook({
+            executionSelector: MockModule.testFoo.selector,
+            entityId: entityId,
+            isPreHook: true,
+            isPostHook: true
+        });
+        executionHooks[1] = ManifestExecutionHook({
+            executionSelector: IModularAccount.execute.selector,
+            entityId: entityId,
+            isPreHook: true,
+            isPostHook: false
+        });
+        executionManifest.executionHooks = executionHooks;
+
+        MockModule module = new MockModule(
+            executionManifest, SIG_VALIDATION_SUCCEEDED, true, true, bytes(""), true, SIG_VALIDATION_SUCCEEDED, true
+        );
+        vm.startPrank(address(entryPoint));
+        msca.installExecution(address(module), module.executionManifest(), "");
+
+        // verify installed
+        vm.expectEmit(true, true, true, true);
+        bytes memory callData = abi.encodePacked(MockModule.testFoo.selector);
+        emit ReceivedCall(
+            abi.encodeCall(IExecutionHookModule.preExecutionHook, (entityId, address(entryPoint), 0, callData))
+        );
+        emit ReceivedCall(callData);
+        emit ReceivedCall(abi.encodeCall(IExecutionHookModule.postExecutionHook, (entityId, bytes(""))));
+        MockModule(address(msca)).testFoo();
+
+        // installed execution function
+        ExecutionDataView memory executionDataView = msca.getExecutionData(MockModule.testFoo.selector);
+        assertEq(executionDataView.module, address(module));
+        assertEq(executionDataView.skipRuntimeValidation, true);
+        assertEq(executionDataView.allowGlobalValidation, true);
+        assertEq(executionDataView.executionHooks.length, 1);
+        assertEq(
+            HookConfig.unwrap(executionDataView.executionHooks[0]),
+            HookConfig.unwrap(HookConfigLib.packExecHook(address(module), entityId, true, true))
+        );
+
+        // non-wrapped native execution function
+        executionDataView = msca.getExecutionData(IModularAccount.executeWithRuntimeValidation.selector);
+        assertEq(executionDataView.module, address(msca));
+        assertEq(executionDataView.skipRuntimeValidation, false);
+        assertEq(executionDataView.allowGlobalValidation, true);
+        assertEq(executionDataView.executionHooks.length, 0);
+
+        // wrapped native execution function
+        executionDataView = msca.getExecutionData(IModularAccount.execute.selector);
+        assertEq(executionDataView.module, address(msca));
+        assertEq(executionDataView.skipRuntimeValidation, false);
+        assertEq(executionDataView.allowGlobalValidation, true);
+        assertEq(executionDataView.executionHooks.length, 1);
+        assertEq(
+            HookConfig.unwrap(executionDataView.executionHooks[0]),
+            HookConfig.unwrap(HookConfigLib.packExecHook(address(module), entityId, true, false))
+        );
+
+        // native view function
+        executionDataView = msca.getExecutionData(IAccount.validateUserOp.selector);
+        assertEq(executionDataView.module, address(msca));
+        assertEq(executionDataView.skipRuntimeValidation, true);
+        assertEq(executionDataView.allowGlobalValidation, false);
+        assertEq(executionDataView.executionHooks.length, 0);
     }
 
     function _installMultipleOwnerValidations() internal returns (UpgradableMSCA msca) {

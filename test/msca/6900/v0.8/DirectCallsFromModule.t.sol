@@ -98,17 +98,20 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
     /* -------------------------------------------------------------------------- */
     /*                                  Negatives                                 */
     /* -------------------------------------------------------------------------- */
-    // TODO: use test_Revert because testFail has been deprecated
-    function testFailDirectCallModuleNotInstalled() public {
+    function testDirectCallModuleNotInstalledThenRevert() public {
         vm.startPrank(address(directCallModule));
         vm.expectRevert(
-            abi.encodeWithSelector(BaseMSCA.InvalidValidationFunction.selector, IModularAccount.execute.selector)
+            abi.encodeWithSelector(
+                BaseMSCA.InvalidValidationFunction.selector,
+                IModularAccount.execute.selector,
+                ModuleEntityLib.pack(address(directCallModule), DIRECT_CALL_VALIDATION_ENTITY_ID)
+            )
         );
         msca.execute(address(0), 0, "");
         vm.stopPrank();
     }
 
-    function testFailDirectCallModuleCallOtherSelector() public {
+    function testDirectCallModuleCallOtherSelectorThenRevert() public {
         bytes4[] memory selectors = new bytes4[](1);
         selectors[0] = IModularAccount.execute.selector;
         _installDirectCallValidationPerSelector(selectors);
@@ -116,7 +119,11 @@ contract DirectCallsFromModuleTest is AccountTestUtils {
         Call[] memory calls = new Call[](0);
         vm.startPrank(address(directCallModule));
         vm.expectRevert(
-            abi.encodeWithSelector(BaseMSCA.InvalidValidationFunction.selector, IModularAccount.executeBatch.selector)
+            abi.encodeWithSelector(
+                BaseMSCA.InvalidValidationFunction.selector,
+                IModularAccount.executeBatch.selector,
+                ModuleEntityLib.pack(address(directCallModule), DIRECT_CALL_VALIDATION_ENTITY_ID)
+            )
         );
         msca.executeBatch(calls);
         vm.stopPrank();

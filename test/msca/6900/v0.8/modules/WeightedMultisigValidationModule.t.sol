@@ -42,6 +42,7 @@ import {ModuleEntityLib} from "@erc6900/reference-implementation/libraries/Modul
 import {
     AccountMetadata,
     CheckNSignaturesRequest,
+    CheckNSignaturesResponse,
     SignerMetadata,
     SignerMetadataWithId
 } from "../../../../../src/msca/6900/v0.8/modules/multisig/MultisigStructs.sol";
@@ -75,6 +76,9 @@ import {IValidationModule} from "@erc6900/reference-implementation/interfaces/IV
 import {ValidationConfigLib} from "@erc6900/reference-implementation/libraries/ValidationConfigLib.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
+import {UnauthorizedCaller} from "../../../../../src/common/Errors.sol";
+import {CheckNSignatureError} from "../../../../../src/msca/6900/v0.8/modules/multisig/MultisigEnums.sol";
+import {FCL_Elliptic_ZZ} from "@fcl/FCL_elliptic.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {stdJson} from "forge-std/src/StdJson.sol";
 import {VmSafe} from "forge-std/src/Vm.sol";
@@ -128,6 +132,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
     error InvalidNumSigsOnActualDigest(uint32 entityId, address account, uint256 numSigs);
     error Unsupported();
     error InvalidUserOpDigest(uint32 entityId, address account);
+    error InvalidPublicKey(uint256 x, uint256 y);
+    error FailToGeneratePublicKey(uint256 x, uint256 y);
+    error UnsupportedSigType(uint32 entityId, address account, uint8 sigType);
+    error InvalidAuthorizationLength(uint32 entityId, address account, uint256 length);
 
     SingleSignerValidationModule private singleSignerValidationModule;
     WeightedMultisigValidationModule private module;
@@ -141,9 +149,6 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
     // SSVM = Single Signer Validation Module
     uint32 private ecdsaSignerOneEntityIdForSSVM = uint32(1);
     ModuleEntity private ecdsaSignerOneValidationForSSVM;
-    // public key signers
-    PublicKey private pubKeySignerOne = PublicKey({x: 1, y: 1});
-    PublicKey private pubKeySignerTwo = PublicKey({x: 2, y: 2});
     IEntryPoint private entryPoint = new EntryPoint();
     bytes32 private salt = 0x0000000000000000000000000000000000000000000000000000000000000000;
     string internal constant P256_10_KEYS_FIXTURE = "/test/fixtures/p256key_11_fixture.json";
@@ -523,7 +528,8 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
         SignerMetadata memory signerMetaDataOne;
         signerMetaDataOne.weight = 1;
         signerMetaDataOne.addr = eoaSignerOneAddr;
-        signerMetaDataOne.publicKey = pubKeySignerOne;
+        signerMetaDataOne.publicKey =
+            PublicKey(passKeySignerOne.signerWallet.publicKeyX, passKeySignerOne.signerWallet.publicKeyY);
         signersMetadata[0] = signerMetaDataOne;
         vm.expectRevert(
             abi.encodeWithSelector(InvalidSignerMetadata.selector, multisigEntityId, address(msca), signerMetaDataOne)
@@ -611,6 +617,19 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
         vm.prank(address(msca));
         module.onInstall(abi.encode(multisigEntityId, signersMetadata, 1));
         vm.expectRevert(abi.encodeWithSelector(AlreadyInitialized.selector, multisigEntityId, address(msca)));
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 1));
+    }
+
+    function testFuzz_onInstallInvalidPublicKey(uint256 x, uint256 y) public {
+        vm.assume(x >= FCL_Elliptic_ZZ.p);
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](1);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.publicKey = PublicKey(x, y);
+        signersMetadata[0] = signerMetaDataOne;
+
+        vm.expectRevert(abi.encodeWithSelector(InvalidPublicKey.selector, x, y));
         vm.prank(address(msca));
         module.onInstall(abi.encode(multisigEntityId, signersMetadata, 1));
     }
@@ -821,7 +840,7 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
                 signersMetadata[i].addr = vm.addr(i + 1);
             } else {
                 signersMetadata[i].weight = i + 1;
-                signersMetadata[i].publicKey = PublicKey({x: i + 1, y: i + 1});
+                signersMetadata[i].publicKey = _generateRandomPublicKey(i + 1);
             }
             newThresholdWeight += signersMetadata[i].weight;
             if (c1 < input.signersToDelete) {
@@ -868,8 +887,9 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
                 assertEq(signersMetadataRet[i].signerMetadata.weight, i);
                 assertEq(signersMetadataRet[i].signerId, module.getSignerId(signersMetadataRet[i].signerMetadata.addr));
             } else {
-                assertEq(signersMetadataRet[i].signerMetadata.publicKey.x, i);
-                assertEq(signersMetadataRet[i].signerMetadata.publicKey.y, i);
+                PublicKey memory pubKey = _generateRandomPublicKey(i);
+                assertEq(signersMetadataRet[i].signerMetadata.publicKey.x, pubKey.x);
+                assertEq(signersMetadataRet[i].signerMetadata.publicKey.y, pubKey.y);
                 assertEq(signersMetadataRet[i].signerMetadata.weight, i);
                 assertEq(
                     signersMetadataRet[i].signerId, module.getSignerId(signersMetadataRet[i].signerMetadata.publicKey)
@@ -987,7 +1007,8 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
         signersMetadata = new SignerMetadata[](1);
         signerMetaDataOne.weight = 1;
         signerMetaDataOne.addr = eoaSignerOneAddr;
-        signerMetaDataOne.publicKey = pubKeySignerOne;
+        signerMetaDataOne.publicKey =
+            PublicKey(passKeySignerOne.signerWallet.publicKeyX, passKeySignerOne.signerWallet.publicKeyY);
         signersMetadata[0] = signerMetaDataOne;
         vm.expectRevert(
             abi.encodeWithSelector(InvalidSignerMetadata.selector, multisigEntityId, address(msca), signerMetaDataOne)
@@ -1532,9 +1553,44 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sigWithFooAppended
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, false);
-        assertEq(firstFailure, 1);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, false);
+        assertEq(response.firstFailure, 1);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.SIG_PARTS_OVERLAP));
+    }
+
+    function testCheckNSignaturesSigRevertOnTooHighV() public {
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](2);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.addr = eoaSignerOneAddr;
+        SignerMetadata memory signerMetaDataTwo;
+        signerMetaDataTwo.weight = 1;
+        signerMetaDataTwo.addr = eoaSignerTwoAddr;
+        signersMetadata[0] = signerMetaDataOne;
+        signersMetadata[1] = signerMetaDataTwo;
+        vm.prank(address(msca));
+        module.onInstall(
+            abi.encode(multisigEntityId, signersMetadata, signerMetaDataOne.weight + signerMetaDataTwo.weight)
+        );
+
+        // create a valid signature for 1st installed signer
+        bytes32 digest = module.getReplaySafeMessageHash(address(msca), bytes32(0));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(eoaSignerOnePrivateKey, digest);
+        v += 61;
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        vm.prank(address(msca));
+        CheckNSignaturesRequest memory request = CheckNSignaturesRequest({
+            entityId: multisigEntityId,
+            actualDigest: digest,
+            minimalDigest: digest,
+            requiredNumSigsOnActualDigest: 0,
+            account: address(msca),
+            signatures: sig
+        });
+        vm.expectRevert(abi.encodeWithSelector(UnsupportedSigType.selector, multisigEntityId, address(msca), 56));
+        module.checkNSignatures(request);
     }
 
     function testCheckNSignaturesWithExactlyOneSignerOnActualDigest() public {
@@ -1574,9 +1630,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, true);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, true);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.NONE));
     }
 
     function testCheckNSignaturesSignersOutOfOrder() public {
@@ -1617,9 +1674,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, false);
-        assertEq(firstFailure, 1);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, false);
+        assertEq(response.firstFailure, 1);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.SIGS_OUT_OF_ORDER));
     }
 
     // we only require 1 signature on actualDigest, but we have 2
@@ -1793,9 +1851,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, false);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, false);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.INVALID_CONTRACT_ADDRESS));
     }
 
     function testCheckNSignaturesInvalidSigOffset() public {
@@ -1905,9 +1964,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, true);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, true);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.NONE));
     }
 
     function testCheckNSignaturesTwoContractSigners() public {
@@ -1949,9 +2009,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, true);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, true);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.NONE));
     }
 
     // signer 1 puts its signature dynamic part after signer 2
@@ -2004,9 +2065,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, true);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, true);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.NONE));
     }
 
     function testCheckNSignaturesWrongContractSig() public {
@@ -2036,9 +2098,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, false);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, false);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.INVALID_SIG));
     }
 
     // positive
@@ -2147,9 +2210,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, false);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, false);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.INVALID_SIG));
     }
 
     function testCheckNSignaturesPasskeySigner() public {
@@ -2182,9 +2246,10 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
             account: address(msca),
             signatures: sig
         });
-        (bool success, uint256 firstFailure) = module.checkNSignatures(request);
-        assertEq(success, true);
-        assertEq(firstFailure, 0);
+        CheckNSignaturesResponse memory response = module.checkNSignatures(request);
+        assertEq(response.success, true);
+        assertEq(response.firstFailure, 0);
+        assertEq(uint8(response.errorCode), uint8(CheckNSignatureError.NONE));
     }
 
     // positive
@@ -2711,6 +2776,340 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
         assertEq(SIG_VALIDATION_SUCCEEDED, module.validateUserOp(multisigEntityId, userOp, fullUserOpHash));
     }
 
+    function testValidateRuntimeSenderIsAccount() public {
+        vm.prank(address(msca));
+        // sender is the same as the account
+        module.validateRuntime(address(msca), multisigEntityId, address(msca), 0, "", "");
+    }
+
+    function testValidateRuntimeSenderHasSufficientWeight() public {
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](1);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.addr = eoaSignerOne.signerWallet.addr;
+        signersMetadata[0] = signerMetaDataOne;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 1));
+        module.validateRuntime(address(msca), multisigEntityId, signerMetaDataOne.addr, 0, "", "");
+    }
+
+    function testValidateRuntimeAuthorizationTooShort() public {
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](2);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.addr = eoaSignerOneAddr;
+        SignerMetadata memory signerMetaDataTwo;
+        signerMetaDataTwo.weight = 2;
+        signerMetaDataTwo.addr = eoaSignerTwoAddr;
+        signersMetadata[0] = signerMetaDataOne;
+        signersMetadata[1] = signerMetaDataTwo;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 2));
+        vm.expectRevert(abi.encodeWithSelector(InvalidAuthorizationLength.selector, multisigEntityId, address(msca), 0));
+        module.validateRuntime(address(msca), multisigEntityId, signerMetaDataOne.addr, 0, "", "");
+    }
+
+    function testValidateRuntimeUnauthorizedCaller() public {
+        Signer[] memory signers = new Signer[](1);
+        signers[0] = eoaSignerOne;
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](1);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        // we're actually installing signer two
+        signerMetaDataOne.addr = eoaSignerTwo.signerWallet.addr;
+        signersMetadata[0] = signerMetaDataOne;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 1));
+        address sender = address(1);
+        uint256 nonce = 0;
+        vm.prank(sender);
+        bytes32 gasLimit = _encodeGasLimit(50_000);
+        bytes32 gasFees = _encodeGasFees(1, 1);
+        bytes32 wrappedDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        // signer one (wrong signer) signs
+        bytes memory authorization = abi.encode(
+            nonce,
+            gasLimit,
+            gasFees,
+            _signSigs(
+                MultisigInput({actualSigners: 1, totalSigners: 1, sigDynamicPartOffset: 0}),
+                signers,
+                wrappedDigest,
+                wrappedDigest
+            )
+        );
+        vm.expectRevert(UnauthorizedCaller.selector);
+        module.validateRuntime(address(msca), multisigEntityId, sender, 0, "", authorization);
+    }
+
+    function testValidateRuntimeNoOneSignsFullDigest() public {
+        Signer[] memory signers = new Signer[](2);
+        signers[0] = eoaSignerOne;
+        signers[1] = eoaSignerTwo;
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](2);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.addr = signers[0].signerWallet.addr;
+        SignerMetadata memory signerMetaDataTwo;
+        signerMetaDataTwo.weight = 1;
+        signerMetaDataTwo.addr = signers[1].signerWallet.addr;
+        signersMetadata[0] = signerMetaDataOne;
+        signersMetadata[1] = signerMetaDataTwo;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 2));
+        _sortSignersById(signers);
+        address sender = address(1);
+        uint256 nonce = 0;
+        vm.prank(sender);
+        bytes32 gasLimit = ZERO_BYTES32;
+        bytes32 gasFees = ZERO_BYTES32;
+        bytes32 digest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        bytes memory authorization = abi.encode(
+            nonce,
+            gasLimit,
+            gasFees,
+            _signSigs(
+                MultisigInput({actualSigners: 2, totalSigners: 2, sigDynamicPartOffset: 0}), signers, digest, digest
+            )
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IWeightedMultisigValidationModule.InvalidRuntimeDigest.selector, multisigEntityId, address(msca)
+            )
+        );
+        module.validateRuntime(address(msca), multisigEntityId, sender, 0, "", authorization);
+    }
+
+    function testValidateRuntimeEOASigner() public {
+        Signer[] memory signers = new Signer[](2);
+        signers[0] = eoaSignerOne;
+        signers[1] = eoaSignerTwo;
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](2);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.addr = signers[0].signerWallet.addr;
+        SignerMetadata memory signerMetaDataTwo;
+        signerMetaDataTwo.weight = 1;
+        signerMetaDataTwo.addr = signers[1].signerWallet.addr;
+        signersMetadata[0] = signerMetaDataOne;
+        signersMetadata[1] = signerMetaDataTwo;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 2));
+        _sortSignersById(signers);
+        address sender = address(1);
+        uint256 nonce = 0;
+        vm.prank(sender);
+        bytes32 gasLimit = _encodeGasLimit(50_000);
+        bytes32 gasFees = _encodeGasFees(1, 1);
+        bytes32 fullDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        bytes32 minimalDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: ZERO_BYTES32,
+            gasFees: ZERO_BYTES32
+        });
+        bytes memory authorization = abi.encode(
+            nonce,
+            gasLimit,
+            gasFees,
+            _signSigs(
+                MultisigInput({actualSigners: 2, totalSigners: 2, sigDynamicPartOffset: 0}),
+                signers,
+                fullDigest,
+                minimalDigest
+            )
+        );
+        module.validateRuntime(address(msca), multisigEntityId, sender, 0, "", authorization);
+    }
+
+    function testValidateRuntimeContractSigner() public {
+        Signer[] memory signers = new Signer[](2);
+        signers[0] = contractSignerOne;
+        signers[1] = contractSignerTwo;
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](2);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.addr = signers[0].contractAddr;
+        SignerMetadata memory signerMetaDataTwo;
+        signerMetaDataTwo.weight = 1;
+        signerMetaDataTwo.addr = signers[1].contractAddr;
+        signersMetadata[0] = signerMetaDataOne;
+        signersMetadata[1] = signerMetaDataTwo;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 2));
+        _sortSignersById(signers);
+        address sender = address(1);
+        uint256 nonce = 0;
+        vm.prank(sender);
+        bytes32 gasLimit = _encodeGasLimit(50_000);
+        bytes32 gasFees = _encodeGasFees(1, 1);
+        bytes32 fullDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        bytes32 minimalDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: ZERO_BYTES32,
+            gasFees: ZERO_BYTES32
+        });
+        bytes memory authorization = abi.encode(
+            nonce,
+            gasLimit,
+            gasFees,
+            _signSigs(
+                MultisigInput({actualSigners: 2, totalSigners: 2, sigDynamicPartOffset: 0}),
+                signers,
+                fullDigest,
+                minimalDigest
+            )
+        );
+        module.validateRuntime(address(msca), multisigEntityId, sender, 0, "", authorization);
+    }
+
+    function testValidateRuntimePasskeySigner() public {
+        Signer[] memory signers = new Signer[](2);
+        signers[0] = passKeySignerOne;
+        signers[1] = passKeySignerTwo;
+        SignerMetadata[] memory signersMetadata = new SignerMetadata[](2);
+        SignerMetadata memory signerMetaDataOne;
+        signerMetaDataOne.weight = 1;
+        signerMetaDataOne.publicKey =
+            PublicKey({x: signers[0].signerWallet.publicKeyX, y: signers[0].signerWallet.publicKeyY});
+        SignerMetadata memory signerMetaDataTwo;
+        signerMetaDataTwo.weight = 1;
+        signerMetaDataTwo.publicKey =
+            PublicKey({x: signers[1].signerWallet.publicKeyX, y: signers[1].signerWallet.publicKeyY});
+        signersMetadata[0] = signerMetaDataOne;
+        signersMetadata[1] = signerMetaDataTwo;
+        vm.prank(address(msca));
+        module.onInstall(abi.encode(multisigEntityId, signersMetadata, 2));
+        _sortSignersById(signers);
+        address sender = address(1);
+        uint256 nonce = 0;
+        vm.prank(sender);
+        bytes32 gasLimit = _encodeGasLimit(50_000);
+        bytes32 gasFees = _encodeGasFees(1, 1);
+        bytes32 fullDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        bytes32 minimalDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: "",
+            nonce: nonce,
+            value: 0,
+            gasLimit: ZERO_BYTES32,
+            gasFees: ZERO_BYTES32
+        });
+        bytes memory authorization = abi.encode(
+            nonce,
+            gasLimit,
+            gasFees,
+            _signSigs(
+                MultisigInput({actualSigners: 2, totalSigners: 2, sigDynamicPartOffset: 0}),
+                signers,
+                fullDigest,
+                minimalDigest
+            )
+        );
+        module.validateRuntime(address(msca), multisigEntityId, sender, 0, "", authorization);
+    }
+
+    function testFuzz_validateRuntimeMixedSigTypes(
+        MultisigInput memory input,
+        address sender,
+        bytes calldata data,
+        uint256 nonce
+    ) public {
+        // Ensure 1 < totalSigners <= 10
+        input.totalSigners %= 11;
+        vm.assume(input.totalSigners > 0);
+        // Ensure 1 < actualSigners < totalSigners
+        input.actualSigners %= 11;
+        input.actualSigners %= input.totalSigners;
+        vm.assume(input.actualSigners > 0);
+        input.sigDynamicPartOffset = 0;
+        vm.prank(address(msca));
+        Signer[] memory signers = _installSignersOfMixedTypes(input);
+        _sortSignersById(signers);
+        vm.prank(sender);
+        bytes32 gasLimit = _encodeGasLimit(50_000);
+        bytes32 gasFees = _encodeGasFees(1, 1);
+        bytes32 fullDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: data,
+            nonce: nonce,
+            value: 0,
+            gasLimit: gasLimit,
+            gasFees: gasFees
+        });
+        bytes32 minimalDigest = module.getReplaySafeHashForRuntimeValidation({
+            account: address(msca),
+            entityId: multisigEntityId,
+            sender: sender,
+            data: data,
+            nonce: nonce,
+            value: 0,
+            gasLimit: ZERO_BYTES32,
+            gasFees: ZERO_BYTES32
+        });
+        bytes memory authorization =
+            abi.encode(nonce, gasLimit, gasFees, _signSigs(input, signers, fullDigest, minimalDigest));
+        module.validateRuntime(address(msca), multisigEntityId, sender, 0, data, authorization);
+    }
+
     function _signSigs(MultisigInput memory input, Signer[] memory signers, bytes32 fullDigest, bytes32 minimalDigest)
         internal
         pure
@@ -2966,5 +3365,26 @@ contract WeightedMultisigValidationModuleTest is AccountTestUtils {
         vm.prank(address(msca));
         module.onInstall(abi.encode(multisigEntityId, signersMetadata, input.actualSigners));
         return signers;
+    }
+
+    function _generateRandomPublicKey(uint256 randomScalar) internal view returns (PublicKey memory) {
+        (uint256 x, uint256 y) = _generateRandomPoint(randomScalar);
+        return PublicKey(x, y);
+    }
+
+    // Generate a random point on secp256r1
+    function _generateRandomPoint(uint256 randomScalar) internal view returns (uint256 x, uint256 y) {
+        if (randomScalar == 0 || randomScalar >= FCL_Elliptic_ZZ.n) {
+            // as multiplication with 0 always results in the neutral point (not a valid public key)
+            randomScalar = 1;
+        }
+        // Perform scalar multiplication (k * G)
+        (x, y) = FCL_Elliptic_ZZ.ecZZ_mulmuladd(FCL_Elliptic_ZZ.gx, FCL_Elliptic_ZZ.gy, randomScalar, 0); // Q = (Gx,
+            // Gy), scalar_u = k
+        if (FCL_Elliptic_ZZ.ecAff_isOnCurve(x, y)) {
+            return (x, y);
+        } else {
+            revert FailToGeneratePublicKey(x, y);
+        }
     }
 }

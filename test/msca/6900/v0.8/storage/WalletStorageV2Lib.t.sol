@@ -18,14 +18,13 @@
  */
 pragma solidity 0.8.24;
 
+import {WalletStorageV2Lib} from "../../../../../src/msca/6900/v0.8/libs/WalletStorageV2Lib.sol";
 import {TestUtils} from "../../../../util/TestUtils.sol";
-import {console} from "forge-std/src/console.sol";
 
 contract WalletStorageLibTest is TestUtils {
     function testWalletStorageSlot() public pure {
-        bytes32 hash = keccak256(abi.encode(uint256(keccak256(abi.encode("circle.msca.v0_8.storage"))) - 1));
-        console.logString("hash: ");
-        console.logBytes32(hash);
-        assertEq(hash, 0x45b8c59e88d59f48fa992cc87612124331f3e8b18f76fa4c146925e98c37c228);
+        bytes32 hash = keccak256(abi.encode(uint256(keccak256("circle.msca.v2.storage")) - 1));
+        bytes32 alignedHash = hash & ~bytes32(uint256(0xff));
+        assertEq(alignedHash, WalletStorageV2Lib.WALLET_STORAGE_SLOT);
     }
 }

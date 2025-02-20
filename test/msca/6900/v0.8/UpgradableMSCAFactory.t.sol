@@ -36,7 +36,6 @@ import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-// TODO: move it to createAccountWithValidation when it's added to the UpgradableMSCAFactory
 contract UpgradableMSCAFactoryTest is AccountTestUtils {
     using ModuleEntityLib for ModuleEntity;
 
@@ -266,17 +265,31 @@ contract UpgradableMSCAFactoryTest is AccountTestUtils {
         }
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testEncodeAndDecodeFactoryWithInvalidPaddedInput() public {
         bytes memory result = hex"7109709ECfa91a80626fF3989D68f67F5b1DD12D";
         vm.expectRevert();
         abi.decode(result, (address[], bytes32[], bytes[]));
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testEncodeAndDecodeFactoryWithMaliciousBytes() public {
         // valid input with extra malicious bytes "12" in the beginning
         bytes memory result =
             hex"12000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000001200000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c7183455a4c133ae270771860664b6b7ec320bb1000000000000000000000000a0cb889707d426a7a386870a03bc70d1b069759800000000000000000000000000000000000000000000000000000000000000021fb17bac7936d72e95b49501e9c8757384ffae4690113008f5bd3ecf2de5750ed892482cc7e665eca1d358d318d38aa3a63c10247d473d04fc3538f4069ce4ae00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000200000000000000000000000001924ea847b70baedb7e066e092912d89ca8c654a0000000000000000000000000000000000000000000000000000000000000000";
         vm.expectRevert();
         abi.decode(result, (address[], bytes32[], bytes[]));
+    }
+
+    function testRenounceFactoryOwnershipIsDisabled() public {
+        address[] memory _modules = new address[](1);
+        _modules[0] = address(0);
+        bool[] memory _permissions = new bool[](1);
+        _permissions[0] = true;
+        vm.startPrank(factoryOwner);
+        bytes4 errorSelector = bytes4(keccak256("Unsupported()"));
+        vm.expectRevert(abi.encodeWithSelector(errorSelector));
+        factory.renounceOwnership();
+        vm.stopPrank();
     }
 }

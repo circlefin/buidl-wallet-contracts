@@ -86,7 +86,7 @@ contract UpgradableMSCA is BaseMSCA, DefaultCallbackHandler, UUPSUpgradeable {
         payable
         override
         onlyProxy
-        validateNativeFunction
+        wrapNativeExecutionFunction
     {
         super.upgradeToAndCall(newImplementation, data);
     }

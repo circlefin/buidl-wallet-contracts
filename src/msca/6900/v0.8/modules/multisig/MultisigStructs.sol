@@ -19,6 +19,7 @@
 pragma solidity 0.8.24;
 
 import {PublicKey} from "../../../../../common/CommonStructs.sol";
+import {CheckNSignatureError} from "./MultisigEnums.sol";
 
 /// @notice We either store public key or address but not both for the convenience of lookup.
 /// @param weight, weightage on each signer
@@ -73,10 +74,15 @@ struct CheckNSignaturesContext {
     uint256 lowestSigDynamicPartOffset;
     bytes30 lastSigner;
     bytes30 currentSigner;
-    bool success;
-    uint256 firstFailure;
     // first32Bytes of signature constant part
     bytes32 first32Bytes;
     // second32Bytes of signature constant part
     bytes32 second32Bytes;
+}
+
+/// @notice Response for verifying signatures.
+struct CheckNSignaturesResponse {
+    bool success;
+    CheckNSignatureError errorCode;
+    uint256 firstFailure;
 }

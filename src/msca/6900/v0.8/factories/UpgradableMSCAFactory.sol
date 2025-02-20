@@ -18,7 +18,7 @@
  */
 pragma solidity 0.8.24;
 
-import {InvalidLength} from "../../../../common/Errors.sol";
+import {InvalidLength, Unsupported} from "../../../../common/Errors.sol";
 import {Create2FailedDeployment} from "../../shared/common/Errors.sol";
 import {UpgradableMSCA} from "../account/UpgradableMSCA.sol";
 
@@ -141,6 +141,11 @@ contract UpgradableMSCAFactory is Ownable2Step {
      */
     function withdrawStake(address payable _withdrawAddress) public onlyOwner {
         ENTRY_POINT.withdrawStake(_withdrawAddress);
+    }
+
+    /// @notice Disable renouncing ownership.
+    function renounceOwnership() public view override onlyOwner {
+        revert Unsupported();
     }
 
     function _getAddressWithValidation(

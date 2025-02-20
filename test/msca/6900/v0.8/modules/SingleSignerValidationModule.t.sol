@@ -49,7 +49,16 @@ import {EIP1271_INVALID_SIGNATURE, EIP1271_VALID_SIGNATURE} from "../../../../..
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
+import {IAccountExecute} from "@account-abstraction/contracts/interfaces/IAccountExecute.sol";
+import {IModularAccountView} from "@erc6900/reference-implementation/interfaces/IModularAccountView.sol";
+import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {IERC777Recipient} from "@openzeppelin/contracts/interfaces/IERC777Recipient.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {console} from "forge-std/src/console.sol";
 
 contract SingleSignerValidationModuleTest is AccountTestUtils {
@@ -149,42 +158,47 @@ contract SingleSignerValidationModuleTest is AccountTestUtils {
         assertEq(executionData.allowGlobalValidation, false);
         assertEq(executionData.executionHooks.length, 0);
 
-        // execute function
-        executionData = msca1.getExecutionData(IModularAccount.execute.selector);
-        assertEq(executionData.module, address(msca1));
-        assertEq(executionData.skipRuntimeValidation, false);
-        assertEq(executionData.allowGlobalValidation, true);
-        assertEq(executionData.executionHooks.length, 0);
+        // native execute functions
+        _verifyNativeExecutionFunction(IModularAccount.execute.selector);
+        _verifyNativeExecutionFunction(IModularAccount.executeBatch.selector);
+        _verifyNativeExecutionFunction(IModularAccount.installExecution.selector);
+        _verifyNativeExecutionFunction(IModularAccount.uninstallExecution.selector);
+        _verifyNativeExecutionFunction(UUPSUpgradeable.upgradeToAndCall.selector);
+        _verifyNativeExecutionFunction(IModularAccount.installValidation.selector);
+        _verifyNativeExecutionFunction(IModularAccount.uninstallValidation.selector);
+        _verifyNativeExecutionFunction(IAccountExecute.executeUserOp.selector);
+        _verifyNativeExecutionFunction(IModularAccount.executeWithRuntimeValidation.selector);
 
-        // executeBatch function
-        executionData = msca1.getExecutionData(IModularAccount.executeBatch.selector);
-        assertEq(executionData.module, address(msca1));
-        assertEq(executionData.skipRuntimeValidation, false);
-        assertEq(executionData.allowGlobalValidation, true);
-        assertEq(executionData.executionHooks.length, 0);
-
-        // installExecution function
-        executionData = msca1.getExecutionData(IModularAccount.installExecution.selector);
-        assertEq(executionData.module, address(msca1));
-        assertEq(executionData.skipRuntimeValidation, false);
-        assertEq(executionData.allowGlobalValidation, true);
-        assertEq(executionData.executionHooks.length, 0);
-
-        // uninstallExecution function
-        executionData = msca1.getExecutionData(IModularAccount.uninstallExecution.selector);
-        assertEq(executionData.module, address(msca1));
-        assertEq(executionData.skipRuntimeValidation, false);
-        assertEq(executionData.allowGlobalValidation, true);
-        assertEq(executionData.executionHooks.length, 0);
-
-        // upgradeToAndCall function
-        executionData = msca1.getExecutionData(UUPSUpgradeable.upgradeToAndCall.selector);
-        assertEq(executionData.module, address(msca1));
-        assertEq(executionData.skipRuntimeValidation, false);
-        assertEq(executionData.allowGlobalValidation, true);
-        assertEq(executionData.executionHooks.length, 0);
+        // native view functions
+        _verifyNativeViewFunction(BaseMSCA.entryPoint.selector);
+        _verifyNativeViewFunction(IModularAccount.accountId.selector);
+        _verifyNativeViewFunction(UUPSUpgradeable.proxiableUUID.selector);
+        _verifyNativeViewFunction(IModularAccountView.getExecutionData.selector);
+        _verifyNativeViewFunction(IModularAccountView.getValidationData.selector);
+        _verifyNativeViewFunction(IAccount.validateUserOp.selector);
+        _verifyNativeViewFunction(IERC165.supportsInterface.selector);
+        _verifyNativeViewFunction(IERC1271.isValidSignature.selector);
+        _verifyNativeViewFunction(IERC1155Receiver.onERC1155BatchReceived.selector);
+        _verifyNativeViewFunction(IERC1155Receiver.onERC1155Received.selector);
+        _verifyNativeViewFunction(IERC721Receiver.onERC721Received.selector);
+        _verifyNativeViewFunction(IERC777Recipient.tokensReceived.selector);
 
         assertEq(singleSignerValidationModule.moduleId(), "circle.single-signer-validation-module.1.0.0");
+    }
+
+    function _verifyNativeViewFunction(bytes4 selector) internal view {
+        ExecutionDataView memory executionData = msca1.getExecutionData(selector);
+        assertEq(executionData.module, address(msca1));
+        assertEq(executionData.skipRuntimeValidation, true);
+        assertEq(executionData.allowGlobalValidation, false);
+    }
+
+    function _verifyNativeExecutionFunction(bytes4 selector) internal view {
+        ExecutionDataView memory executionData = msca1.getExecutionData(selector);
+        assertEq(executionData.module, address(msca1));
+        assertEq(executionData.skipRuntimeValidation, false);
+        assertEq(executionData.allowGlobalValidation, true);
+        assertEq(executionData.executionHooks.length, 0);
     }
 
     /// fail because transferSigner was not installed in validation module
