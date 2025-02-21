@@ -9,5 +9,5 @@ RUN cd go-ethereum && env GOBIN= go install ./cmd/abigen
 # copy contract bytecode & ABI generate by forge to container
 ADD ./out /root/buidl-wallet-contracts
 
-# copy detination folder to container for volume mounting
+# copy destination folder to container for volume mounting
 ADD ./abigen /root/buidl-wallet-contracts
