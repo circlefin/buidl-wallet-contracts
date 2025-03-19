@@ -20,7 +20,7 @@ pragma solidity 0.8.24;
 
 import {UpgradableMSCAFactory} from "../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
 
-import {UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./100_Constants.sol";
+import {Constants, UPGRADABLE_MSCA_FACTORY_ADDRESS} from "./100_Constants.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract StakeUpgradableMSCAFactory is Script {
@@ -30,10 +30,10 @@ contract StakeUpgradableMSCAFactory is Script {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         uint32 unstakeDelaySec = 1 * 24 * 60 * 60; // 1 day
+        string[4] memory chains = Constants.getChainsForSetup();
 
-        // NOTE: Please adjust the chain list based on the chain expansion needs, and configure stake value based on
-        // minimums from https://docs.alchemy.com/docs/bundler-services#minimum-stake
-        string[4] memory chains = ["base", "op", "base-sepolia", "op-sepolia"];
+        // NOTE: Please configure stake value based on minimums from
+        // https://docs.alchemy.com/docs/bundler-services#minimum-stake
         uint64[4] memory stakeValue = [0.1 ether, 0.1 ether, 0.1 ether, 0.1 ether];
 
         // Set plugins for factory
