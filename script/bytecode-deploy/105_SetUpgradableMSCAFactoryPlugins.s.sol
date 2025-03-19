@@ -21,7 +21,6 @@ pragma solidity 0.8.24;
 import {UpgradableMSCAFactory} from "../../src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol";
 import {
     COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS,
-    Constants,
     UPGRADABLE_MSCA_FACTORY_ADDRESS,
     WEIGHTED_MULTISIG_PLUGIN_ADDRESS
 } from "./100_Constants.sol";
@@ -45,8 +44,10 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
             pluginPermissions[i] = true;
         }
 
+        // NOTE: Please adjust the chain list based on the chain expansion needs.
+        string[4] memory chains = ["base", "op", "base-sepolia", "op-sepolia"];
+
         // Set plugins for factory
-        string[8] memory chains = Constants.getChains();
         for (uint256 i = 0; i < chains.length; i++) {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
