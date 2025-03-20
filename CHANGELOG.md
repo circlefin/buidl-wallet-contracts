@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.2.0...v2.3.0) (2025-03-20)
+
+
+### Features
+
+* Deploy UpgradableMSCAFactory to base & op ([#74](https://github.com/circlefin/buidl-wallet-contracts/issues/74)) ([56c37c9](https://github.com/circlefin/buidl-wallet-contracts/commit/56c37c9091d12f46555af8b9826be04113adc71a))
+
 ## [2.2.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.2...v2.2.0) (2025-02-20)
 
 
