@@ -18,16 +18,13 @@
  */
 pragma solidity 0.8.24;
 
-import {
-    Constants,
-    PLUGIN_MANAGER_EP06_ADDRESS,
-    DETERMINISTIC_DEPLOYMENT_FACTORY
-} from "./100_Constants.sol";
+import {Constants, DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_EP06_ADDRESS} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
     address internal constant EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS = PLUGIN_MANAGER_EP06_ADDRESS;
+
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         string[12] memory chains = Constants.getChains();
@@ -53,7 +50,11 @@ contract DeployPluginManagerScript is Script {
 
                 console.log("Deployed PluginManagerEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
             } else {
-                console.log("Found existing PluginManagerEPv06 at expected address: %s on %s", EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS, chains[i]);
+                console.log(
+                    "Found existing PluginManagerEPv06 at expected address: %s on %s",
+                    EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS,
+                    chains[i]
+                );
             }
             vm.stopBroadcast();
         }
