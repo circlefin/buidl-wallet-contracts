@@ -20,10 +20,10 @@ pragma solidity 0.8.24;
 
 import {
     Constants,
+    DETERMINISTIC_DEPLOYMENT_FACTORY,
     ENTRY_POINT_V06,
     PLUGIN_MANAGER_EP06_ADDRESS,
-    SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS,
-    DETERMINISTIC_DEPLOYMENT_FACTORY
+    SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS
 } from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
@@ -31,6 +31,7 @@ import {Script, console} from "forge-std/src/Script.sol";
 contract DeployPluginManagerScript is Script {
     address internal constant PLUGIN_MANAGER_EP06 = PLUGIN_MANAGER_EP06_ADDRESS;
     address internal constant EXPECTED_SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS = SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS;
+
     function run() public {
         address entryPoint = ENTRY_POINT_V06;
 
@@ -42,12 +43,13 @@ contract DeployPluginManagerScript is Script {
 
             if (EXPECTED_SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/SingleOwnerMSCAFactoryEPv06.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/SingleOwnerMSCAFactoryEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
                 bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-                bytes memory args = abi.encode( entryPoint, PLUGIN_MANAGER_EP06);
+                bytes memory args = abi.encode(entryPoint, PLUGIN_MANAGER_EP06);
                 bytes memory callData = abi.encodePacked(salt, creationCode, args);
 
                 // solhint-disable-next-line avoid-low-level-calls
@@ -57,9 +59,15 @@ contract DeployPluginManagerScript is Script {
                     revert DeployFailed();
                 }
 
-                console.log("Deployed SingleOwnerMSCAFactoryEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
+                console.log(
+                    "Deployed SingleOwnerMSCAFactoryEPv06 at address: %s on %s", address(bytes20(result)), chains[i]
+                );
             } else {
-                console.log("Found existing SingleOwnerMSCAFactoryEPv06 at expected address: %s on %s", EXPECTED_SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS, chains[i]);
+                console.log(
+                    "Found existing SingleOwnerMSCAFactoryEPv06 at expected address: %s on %s",
+                    EXPECTED_SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS,
+                    chains[i]
+                );
             }
             vm.stopBroadcast();
         }
