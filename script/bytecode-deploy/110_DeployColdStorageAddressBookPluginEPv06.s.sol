@@ -19,8 +19,8 @@
 pragma solidity 0.8.24;
 
 import {
-    Constants,
     COLD_STORAGE_ADDRESS_BOOK_PLUGIN_EP06_ADDRESS,
+    Constants,
     DETERMINISTIC_DEPLOYMENT_FACTORY
 } from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
@@ -28,6 +28,7 @@ import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeployPluginManagerScript is Script {
     address internal constant EXPECTED_PLUGIN_ADDRESS = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_EP06_ADDRESS;
+
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         string[12] memory chains = Constants.getChains();
@@ -37,7 +38,8 @@ contract DeployPluginManagerScript is Script {
 
             if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPluginEPv06.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPluginEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
@@ -51,9 +53,17 @@ contract DeployPluginManagerScript is Script {
                     revert DeployFailed();
                 }
 
-                console.log("Deployed ColdStorageAddressBookPluginEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
+                console.log(
+                    "Deployed ColdStorageAddressBookPluginEPv06 at address: %s on %s",
+                    address(bytes20(result)),
+                    chains[i]
+                );
             } else {
-                console.log("Found existing ColdStorageAddressBookPluginEPv06 at expected address: %s on %s", EXPECTED_PLUGIN_ADDRESS, chains[i]);
+                console.log(
+                    "Found existing ColdStorageAddressBookPluginEPv06 at expected address: %s on %s",
+                    EXPECTED_PLUGIN_ADDRESS,
+                    chains[i]
+                );
             }
             vm.stopBroadcast();
         }

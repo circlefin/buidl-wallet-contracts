@@ -20,13 +20,13 @@ pragma solidity 0.8.24;
 
 import {
     Constants,
+    DETERMINISTIC_DEPLOYMENT_FACTORY,
     ENTRY_POINT_V06,
-    SPONSOR_PAYMASTER_EP06_TEMP_OWNER,
-    SPONSOR_PAYMASTER_EP06_TEMP_SIGNER,
+    SPONSOR_PAYMASTER_EP06_ADDRESS,
     SPONSOR_PAYMASTER_EP06_IMPL_ADDRESS,
     SPONSOR_PAYMASTER_EP06_INTERNAL_ADDRESS,
-    SPONSOR_PAYMASTER_EP06_ADDRESS,
-    DETERMINISTIC_DEPLOYMENT_FACTORY
+    SPONSOR_PAYMASTER_EP06_TEMP_OWNER,
+    SPONSOR_PAYMASTER_EP06_TEMP_SIGNER
 } from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
@@ -48,7 +48,8 @@ contract DeployPluginManagerScript is Script {
             // Step 1: Deploying Implementation
             if (EXPECTED_PAYMASTER_IMPL_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterImplementationEPv06.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterImplementationEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
@@ -63,27 +64,34 @@ contract DeployPluginManagerScript is Script {
                     revert DeployFailed();
                 }
 
-                console.log("Deployed SponsorPaymasterImplementationEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
+                console.log(
+                    "Deployed SponsorPaymasterImplementationEPv06 at address: %s on %s",
+                    address(bytes20(result)),
+                    chains[i]
+                );
             } else {
-                console.log("Found existing SponsorPaymasterImplementationEPv06 at expected address: %s on %s", EXPECTED_PAYMASTER_IMPL_ADDRESS, chains[i]);
+                console.log(
+                    "Found existing SponsorPaymasterImplementationEPv06 at expected address: %s on %s",
+                    EXPECTED_PAYMASTER_IMPL_ADDRESS,
+                    chains[i]
+                );
             }
 
             // Step 2: Deploying Proxy for Internal
             if (EXPECTED_PAYMASTER_INTERNAL_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxyEPv06.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxyEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
                 bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-                
+
                 // Properly encode the initialization data
                 bytes memory initData = abi.encodeWithSignature(
-                    "initialize(address,address)",
-                    SPONSOR_PAYMASTER_EP06_TEMP_OWNER,
-                    SPONSOR_PAYMASTER_EP06_TEMP_SIGNER
+                    "initialize(address,address)", SPONSOR_PAYMASTER_EP06_TEMP_OWNER, SPONSOR_PAYMASTER_EP06_TEMP_SIGNER
                 );
-                
+
                 bytes memory args = abi.encode(EXPECTED_PAYMASTER_IMPL_ADDRESS, initData);
                 bytes memory callData = abi.encodePacked(salt, creationCode, args);
 
@@ -94,20 +102,36 @@ contract DeployPluginManagerScript is Script {
                     revert DeployFailed();
                 }
 
-                console.log("Deployed internal SponsorPaymasterProxyEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
+                console.log(
+                    "Deployed internal SponsorPaymasterProxyEPv06 at address: %s on %s",
+                    address(bytes20(result)),
+                    chains[i]
+                );
             } else {
-                console.log("Found existing internal SponsorPaymasterProxyEPv06 at expected address: %s on %s", EXPECTED_PAYMASTER_INTERNAL_ADDRESS, chains[i]);
+                console.log(
+                    "Found existing internal SponsorPaymasterProxyEPv06 at expected address: %s on %s",
+                    EXPECTED_PAYMASTER_INTERNAL_ADDRESS,
+                    chains[i]
+                );
             }
 
             // Step 3: Deploying Proxy
             if (EXPECTED_PAYMASTER_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxyEPv06.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxyEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
                 bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-                bytes memory args = abi.encode(EXPECTED_PAYMASTER_IMPL_ADDRESS, abi.encodeWithSignature("initialize(address,address)",SPONSOR_PAYMASTER_EP06_TEMP_OWNER, SPONSOR_PAYMASTER_EP06_TEMP_OWNER));
+                bytes memory args = abi.encode(
+                    EXPECTED_PAYMASTER_IMPL_ADDRESS,
+                    abi.encodeWithSignature(
+                        "initialize(address,address)",
+                        SPONSOR_PAYMASTER_EP06_TEMP_OWNER,
+                        SPONSOR_PAYMASTER_EP06_TEMP_OWNER
+                    )
+                );
                 bytes memory callData = abi.encodePacked(salt, creationCode, args);
 
                 // solhint-disable-next-line avoid-low-level-calls
@@ -117,9 +141,15 @@ contract DeployPluginManagerScript is Script {
                     revert DeployFailed();
                 }
 
-                console.log("Deployed SponsorPaymasterProxyEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
+                console.log(
+                    "Deployed SponsorPaymasterProxyEPv06 at address: %s on %s", address(bytes20(result)), chains[i]
+                );
             } else {
-                console.log("Found existing SponsorPaymasterProxyEPv06 at expected address: %s on %s", EXPECTED_PAYMASTER_ADDRESS, chains[i]);
+                console.log(
+                    "Found existing SponsorPaymasterProxyEPv06 at expected address: %s on %s",
+                    EXPECTED_PAYMASTER_ADDRESS,
+                    chains[i]
+                );
             }
             vm.stopBroadcast();
         }
