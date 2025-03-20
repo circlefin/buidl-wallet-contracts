@@ -28,7 +28,26 @@ address constant COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS = 0x0000000d81083B16EA
 address constant WEIGHTED_MULTISIG_PLUGIN_ADDRESS = 0x0000000C984AFf541D6cE86Bb697e68ec57873C8;
 
 library Constants {
-    function getChains() internal pure returns (string[8] memory) {
-        return ["mainnet", "sepolia", "polygon", "amoy", "arbitrum", "arb-sepolia", "uni-sepolia", "unichain"];
+    function getChains() internal pure returns (string[12] memory) {
+        return [
+            "mainnet",
+            "sepolia",
+            "polygon",
+            "amoy",
+            "arbitrum",
+            "arb-sepolia",
+            "uni-sepolia",
+            "unichain",
+            "base-sepolia",
+            "base",
+            "op-sepolia",
+            "op"
+        ];
+    }
+
+    // A list of chains that need to run setup work after deployment. Please adjust the list based on the chain
+    // expansion needs.
+    function getChainsForSetup() internal pure returns (string[4] memory) {
+        return ["base-sepolia", "base", "op-sepolia", "op"];
     }
 }

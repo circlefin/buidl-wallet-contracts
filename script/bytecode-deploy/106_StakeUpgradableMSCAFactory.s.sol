@@ -26,17 +26,17 @@ import {Script, console} from "forge-std/src/Script.sol";
 contract StakeUpgradableMSCAFactory is Script {
     address payable internal constant EXPECTED_FACTORY_ADDRESS = payable(UPGRADABLE_MSCA_FACTORY_ADDRESS);
 
-    // Configure stake (using minimums from https://docs.alchemy.com/docs/bundler-services#minimum-stake)
-    uint256[8] internal stakeValue =
-        [0.1 ether, 0.1 ether, 100 ether, 10 ether, 0.1 ether, 0.1 ether, 0.1 ether, 0.1 ether];
-
     function run() public {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         uint32 unstakeDelaySec = 1 * 24 * 60 * 60; // 1 day
+        string[4] memory chains = Constants.getChainsForSetup();
+
+        // NOTE: Please configure stake value based on minimums from
+        // https://docs.alchemy.com/docs/bundler-services#minimum-stake
+        uint64[4] memory stakeValue = [0.1 ether, 0.1 ether, 0.1 ether, 0.1 ether];
 
         // Set plugins for factory
-        string[8] memory chains = Constants.getChains();
         for (uint256 i = 0; i < chains.length; i++) {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);

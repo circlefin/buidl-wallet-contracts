@@ -36,7 +36,7 @@ contract DeployWeightedWebauthnMultiSigPluginScript is Script {
         address entryPoint = ENTRY_POINT;
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        string[8] memory chains = Constants.getChains();
+        string[12] memory chains = Constants.getChains();
         for (uint256 i = 0; i < chains.length; i++) {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);

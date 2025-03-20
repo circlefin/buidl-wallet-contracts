@@ -45,8 +45,9 @@ contract SetUpgradableMSCAFactoryPlugins is Script {
             pluginPermissions[i] = true;
         }
 
+        string[4] memory chains = Constants.getChainsForSetup();
+
         // Set plugins for factory
-        string[8] memory chains = Constants.getChains();
         for (uint256 i = 0; i < chains.length; i++) {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
