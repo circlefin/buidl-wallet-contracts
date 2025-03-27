@@ -65,9 +65,7 @@ contract DeploySponsorPaymasterScript is Script {
                 }
 
                 console.log(
-                    "Deployed SponsorPaymasterImplementation at address: %s on %s",
-                    address(bytes20(result)),
-                    chains[i]
+                    "Deployed SponsorPaymasterImplementation at address: %s on %s", address(bytes20(result)), chains[i]
                 );
             } else {
                 console.log(
@@ -103,9 +101,7 @@ contract DeploySponsorPaymasterScript is Script {
                 }
 
                 console.log(
-                    "Deployed internal SponsorPaymasterProxy at address: %s on %s",
-                    address(bytes20(result)),
-                    chains[i]
+                    "Deployed internal SponsorPaymasterProxy at address: %s on %s", address(bytes20(result)), chains[i]
                 );
             } else {
                 console.log(
