@@ -134,7 +134,7 @@ Deploy, setup and verify SponsorPaymaster compatible with ERC-4337 v0.7.
 
 #### Run deploy command
     1. Replace the placeholders and run the command in `script/cmd/DeploySponsorPaymaster`.
-    2. Replace the placeholders and run the command in `script/cmd/DeploySponsorPaymaster`.
+    2. Replace the placeholders and run the command in `script/cmd/DeploySponsorPaymasterProxy`.
 
 #### Setup SponsorPaymaster
 

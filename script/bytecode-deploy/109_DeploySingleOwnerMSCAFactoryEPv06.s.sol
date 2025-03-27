@@ -28,7 +28,7 @@ import {
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeployPluginManagerScript is Script {
+contract DeploySingleOwnerMSCAFactoryEPv06Script is Script {
     address internal constant PLUGIN_MANAGER_EP06 = PLUGIN_MANAGER_EP06_ADDRESS;
     address internal constant EXPECTED_SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS = SINGLEOWNER_MSCA_FACTORY_EP06_ADDRESS;
 
