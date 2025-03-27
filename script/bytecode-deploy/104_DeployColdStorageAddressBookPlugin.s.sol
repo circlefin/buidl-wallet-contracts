@@ -24,7 +24,7 @@ import {
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeployColdStorageAddressBookPluginEPv06Script is Script {
+contract DeployColdStorageAddressBookPluginScript is Script {
     address internal constant EXPECTED_PLUGIN_ADDRESS = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
 
     function run() public {

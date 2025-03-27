@@ -65,13 +65,13 @@ contract DeploySponsorPaymasterScript is Script {
                 }
 
                 console.log(
-                    "Deployed SponsorPaymasterImplementationEPv06 at address: %s on %s",
+                    "Deployed SponsorPaymasterImplementation at address: %s on %s",
                     address(bytes20(result)),
                     chains[i]
                 );
             } else {
                 console.log(
-                    "Found existing SponsorPaymasterImplementationEPv06 at expected address: %s on %s",
+                    "Found existing SponsorPaymasterImplementation at expected address: %s on %s",
                     EXPECTED_PAYMASTER_IMPL_ADDRESS,
                     chains[i]
                 );
@@ -103,13 +103,13 @@ contract DeploySponsorPaymasterScript is Script {
                 }
 
                 console.log(
-                    "Deployed internal SponsorPaymasterProxyEPv06 at address: %s on %s",
+                    "Deployed internal SponsorPaymasterProxy at address: %s on %s",
                     address(bytes20(result)),
                     chains[i]
                 );
             } else {
                 console.log(
-                    "Found existing internal SponsorPaymasterProxyEPv06 at expected address: %s on %s",
+                    "Found existing internal SponsorPaymasterProxy at expected address: %s on %s",
                     EXPECTED_PAYMASTER_INTERNAL_ADDRESS,
                     chains[i]
                 );
