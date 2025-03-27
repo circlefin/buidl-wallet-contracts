@@ -22,7 +22,7 @@ import {Constants, DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_EP06_ADDRESS
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeployPluginManagerScript is Script {
+contract DeployPluginManagerEPv06Script is Script {
     address internal constant EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS = PLUGIN_MANAGER_EP06_ADDRESS;
 
     function run() public {

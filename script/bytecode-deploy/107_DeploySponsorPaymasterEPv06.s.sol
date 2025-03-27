@@ -31,7 +31,7 @@ import {
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeployPluginManagerScript is Script {
+contract DeploySponsorPaymasterEPv06Script is Script {
     address internal constant EXPECTED_PAYMASTER_IMPL_ADDRESS = SPONSOR_PAYMASTER_EP06_IMPL_ADDRESS;
     address internal constant EXPECTED_PAYMASTER_INTERNAL_ADDRESS = SPONSOR_PAYMASTER_EP06_INTERNAL_ADDRESS;
     address internal constant EXPECTED_PAYMASTER_ADDRESS = SPONSOR_PAYMASTER_EP06_ADDRESS;
