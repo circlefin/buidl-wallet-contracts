@@ -49,7 +49,7 @@ contract DeploySponsorPaymasterScript is Script {
             if (EXPECTED_PAYMASTER_IMPL_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
                 string memory path =
-                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterImplementationEPv06.json");
+                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterImplementation.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
@@ -81,7 +81,7 @@ contract DeploySponsorPaymasterScript is Script {
             if (EXPECTED_PAYMASTER_INTERNAL_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
                 string memory path =
-                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxyEPv06.json");
+                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxy.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
@@ -119,7 +119,7 @@ contract DeploySponsorPaymasterScript is Script {
             if (EXPECTED_PAYMASTER_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
                 string memory path =
-                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxyEPv06.json");
+                    string.concat(root, "/script/bytecode-deploy/build-output/SponsorPaymasterProxy.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);

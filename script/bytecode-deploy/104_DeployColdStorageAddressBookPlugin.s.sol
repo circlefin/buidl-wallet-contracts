@@ -37,7 +37,7 @@ contract DeployColdStorageAddressBookPluginEPv06Script is Script {
             if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
                 string memory path =
-                    string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPluginEPv06.json");
+                    string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPlugin.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);

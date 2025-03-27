@@ -34,7 +34,7 @@ contract DeployPluginManagerScript is Script {
 
             if (EXPECTED_PLUGIN_MANAGER_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/PluginManagerEPv06.json");
+                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/PluginManager.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);

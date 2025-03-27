@@ -44,7 +44,7 @@ contract DeploySingleOwnerMSCAFactoryScript is Script {
             if (EXPECTED_SINGLEOWNER_MSCA_FACTORY_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
                 string memory path =
-                    string.concat(root, "/script/bytecode-deploy/build-output/SingleOwnerMSCAFactoryEPv06.json");
+                    string.concat(root, "/script/bytecode-deploy/build-output/SingleOwnerMSCAFactory.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
