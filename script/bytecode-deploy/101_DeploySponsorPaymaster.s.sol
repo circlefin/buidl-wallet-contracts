@@ -21,23 +21,23 @@ pragma solidity 0.8.24;
 import {
     Constants,
     DETERMINISTIC_DEPLOYMENT_FACTORY,
-    ENTRY_POINT_V06,
-    SPONSOR_PAYMASTER_EP06_ADDRESS,
-    SPONSOR_PAYMASTER_EP06_IMPL_ADDRESS,
-    SPONSOR_PAYMASTER_EP06_INTERNAL_ADDRESS,
-    SPONSOR_PAYMASTER_EP06_TEMP_OWNER,
-    SPONSOR_PAYMASTER_EP06_TEMP_SIGNER
+    ENTRY_POINT,
+    SPONSOR_PAYMASTER_ADDRESS,
+    SPONSOR_PAYMASTER_IMPL_ADDRESS,
+    SPONSOR_PAYMASTER_INTERNAL_ADDRESS,
+    SPONSOR_PAYMASTER_TEMP_OWNER,
+    SPONSOR_PAYMASTER_TEMP_SIGNER
 } from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeploySponsorPaymasterEPv06Script is Script {
-    address internal constant EXPECTED_PAYMASTER_IMPL_ADDRESS = SPONSOR_PAYMASTER_EP06_IMPL_ADDRESS;
-    address internal constant EXPECTED_PAYMASTER_INTERNAL_ADDRESS = SPONSOR_PAYMASTER_EP06_INTERNAL_ADDRESS;
-    address internal constant EXPECTED_PAYMASTER_ADDRESS = SPONSOR_PAYMASTER_EP06_ADDRESS;
+contract DeploySponsorPaymasterScript is Script {
+    address internal constant EXPECTED_PAYMASTER_IMPL_ADDRESS = SPONSOR_PAYMASTER_IMPL_ADDRESS;
+    address internal constant EXPECTED_PAYMASTER_INTERNAL_ADDRESS = SPONSOR_PAYMASTER_INTERNAL_ADDRESS;
+    address internal constant EXPECTED_PAYMASTER_ADDRESS = SPONSOR_PAYMASTER_ADDRESS;
 
     function run() public {
-        address entryPoint = ENTRY_POINT_V06;
+        address entryPoint = ENTRY_POINT;
 
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         string[12] memory chains = Constants.getChains();
@@ -89,7 +89,7 @@ contract DeploySponsorPaymasterEPv06Script is Script {
 
                 // Properly encode the initialization data
                 bytes memory initData = abi.encodeWithSignature(
-                    "initialize(address,address)", SPONSOR_PAYMASTER_EP06_TEMP_OWNER, SPONSOR_PAYMASTER_EP06_TEMP_SIGNER
+                    "initialize(address,address)", SPONSOR_PAYMASTER_TEMP_OWNER, SPONSOR_PAYMASTER_TEMP_SIGNER
                 );
 
                 bytes memory args = abi.encode(EXPECTED_PAYMASTER_IMPL_ADDRESS, initData);
@@ -127,9 +127,7 @@ contract DeploySponsorPaymasterEPv06Script is Script {
                 bytes memory args = abi.encode(
                     EXPECTED_PAYMASTER_IMPL_ADDRESS,
                     abi.encodeWithSignature(
-                        "initialize(address,address)",
-                        SPONSOR_PAYMASTER_EP06_TEMP_OWNER,
-                        SPONSOR_PAYMASTER_EP06_TEMP_OWNER
+                        "initialize(address,address)", SPONSOR_PAYMASTER_TEMP_OWNER, SPONSOR_PAYMASTER_TEMP_OWNER
                     )
                 );
                 bytes memory callData = abi.encodePacked(salt, creationCode, args);
@@ -141,12 +139,10 @@ contract DeploySponsorPaymasterEPv06Script is Script {
                     revert DeployFailed();
                 }
 
-                console.log(
-                    "Deployed SponsorPaymasterProxyEPv06 at address: %s on %s", address(bytes20(result)), chains[i]
-                );
+                console.log("Deployed SponsorPaymasterProxy at address: %s on %s", address(bytes20(result)), chains[i]);
             } else {
                 console.log(
-                    "Found existing SponsorPaymasterProxyEPv06 at expected address: %s on %s",
+                    "Found existing SponsorPaymasterProxy at expected address: %s on %s",
                     EXPECTED_PAYMASTER_ADDRESS,
                     chains[i]
                 );

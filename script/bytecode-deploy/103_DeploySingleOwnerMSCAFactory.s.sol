@@ -19,32 +19,38 @@
 pragma solidity 0.8.24;
 
 import {
-    COLD_STORAGE_ADDRESS_BOOK_PLUGIN_EP06_ADDRESS,
     Constants,
-    DETERMINISTIC_DEPLOYMENT_FACTORY
+    DETERMINISTIC_DEPLOYMENT_FACTORY,
+    ENTRY_POINT,
+    PLUGIN_MANAGER_ADDRESS,
+    SINGLEOWNER_MSCA_FACTORY_ADDRESS
 } from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeployColdStorageAddressBookPluginEPv06Script is Script {
-    address internal constant EXPECTED_PLUGIN_ADDRESS = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_EP06_ADDRESS;
+contract DeploySingleOwnerMSCAFactoryScript is Script {
+    address internal constant PLUGIN_MANAGER = PLUGIN_MANAGER_ADDRESS;
+    address internal constant EXPECTED_SINGLEOWNER_MSCA_FACTORY_ADDRESS = SINGLEOWNER_MSCA_FACTORY_ADDRESS;
 
     function run() public {
+        address entryPoint = ENTRY_POINT;
+
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         string[12] memory chains = Constants.getChains();
         for (uint256 i = 0; i < chains.length; i++) {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
 
-            if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
+            if (EXPECTED_SINGLEOWNER_MSCA_FACTORY_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
                 string memory path =
-                    string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPluginEPv06.json");
+                    string.concat(root, "/script/bytecode-deploy/build-output/SingleOwnerMSCAFactoryEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
                 bytes memory creationCode = abi.decode(vm.parseJson(json, ".bytecode.object"), (bytes));
-                bytes memory callData = abi.encodePacked(salt, creationCode);
+                bytes memory args = abi.encode(entryPoint, PLUGIN_MANAGER);
+                bytes memory callData = abi.encodePacked(salt, creationCode, args);
 
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, bytes memory result) = DETERMINISTIC_DEPLOYMENT_FACTORY.call(callData);
@@ -53,15 +59,11 @@ contract DeployColdStorageAddressBookPluginEPv06Script is Script {
                     revert DeployFailed();
                 }
 
-                console.log(
-                    "Deployed ColdStorageAddressBookPluginEPv06 at address: %s on %s",
-                    address(bytes20(result)),
-                    chains[i]
-                );
+                console.log("Deployed SingleOwnerMSCAFactory at address: %s on %s", address(bytes20(result)), chains[i]);
             } else {
                 console.log(
-                    "Found existing ColdStorageAddressBookPluginEPv06 at expected address: %s on %s",
-                    EXPECTED_PLUGIN_ADDRESS,
+                    "Found existing SingleOwnerMSCAFactory at expected address: %s on %s",
+                    EXPECTED_SINGLEOWNER_MSCA_FACTORY_ADDRESS,
                     chains[i]
                 );
             }

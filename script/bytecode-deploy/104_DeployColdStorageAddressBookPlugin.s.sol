@@ -18,12 +18,14 @@
  */
 pragma solidity 0.8.24;
 
-import {Constants, DETERMINISTIC_DEPLOYMENT_FACTORY, PLUGIN_MANAGER_EP06_ADDRESS} from "./100_Constants.sol";
+import {
+    COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS, Constants, DETERMINISTIC_DEPLOYMENT_FACTORY
+} from "./100_Constants.sol";
 import {DeployFailed} from "./Errors.sol";
 import {Script, console} from "forge-std/src/Script.sol";
 
-contract DeployPluginManagerEPv06Script is Script {
-    address internal constant EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS = PLUGIN_MANAGER_EP06_ADDRESS;
+contract DeployColdStorageAddressBookPluginEPv06Script is Script {
+    address internal constant EXPECTED_PLUGIN_ADDRESS = COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS;
 
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -32,9 +34,10 @@ contract DeployPluginManagerEPv06Script is Script {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);
 
-            if (EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS.code.length == 0) {
+            if (EXPECTED_PLUGIN_ADDRESS.code.length == 0) {
                 string memory root = vm.projectRoot();
-                string memory path = string.concat(root, "/script/bytecode-deploy/build-output/PluginManagerEPv06.json");
+                string memory path =
+                    string.concat(root, "/script/bytecode-deploy/build-output/ColdStorageAddressBookPluginEPv06.json");
                 string memory json = vm.readFile(path);
 
                 bytes32 salt = bytes32(0);
@@ -48,11 +51,13 @@ contract DeployPluginManagerEPv06Script is Script {
                     revert DeployFailed();
                 }
 
-                console.log("Deployed PluginManagerEPv06 at address: %s on %s", address(bytes20(result)), chains[i]);
+                console.log(
+                    "Deployed ColdStorageAddressBookPlugin at address: %s on %s", address(bytes20(result)), chains[i]
+                );
             } else {
                 console.log(
-                    "Found existing PluginManagerEPv06 at expected address: %s on %s",
-                    EXPECTED_PLUGIN_MANAGER_EP06_ADDRESS,
+                    "Found existing ColdStorageAddressBookPlugin at expected address: %s on %s",
+                    EXPECTED_PLUGIN_ADDRESS,
                     chains[i]
                 );
             }
