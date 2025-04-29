@@ -28,6 +28,7 @@ contract ValidationDataLibTest is TestUtils {
 
     error WrongTimeBounds();
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testIntersectWrongTimeBounds_a() public {
         ValidationData memory a = ValidationData({validAfter: 2, validUntil: 1, authorizer: address(0)});
         ValidationData memory b = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(0)});
@@ -36,6 +37,7 @@ contract ValidationDataLibTest is TestUtils {
         a._intersectValidationData(bUint);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function testIntersectWrongTimeBounds_b() public {
         ValidationData memory a = ValidationData({validAfter: 1, validUntil: 2, authorizer: address(0)});
         ValidationData memory b = ValidationData({validAfter: 2, validUntil: 1, authorizer: address(0)});
