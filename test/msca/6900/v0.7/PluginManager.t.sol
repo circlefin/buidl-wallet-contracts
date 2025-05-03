@@ -171,7 +171,7 @@ contract PluginManagerTest is TestUtils {
             "0x",
             vm.toString(installPluginCallData),
             10053353,
-            103353,
+            203353,
             45484,
             516219199704,
             1130000000,
