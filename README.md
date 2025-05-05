@@ -85,7 +85,7 @@ Deploy, setup and verify SponsorPaymaster compatible with ERC-4337 v0.6.
 Note that deploy commands attempt to deploy on all chains listed in foundry.toml.
 
 ```shell
-forge script script/bytecode-deploy/107_DeploySponsorPaymasterEPv06.s.sol  -vvvv --slow --broadcast --force --multi
+forge script script/bytecode-deploy/101_DeploySponsorPaymasterEPv06.s.sol  -vvvv --slow --broadcast --force --multi
 ```
 
 #### Setup SponsorPaymaster
@@ -94,27 +94,27 @@ Need to use block explorer to run `addStake` and `setVerifyingSigner` from owner
 
 #### Verify SponsorPaymaster
 
-Use `script/bytecode-deploy/standard-json-input/SponsorPaymasterEP.json` to verify. Select the following options
+Use `script/bytecode-deploy/standard-json-input/SponsorPaymaster.json` to verify. Select the following options
 in block explorers verify contract UI:
 * Compiler Type: `Solidity(Standard-Json-Input)`
 * Compiler Version: `v0.8.17`
 * License Type: `GNU GPLv3`
 
 ### Deploy & Verify SingleOwnerMSCAFactory
-Deploy, setup and verify SingleOwnerMSCAFactory compatible with ERC-4337 v0.6 and ERC-6900 v0.7.
+Deploy, setup and verify SingleOwnerMSCAFactory compatible with ERC-4337 v0.6.
 
 #### Run deploy commands:
 Note that deploy commands attempt to deploy on all chains listed in foundry.toml.
 
 ```shell
-# Deploy PluginManagerEPv06
-forge script script/bytecode-deploy/108_DeployPluginManagerEPv06.s.sol  -vvvv --slow --broadcast --force --multi
+# Deploy PluginManager
+forge script script/bytecode-deploy/102_DeployPluginManager.s.sol  -vvvv --slow --broadcast --force --multi
 
-# Deploy SingleOwnerMSCAFactoryEPv06
-forge script script/bytecode-deploy/109_DeploySingleOwnerMSCAFactoryEPv06.s.sol  -vvvv --slow --broadcast --force --multi
+# Deploy SingleOwnerMSCAFactory
+forge script script/bytecode-deploy/102_DeploySingleOwnerMSCAFactory.s.sol  -vvvv --slow --broadcast --force --multi
 
-# Deploy ColdStorageAddressBookPluginEPv06
-forge script script/bytecode-deploy/110_DeployColdStorageAddressBookPluginEPv06.s.sol  -vvvv --slow --broadcast --force --multi
+# Deploy ColdStorageAddressBookPlugin
+forge script script/bytecode-deploy/104_DeployColdStorageAddressBookPlugin.s.sol  -vvvv --slow --broadcast --force --multi
 ```
 
 #### Verify contracts on block explorers.
