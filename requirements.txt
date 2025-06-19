@@ -25,6 +25,6 @@ regex==2023.6.3
 requests==2.32.0
 rlp==3.0.0
 semantic-version==2.10.0
-urllib3==2.2.2
+urllib3==2.5.0
 web3==6.4.0
 yarl==1.9.2
