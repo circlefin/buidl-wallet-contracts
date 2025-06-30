@@ -85,7 +85,7 @@ Deploy, setup and verify SponsorPaymaster compatible with ERC-4337 v0.6.
 Note that deploy commands attempt to deploy on all chains listed in foundry.toml.
 
 ```shell
-forge script script/bytecode-deploy/101_DeploySponsorPaymasterEPv06.s.sol  -vvvv --slow --broadcast --force --multi
+forge script script/bytecode-deploy/101_DeploySponsorPaymaster.s.sol  -vvvv --slow --broadcast --force --multi
 ```
 
 #### Setup SponsorPaymaster
