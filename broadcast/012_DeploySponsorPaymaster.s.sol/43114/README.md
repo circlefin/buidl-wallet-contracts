@@ -1,0 +1,3 @@
+- This chain used cast send to deploy so there's no corresponding run json
+- Ran command in `script/cmd/DeploySponsorPaymaster` and `script/cmd/DeploySponsorPaymasterProxy`
+- tx hash: 0xf7054c7a702d5457cddd33e366c99a47647687cba989954691839d94c7434ac5, 0x815308068f4054175c8f25fe1e623f0d83cee2a80ba53181117a5cda8a560e63 

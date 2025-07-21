@@ -32,7 +32,7 @@ contract DeployColdStorageAddressBookScript is Script {
     function run() public {
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
 
-        string[12] memory chains = Constants.getChains();
+        string[14] memory chains = Constants.getChains();
         for (uint256 i = 0; i < chains.length; i++) {
             vm.createSelectFork(chains[i]);
             vm.startBroadcast(key);

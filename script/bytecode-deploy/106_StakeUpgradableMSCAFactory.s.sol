@@ -30,7 +30,7 @@ contract StakeUpgradableMSCAFactory is Script {
         uint256 key = vm.envUint("MSCA_FACTORY_OWNER_PRIVATE_KEY");
 
         uint32 unstakeDelaySec = 1 * 24 * 60 * 60; // 1 day
-        string[4] memory chains = Constants.getChainsForSetup();
+        string[6] memory chains = Constants.getChainsForSetup();
 
         // NOTE: Please configure stake value based on minimums from
         // https://docs.alchemy.com/docs/bundler-services#minimum-stake
