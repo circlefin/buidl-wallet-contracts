@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.3.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.2.0...v2.3.0) (2025-07-21)
+
+
+### Features
+
+* Deploy Upgradable MSCA contracts and paymaster to Avax ([#84](https://github.com/circlefin/buidl-wallet-contracts/issues/84)) ([1391f65](https://github.com/circlefin/buidl-wallet-contracts/commit/1391f655239337f2f8962596088bffb88e574fae))
+* Deploy UpgradableMSCAFactory to base & op ([#74](https://github.com/circlefin/buidl-wallet-contracts/issues/74)) ([56c37c9](https://github.com/circlefin/buidl-wallet-contracts/commit/56c37c9091d12f46555af8b9826be04113adc71a))
+
+
+### Documentation
+
+* update chain expansion guide for bytecode deployment ([#76](https://github.com/circlefin/buidl-wallet-contracts/issues/76)) ([f96b79b](https://github.com/circlefin/buidl-wallet-contracts/commit/f96b79b35426b820ba72a803278e4c4e52629843))
+
+
+### Miscellaneous Chores
+
+* fix some typos in comment ([#60](https://github.com/circlefin/buidl-wallet-contracts/issues/60)) ([2767bf5](https://github.com/circlefin/buidl-wallet-contracts/commit/2767bf59550eead7cc808feba70b1b50c9cb882d))
+
 ## [2.2.0](https://github.com/circlefin/buidl-wallet-contracts/compare/v2.1.2...v2.2.0) (2025-02-20)
 
 
