@@ -32,7 +32,7 @@ address constant SPONSOR_PAYMASTER_INTERNAL_ADDRESS = 0x67aC303faB3A9507Ac48fD5B
 address constant SPONSOR_PAYMASTER_ADDRESS = 0x7ceA357B5AC0639F89F9e378a1f03Aa5005C0a25;
 
 library Constants {
-    function getChains() internal pure returns (string[12] memory) {
+    function getChains() internal pure returns (string[18] memory) {
         return [
             "mainnet",
             "sepolia",
@@ -45,7 +45,13 @@ library Constants {
             "base-sepolia",
             "base",
             "op-sepolia",
-            "op"
+            "op",
+            "sonic",
+            "sonic-blaze",
+            "world",
+            "world-sepolia",
+            "celo",
+            "celo-alfajores"
         ];
     }
 
