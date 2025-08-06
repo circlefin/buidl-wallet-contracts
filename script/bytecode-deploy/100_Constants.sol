@@ -57,7 +57,7 @@ library Constants {
 
     // A list of chains that need to run setup work after deployment. Please adjust the list based on the chain
     // expansion needs.
-    function getChainsForSetup() internal pure returns (string[4] memory) {
-        return ["base-sepolia", "base", "op-sepolia", "op"];
+    function getChainsForSetup() internal pure returns (string[3] memory) {
+        return ["sonic", "world", "celo"];
     }
 }
