@@ -111,7 +111,7 @@ Note that deploy commands attempt to deploy on all chains listed in foundry.toml
 forge script script/bytecode-deploy/102_DeployPluginManager.s.sol  -vvvv --slow --broadcast --force --multi
 
 # Deploy SingleOwnerMSCAFactory
-forge script script/bytecode-deploy/102_DeploySingleOwnerMSCAFactory.s.sol  -vvvv --slow --broadcast --force --multi
+forge script script/bytecode-deploy/103_DeploySingleOwnerMSCAFactory.s.sol  -vvvv --slow --broadcast --force --multi
 
 # Deploy ColdStorageAddressBookPlugin
 forge script script/bytecode-deploy/104_DeployColdStorageAddressBookPlugin.s.sol  -vvvv --slow --broadcast --force --multi
