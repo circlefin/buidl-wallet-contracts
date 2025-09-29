@@ -34,13 +34,13 @@ address constant SPONSOR_PAYMASTER_ADDRESS = 0x7ceA357B5AC0639F89F9e378a1f03Aa50
 library Constants {
     function getChains() internal pure returns (string[1] memory) {
         return [
-            "arc-testnet"
+            "monad-testnet"
         ];
     }
 
     // A list of chains that need to run setup work after deployment. Please adjust the list based on the chain
     // expansion needs.
     function getCurrentDeploymentChains() internal pure returns (string[1] memory) {
-        return ["arc-testnet"];
+        return ["monad-testnet"];
     }
 }
