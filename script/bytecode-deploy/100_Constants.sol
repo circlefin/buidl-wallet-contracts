@@ -30,13 +30,13 @@ address constant WEIGHTED_MULTISIG_PLUGIN_ADDRESS = 0x0000000C984AFf541D6cE86Bb6
 library Constants {
     function getChains() internal pure returns (string[1] memory) {
         return [
-            "arc-testnet"
+            "monad"
         ];
     }
 
     // A list of chains that need to run setup work after deployment. Please adjust the list based on the chain
     // expansion needs.
     function getChainsForSetup() internal pure returns (string[1] memory) {
-        return ["arc-testnet"];
+        return ["monad"];
     }
 }
