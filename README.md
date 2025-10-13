@@ -10,7 +10,7 @@ This repository includes support for both the Hardhat and Foundry frameworks. Go
 2. Run `yarn install` to install any additional dependencies.
 3. Run `curl -L https://foundry.paradigm.xyz | bash` and follow the outputted instructions to source env file. 
 4. Run `foundryup`
-5. Create a `.env` file and provide the required API keys, wallets (can be generated for deployment), and configuration values. You can look at the `.env.example` for reference.
+5. Create a `.env` file and provide the required API keys, wallets (can be generated for deployment), and configuration values. You can look at the `.env.example` for reference
 
 ## Development
 
