@@ -30,6 +30,22 @@ address constant WEIGHTED_MULTISIG_PLUGIN_ADDRESS = 0x0000000C984AFf541D6cE86Bb6
 library Constants {
     function getChains() internal pure returns (string[1] memory) {
         return [
+            "mainnet",
+            "sepolia",
+            "polygon",
+            "amoy",
+            "arbitrum",
+            "arb-sepolia",
+            "uni-sepolia",
+            "unichain",
+            "base-sepolia",
+            "base",
+            "op-sepolia",
+            "op",
+            "avax-fuji",
+            "avax",
+            "arc-testnet",
+            "monad-testnet",
             "monad"
         ];
     }
