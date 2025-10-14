@@ -28,7 +28,7 @@ address constant COLD_STORAGE_ADDRESS_BOOK_PLUGIN_ADDRESS = 0x0000000d81083B16EA
 address constant WEIGHTED_MULTISIG_PLUGIN_ADDRESS = 0x0000000C984AFf541D6cE86Bb697e68ec57873C8;
 
 library Constants {
-    function getChains() internal pure returns (string[1] memory) {
+    function getChains() internal pure returns (string[17] memory) {
         return [
             "mainnet",
             "sepolia",
