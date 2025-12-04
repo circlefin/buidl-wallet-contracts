@@ -28,6 +28,7 @@ depth = 15
 line_length = 120
 wrap_comments = true
 sort_imports = true
+ignore = ["src/", "test/", "script/"]
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
