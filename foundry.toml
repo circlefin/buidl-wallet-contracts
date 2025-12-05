@@ -29,13 +29,15 @@ line_length = 120
 wrap_comments = true
 sort_imports = true
 ignore = [
-    "src/msca/6900/v0.7/",
+    "src/msca/6900/v0.7",
     "src/paymaster/BasePaymaster.sol",
     "src/paymaster/v1/permissioned/SponsorPaymaster.sol",
     "src/utils/PaymasterUtils.sol",
     "src/callback/DefaultCallbackHandler.sol",
     "src/account/v1/factory/ECDSAAccountFactory.sol",
-    "test/msca/6900/",
+    "test/msca/6900/shared/libs/TestAddressDLL.sol",
+    "test/msca/6900/shared/libs/TestBytes32DLL.sol",
+    "test/msca/6900/v0.7",
     "test/libs/RecipientAddressLib.t.sol",
     "test/util/Mock1820Registry.sol",
     "test/SponsorPaymaster.t.sol",
