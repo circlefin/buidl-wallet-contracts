@@ -32,7 +32,7 @@ address constant SPONSOR_PAYMASTER_INTERNAL_ADDRESS = 0x67aC303faB3A9507Ac48fD5B
 address constant SPONSOR_PAYMASTER_ADDRESS = 0x7ceA357B5AC0639F89F9e378a1f03Aa5005C0a25;
 
 library Constants {
-    function getChains() internal pure returns (string[20] memory) {
+    function getChains() internal pure returns (string[23] memory) {
         return [
             "mainnet",
             "sepolia",
@@ -53,13 +53,16 @@ library Constants {
             "celo",
             "celo-alfajores",
             "sei",
-            "sei-testnet"
+            "sei-testnet",
+            "arc-testnet",
+            "monad-testnet",
+            "monad"
         ];
     }
 
     // A list of chains that need to run setup work after deployment. Please adjust the list based on the chain
     // expansion needs.
     function getCurrentDeploymentChains() internal pure returns (string[1] memory) {
-        return ["sei"];
+        return ["monad"];
     }
 }
