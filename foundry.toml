@@ -28,6 +28,77 @@ depth = 15
 line_length = 120
 wrap_comments = true
 sort_imports = true
+ignore = [
+    "src/utils/PaymasterUtils.sol",
+    "src/paymaster/BasePaymaster.sol",
+    "src/callback/DefaultCallbackHandler.sol",
+    "src/account/v1/factory/ECDSAAccountFactory.sol",
+    "src/msca/6900/v0.7/plugins/v1_0_0/multisig/WeightedWebauthnMultisigPlugin.sol",
+    "src/msca/6900/v0.7/plugins/v1_0_0/multisig/BaseMultisigPlugin.sol",
+    "src/msca/6900/v0.7/plugins/v1_0_0/addressbook/ColdStorageAddressBookPlugin.sol",
+    "src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol",
+    "src/msca/6900/v0.7/managers/PluginManager.sol",
+    "src/msca/6900/v0.7/managers/PluginExecutor.sol",
+    "src/msca/6900/v0.7/libs/SelectorRegistryLib.sol",
+    "src/msca/6900/v0.7/libs/ExecutionHookLib.sol",
+    "src/msca/6900/v0.7/libs/FunctionReferenceDLLLib.sol",
+    "src/msca/6900/v0.7/common/Structs.sol",
+    "src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol",
+    "src/msca/6900/v0.7/factories/UpgradableMSCAFactory.sol",
+    "src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol",
+    "src/msca/6900/v0.7/account/BaseMSCA.sol",
+    "src/msca/6900/v0.8/libs/SelectorRegistryLib.sol",
+    "src/msca/6900/v0.8/common/Structs.sol",
+    "src/msca/6900/v0.8/factories/UpgradableMSCAFactory.sol",
+    "src/msca/6900/v0.8/account/BaseMSCA.sol",
+    "src/msca/6900/v0.8/modules/multisig/WeightedMultisigValidationModule.sol",
+    "src/msca/6900/v0.8/modules/validation/SingleSignerValidationModule.sol",
+    "test/gas/6900/v0.7/plugins/multisig/UpgradableMSCAWithMultisigPlugin.t.sol",
+    "test/SponsorPaymaster.t.sol",
+    "test/util/Mock1820Registry.sol",
+    "test/WalletMigration.t.sol",
+    "test/ECDSAAccountAndFactory.t.sol",
+    "test/libs/RecipientAddressLib.t.sol",
+    "test/msca/6900/shared/libs/TestAddressDLL.sol",
+    "test/msca/6900/shared/libs/TestBytes32DLL.sol",
+    "test/msca/6900/v0.7/PluginExecutor.t.sol",
+    "test/msca/6900/v0.7/TestCircleMSCAFactory.sol",
+    "test/msca/6900/v0.7/TestPermitAnyExternalAddressWithPostHookOnlyPlugin.sol",
+    "test/msca/6900/v0.7/TestUserOpValidatorWithDependencyHook.sol",
+    "test/msca/6900/v0.7/plugins/ColdStorageAddressBookPluginWithFullMSCA.t.sol",
+    "test/msca/6900/v0.7/plugins/ColdStorageAddressBookPluginWithSemiMSCA.t.sol",
+    "test/msca/6900/v0.7/plugins/ColdStorageAddressBookPluginWrapper.sol",
+    "test/msca/6900/v0.7/plugins/WeightedWebauthnMultisigPlugin.t.sol",
+    "test/msca/6900/v0.7/SingleOwnerPlugin.t.sol",
+    "test/msca/6900/v0.7/TestPermitAnyExternalAddressPlugin.sol",
+    "test/msca/6900/v0.7/storage/WalletStorageV1Lib.t.sol",
+    "test/msca/6900/v0.7/TestPermitAnyExternalAddressWithPreHookOnlyPlugin.sol",
+    "test/msca/6900/v0.7/TestTokenPlugin.sol",
+    "test/msca/6900/v0.7/PluginManager.t.sol",
+    "test/msca/6900/v0.7/TestTokenWithPostHookOnlyPlugin.sol",
+    "test/msca/6900/v0.7/TestCircleMSCA.sol",
+    "test/msca/6900/v0.7/TestRepeatableFunctionReferenceDLL.sol",
+    "test/msca/6900/v0.7/SingleOwnerMSCA.t.sol",
+    "test/msca/6900/v0.7/CircularDependencyMock.sol",
+    "test/msca/6900/v0.7/TestTokenWithPreHookOnlyPlugin.sol",
+    "test/msca/6900/v0.8/UpgradableMSCAFactory.t.sol",
+    "test/msca/6900/v0.8/FooBarModule.sol",
+    "test/msca/6900/v0.8/TestTokenModule.sol",
+    "test/msca/6900/v0.8/DynamicValidationHookData.t.sol",
+    "test/msca/6900/v0.8/UpgradableMSCA.t.sol",
+    "test/msca/6900/v0.8/PermittedCall.t.sol",
+    "test/msca/6900/v0.8/ModuleManagement.t.sol",
+    "test/msca/6900/v0.8/MSCACallFlow.t.sol",
+    "test/msca/6900/v0.8/modules/SingleSignerValidationModule.t.sol",
+    "test/msca/6900/v0.8/modules/WeightedMultisigValidationModule.t.sol",
+    "test/msca/6900/v0.8/DirectCallsFromModule.t.sol",
+    "test/msca/6900/v0.8/helpers/MSCACallFlowModule.sol",
+    "test/msca/6900/v0.8/SelfCallRule.t.sol",
+    "script/007_DeployColdStorageAddressBookPlugin.s.sol",
+    "script/008_DeployWeightedWebauthnMultisigPlugin.s.sol",
+    "script/bytecode-deploy/104_DeployWeightedWebauthnMultisigPlugin.s.sol",
+    "script/bytecode-deploy/103_DeployColdStorageAddressBookPlugin.s.sol"
+]
 
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
@@ -44,3 +115,6 @@ op-sepolia = "${OP_SEPOLIA_RPC_URL}"
 op = "${OP_RPC_URL}"
 avax = "${AVAX_RPC_URL}"
 avax-fuji = "${AVAX_FUJI_RPC_URL}"
+arc-testnet="${ARC_TESTNET_RPC_URL}"
+monad-testnet="${MONAD_TESTNET_RPC_URL}"
+monad="${MONAD_RPC_URL}"
