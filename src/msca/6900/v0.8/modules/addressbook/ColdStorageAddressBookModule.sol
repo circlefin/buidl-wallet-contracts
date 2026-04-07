@@ -184,7 +184,9 @@ contract ColdStorageAddressBookModule is IAddressBookModule, BaseModule {
             }
             return SIG_VALIDATION_SUCCEEDED;
         }
-        revert Unsupported();
+        // Allow calls to unknown entity IDs (e.g. module execution functions
+        // like addAllowedRecipients) to pass through without blocking.
+        return SIG_VALIDATION_SUCCEEDED;
     }
 
     /// @inheritdoc IValidationHookModule
@@ -217,7 +219,9 @@ contract ColdStorageAddressBookModule is IAddressBookModule, BaseModule {
             }
             return;
         }
-        revert Unsupported();
+        // Allow calls to unknown entity IDs (e.g. module execution functions
+        // like addAllowedRecipients) to pass through without blocking.
+        return;
     }
 
     function preSignatureValidationHook(uint32 entityId, address sender, bytes32 hash, bytes calldata signature)
@@ -235,8 +239,8 @@ contract ColdStorageAddressBookModule is IAddressBookModule, BaseModule {
         // TODO: allow global validation
         manifest.executionFunctions[0] = ManifestExecutionFunction({
             executionSelector: this.addAllowedRecipients.selector,
-            skipRuntimeValidation: true,
-            allowGlobalValidation: false
+            skipRuntimeValidation: false,
+            allowGlobalValidation: true
         });
         manifest.executionFunctions[1] = ManifestExecutionFunction({
             executionSelector: this.removeAllowedRecipients.selector,
