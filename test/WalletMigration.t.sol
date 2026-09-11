@@ -20,6 +20,7 @@ pragma solidity 0.8.24;
 
 import {ECDSAAccount} from "../src/account/v1/ECDSAAccount.sol";
 import {ECDSAAccountFactory} from "../src/account/v1/factory/ECDSAAccountFactory.sol";
+import {Create3Factory} from "../src/factory/Create3Factory.sol";
 import {FunctionReference} from "../src/msca/6900/v0.7/common/Structs.sol";
 import {SingleOwnerMSCAFactory} from "../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
 import {FunctionReferenceLib} from "../src/msca/6900/v0.7/libs/FunctionReferenceLib.sol";
@@ -71,6 +72,7 @@ contract WalletMigrationTest is TestUtils {
     TestERC721 private testERC721;
     TestLiquidityPool private testERC20;
     SingleOwnerMSCAFactory private singleOwnerMSCAFactory;
+    Create3Factory private create3Factory;
     ECDSAAccountFactory private ecdsaAccountFactory;
 
     function setUp() public {
@@ -78,7 +80,15 @@ contract WalletMigrationTest is TestUtils {
         testERC1155 = new TestERC1155("getrich.com");
         testERC721 = new TestERC721("getrich", "$$$");
         testERC20 = new TestLiquidityPool("getrich", "$$$");
-        singleOwnerMSCAFactory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
+        create3Factory = new Create3Factory(address(this));
+        singleOwnerMSCAFactory = new SingleOwnerMSCAFactory(
+            makeAddr("factoryOwner"), address(new SingleOwnerMSCA(entryPoint, pluginManager)), address(create3Factory)
+        );
+        address[] memory callers = new address[](1);
+        callers[0] = address(singleOwnerMSCAFactory);
+        bool[] memory permissions = new bool[](1);
+        permissions[0] = true;
+        create3Factory.setCallers(callers, permissions);
         ecdsaAccountFactory = new ECDSAAccountFactory(entryPoint);
     }
 
