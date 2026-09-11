@@ -20,6 +20,7 @@ pragma solidity 0.8.24;
 
 import {EIP1271_INVALID_SIGNATURE, EIP1271_VALID_SIGNATURE} from "../../../../src/common/Constants.sol";
 import {UnauthorizedCaller} from "../../../../src/common/Errors.sol";
+import {Create3Factory} from "../../../../src/factory/Create3Factory.sol";
 
 import {
     InvalidInitializationInput, InvalidValidationFunctionId
@@ -102,6 +103,7 @@ contract SingleOwnerMSCATest is TestUtils {
     TestERC777 private testERC777;
     TestLiquidityPool private testLiquidityPool;
     SingleOwnerMSCAFactory private factory;
+    Create3Factory private create3Factory;
     IERC1820Registry private erc1820Registry;
     SingleOwnerPlugin private singleOwnerPlugin = new SingleOwnerPlugin();
 
@@ -110,7 +112,15 @@ contract SingleOwnerMSCATest is TestUtils {
         testERC1155 = new TestERC1155("getrich.com");
         testERC721 = new TestERC721("getrich", "$$$");
         testLiquidityPool = new TestLiquidityPool("getrich", "$$$");
-        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
+        create3Factory = new Create3Factory(address(this));
+        factory = new SingleOwnerMSCAFactory(
+            makeAddr("factoryOwner"), address(new SingleOwnerMSCA(entryPoint, pluginManager)), address(create3Factory)
+        );
+        address[] memory callers = new address[](1);
+        callers[0] = address(factory);
+        bool[] memory permissions = new bool[](1);
+        permissions[0] = true;
+        create3Factory.setCallers(callers, permissions);
         // mock ERC1820Registry contract, could also use etch though, but I'm implementing a simplified registry
         erc1820Registry = new MockERC1820Registry();
         testERC777 = new TestERC777(erc1820Registry);
