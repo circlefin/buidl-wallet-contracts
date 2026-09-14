@@ -22,17 +22,18 @@ import {SingleOwnerMSCAFactory} from "../src/msca/6900/v0.7/factories/semi/Singl
 import {Script, console} from "forge-std/src/Script.sol";
 
 contract DeploySingleOwnerMSCAFactoryScript is Script {
-    address internal constant PLUGIN_MANAGER = 0xc751A2bFA2A4a5b27E94ad735534c16a0999d871;
     address payable internal constant EXPECTED_FACTORY_ADDRESS =
         payable(address(0x1a1f5310eD7fF0B84Cef7E6d7D0f94Cc16D23013));
+    address internal owner = vm.envAddress("MSCA_FACTORY_OWNER_ADDRESS");
 
     function run() public {
-        address entryPoint = vm.envAddress("ENTRY_POINT");
+        address singleOwnerMSCAImplementation = vm.envAddress("SINGLE_OWNER_MSCA_IMPLEMENTATION_ADDRESS");
+        address create3Factory = vm.envAddress("SHARED_CREATE3_FACTORY_ADDRESS");
         uint256 key = vm.envUint("DEPLOYER_PRIVATE_KEY");
         vm.startBroadcast(key);
         SingleOwnerMSCAFactory factory;
         if (EXPECTED_FACTORY_ADDRESS.code.length == 0) {
-            factory = new SingleOwnerMSCAFactory{salt: 0}(entryPoint, PLUGIN_MANAGER);
+            factory = new SingleOwnerMSCAFactory{salt: 0}(owner, singleOwnerMSCAImplementation, create3Factory);
         } else {
             factory = SingleOwnerMSCAFactory(EXPECTED_FACTORY_ADDRESS);
         }
