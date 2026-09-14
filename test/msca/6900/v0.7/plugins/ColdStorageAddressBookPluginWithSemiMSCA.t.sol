@@ -20,6 +20,7 @@ pragma solidity 0.8.24;
 
 import {EMPTY_FUNCTION_REFERENCE, PLUGIN_AUTHOR, PLUGIN_VERSION_1} from "../../../../../src/common/Constants.sol";
 import {UnauthorizedCaller, Unsupported} from "../../../../../src/common/Errors.sol";
+import {Create3Factory} from "../../../../../src/factory/Create3Factory.sol";
 import {NotImplemented} from "../../../../../src/msca/6900/shared/common/Errors.sol";
 import {BaseMSCA} from "../../../../../src/msca/6900/v0.7/account/BaseMSCA.sol";
 import {SingleOwnerMSCA} from "../../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
@@ -95,7 +96,15 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
 
     function setUp() public {
         beneficiary = payable(address(makeAddr("bundler")));
-        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
+        Create3Factory create3Factory = new Create3Factory(address(this));
+        factory = new SingleOwnerMSCAFactory(
+            makeAddr("factoryOwner"), address(new SingleOwnerMSCA(entryPoint, pluginManager)), address(create3Factory)
+        );
+        address[] memory callers = new address[](1);
+        callers[0] = address(factory);
+        bool[] memory permissions = new bool[](1);
+        permissions[0] = true;
+        create3Factory.setCallers(callers, permissions);
         addressBookPlugin = new ColdStorageAddressBookPlugin();
 
         (ownerAddr, eoaPrivateKey) = makeAddrAndKey("ColdStorageAddressBookPluginWithSemiMSCATest");
@@ -1122,12 +1131,7 @@ contract ColdStorageAddressBookPluginWithSemiMSCATest is TestUtils {
     function testSkipInstallingAnyRecipientForSemi() public {
         vm.deal(ownerAddr, 10e18);
         vm.startPrank(ownerAddr, ownerAddr);
-        bytes memory _initializingData = abi.encode(ownerAddr);
-        console.log(
-            "\nOwner(%s) calls < SingleOwnerMSCAFactory.createAccount(senderAddr, bytes32(0), _initializingData) >",
-            ownerAddr
-        );
-        msca = factory.createAccount(ownerAddr, bytes32(0), _initializingData);
+        // msca was already deployed in setUp; a second createAccount with the same args now reverts.
         console.log("address(msca) -> %s", address(msca));
         (bool sent,) = address(msca).call{value: 10e18}("");
         assertTrue(sent, "Failed to send Ether");

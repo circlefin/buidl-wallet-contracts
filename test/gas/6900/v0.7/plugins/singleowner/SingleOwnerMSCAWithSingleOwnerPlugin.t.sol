@@ -18,13 +18,11 @@
  */
 pragma solidity 0.8.24;
 
+import {Create3Factory} from "../../../../../../src/factory/Create3Factory.sol";
+import {SingleOwnerMSCA} from "../../../../../../src/msca/6900/v0.7/account/semi/SingleOwnerMSCA.sol";
 import {FunctionReference} from "../../../../../../src/msca/6900/v0.7/common/Structs.sol";
-
-import {
-    PluginManager,
-    SingleOwnerMSCA,
-    SingleOwnerMSCAFactory
-} from "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {SingleOwnerMSCAFactory} from "../../../../../../src/msca/6900/v0.7/factories/semi/SingleOwnerMSCAFactory.sol";
+import {PluginManager} from "../../../../../../src/msca/6900/v0.7/managers/PluginManager.sol";
 import {SingleOwnerPlugin} from "../../../../../../src/msca/6900/v0.7/plugins/v1_0_0/acl/SingleOwnerPlugin.sol";
 import {PluginGasProfileBaseTest} from "../../../../PluginGasProfileBase.t.sol";
 import {PackedUserOperation} from "@account-abstraction/contracts/interfaces/PackedUserOperation.sol";
@@ -48,6 +46,7 @@ contract SingleOwnerMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
     uint256 internal ownerPrivateKey;
     address private ownerAddr;
     SingleOwnerMSCAFactory private factory;
+    Create3Factory private create3Factory;
     SingleOwnerPlugin private singleOwnerPlugin;
     SingleOwnerMSCA private msca;
     address private singleOwnerPluginAddr;
@@ -57,7 +56,15 @@ contract SingleOwnerMSCAWithSingleOwnerPluginTest is PluginGasProfileBaseTest {
     function setUp() public override {
         super.setUp();
         accountAndPluginType = "SingleOwnerMSCAWithSingleOwnerPlugin";
-        factory = new SingleOwnerMSCAFactory(address(entryPoint), address(pluginManager));
+        create3Factory = new Create3Factory(address(this));
+        factory = new SingleOwnerMSCAFactory(
+            makeAddr("factoryOwner"), address(new SingleOwnerMSCA(entryPoint, pluginManager)), address(create3Factory)
+        );
+        address[] memory callers = new address[](1);
+        callers[0] = address(factory);
+        bool[] memory permissions = new bool[](1);
+        permissions[0] = true;
+        create3Factory.setCallers(callers, permissions);
         singleOwnerPlugin = new SingleOwnerPlugin();
         singleOwnerPluginAddr = address(singleOwnerPlugin);
     }
