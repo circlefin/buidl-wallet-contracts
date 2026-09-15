@@ -18,7 +18,9 @@
  */
 pragma solidity 0.8.24;
 
+import {UnexpectedDataPassed} from "../../shared/common/Errors.sol";
 import {IModule} from "@erc6900/reference-implementation/interfaces/IModule.sol";
+import {IAccountExecute} from "@eth-infinitism/account-abstraction/interfaces/IAccountExecute.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
@@ -27,6 +29,13 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
  * support open-ended execution.
  */
 abstract contract BaseModule is IModule, ERC165 {
+    modifier assertNoData(bytes calldata data) {
+        if (data.length > 0) {
+            revert UnexpectedDataPassed();
+        }
+        _;
+    }
+
     /// @dev Returns true if this contract implements the interface defined by
     /// `interfaceId`. See the corresponding
     /// https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
@@ -40,5 +49,33 @@ abstract contract BaseModule is IModule, ERC165 {
     /// @return True if the contract supports `interfaceId`.
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return interfaceId == type(IModule).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    /// @dev help method that returns extracted selector and calldata. If selector is executeUserOp, return the
+    /// selector and calldata of the inner call. This is unique for both validation and execution phases.
+    /// During validation phase, the `data` parameter is the uo's calldata.
+    function _validationPhaseGetSelectorAndCalldata(bytes calldata data) internal pure returns (bytes4, bytes memory) {
+        bytes4 selector = bytes4(data[:4]);
+        if (selector == IAccountExecute.executeUserOp.selector) {
+            // Copy the data to memory
+            bytes memory finalCalldata = data;
+
+            // Bytes arr representation: [bytes32(len), bytes4(executeUserOp.selector), bytes4(actualSelector),
+            // bytes(actualCallData)]
+            assembly ("memory-safe") {
+                // Copy actualSelector into a new var
+                selector := shl(224, mload(add(finalCalldata, 8)))
+
+                let len := mload(finalCalldata)
+
+                // Move the finalCalldata pointer by 8
+                finalCalldata := add(finalCalldata, 8)
+
+                // Shorten bytes array by 8 by: store length - 8 into the new pointer location
+                mstore(finalCalldata, sub(len, 8))
+            }
+            return (selector, finalCalldata);
+        }
+        return (selector, data[4:]);
     }
 }

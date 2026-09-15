@@ -24,6 +24,7 @@ build
 /cache_forge
 /out
 .gas-snapshot
+foundry.lock
 
 # Python environment file
 /venv

@@ -74,6 +74,19 @@ library RecipientAddressLib {
         return address(0);
     }
 
+    function containsERC20Methods(bytes memory data) internal pure returns (bool) {
+        bytes4 selector = bytes4(data);
+        if (
+            selector == IERC20.transfer.selector || selector == IERC20.approve.selector
+                || selector == ERC20_INCREASE_ALLOWANCE || selector == ERC20_DECREASE_ALLOWANCE
+        ) {
+            return data.length >= TRANSFER_OR_APPROVE_MIN_LEN;
+        } else if (selector == IERC20.transferFrom.selector) {
+            return data.length >= TRANSFER_FROM_MIN_LEN;
+        }
+        return false;
+    }
+
     /// @notice Decode the recipient of a token.
     /// @dev This only supports the following **standard** ERC1155 functions:
     /// - setApprovalForAll(address,bool)
@@ -113,6 +126,18 @@ library RecipientAddressLib {
         return address(0);
     }
 
+    function containsERC1155Methods(bytes memory data) internal pure returns (bool) {
+        bytes4 selector = bytes4(data);
+        if (selector == IERC1155.setApprovalForAll.selector) {
+            return data.length >= TRANSFER_OR_APPROVE_MIN_LEN;
+        } else if (selector == IERC1155.safeTransferFrom.selector) {
+            return data.length >= TRANSFER_FROM_WITH_BYTES_MIN_LEN;
+        } else if (selector == IERC1155.safeBatchTransferFrom.selector) {
+            return data.length >= BATCH_TRANSFER_FROM_WITH_BYTES_MIN_LEN;
+        }
+        return false;
+    }
+
     /// @notice Decode the recipient of a token.
     /// @dev This only supports the following **standard** ERC721 functions:
     /// - safeTransferFrom(address,address,uint256)
@@ -149,6 +174,18 @@ library RecipientAddressLib {
             return getRecipient(data, TRANSFER_FROM_RECIPIENT_OFFSET);
         }
         return address(0);
+    }
+
+    function containsERC721Methods(bytes memory data) internal pure returns (bool) {
+        bytes4 selector = bytes4(data);
+        if (selector == IERC721.setApprovalForAll.selector || selector == IERC721.approve.selector) {
+            return data.length >= TRANSFER_OR_APPROVE_MIN_LEN;
+        } else if (selector == ERC721_SAFE_TRANSFER_FROM || selector == IERC721.transferFrom.selector) {
+            return data.length >= TRANSFER_FROM_MIN_LEN;
+        } else if (selector == ERC721_SAFE_TRANSFER_FROM_WITH_BYTES) {
+            return data.length >= TRANSFER_FROM_WITHOUT_AMOUNT_WITH_BYTES_MIN_LEN;
+        }
+        return false;
     }
 
     /// @dev The caller must skip over the initial length prefix.
