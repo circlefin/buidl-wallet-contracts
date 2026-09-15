@@ -22,7 +22,7 @@ py-solc-x==1.1.1
 pycryptodome==3.19.1
 pyrsistent==0.19.3
 regex==2023.6.3
-requests==2.32.0
+requests==2.32.4
 rlp==3.0.0
 semantic-version==2.10.0
 urllib3==2.2.2
